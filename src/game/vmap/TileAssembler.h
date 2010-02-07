@@ -24,6 +24,7 @@
 #include <map>
 
 #include "ModelInstance.h"
+#include "WorldModel.h"
 
 namespace VMAP
 {
@@ -60,6 +61,31 @@ namespace VMAP
 
     typedef std::map<uint32, MapSpawns*> MapData;
     //===============================================
+
+    struct GroupModel_Raw
+    {
+        uint32 mogpflags;
+        uint32 GroupWMOID;
+
+        G3D::AABox bounds;
+        uint32 liquidflags;
+        std::vector<MeshTriangle> triangles;
+        std::vector<G3D::Vector3> vertexArray;
+        class WmoLiquid *liquid;
+
+        GroupModel_Raw() : liquid(0) {}
+        ~GroupModel_Raw();
+
+        bool Read(FILE * f);
+    };
+
+    struct WorldModel_Raw
+    {
+        uint32 RootWMOID;
+        std::vector<GroupModel_Raw> groupsArray;
+
+        bool Read(const char * path);
+    };
 
     class TileAssembler
     {
