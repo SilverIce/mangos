@@ -263,13 +263,13 @@ void Map::AddNotifier(T* , Cell const& , CellPair const& )
 template<>
 void Map::AddNotifier(Player* obj, Cell const& cell, CellPair const& cellpair)
 {
-    PlayerRelocationNotify(obj,cell,cellpair);
+    obj->SheduleAINotify(0);
 }
 
 template<>
 void Map::AddNotifier(Creature* obj, Cell const&, CellPair const&)
 {
-    obj->SetNeedNotify();
+    obj->SheduleAINotify(0);
 }
 
 void
@@ -732,6 +732,8 @@ Map::Remove(T *obj, bool remove)
     }
 }
 
+#define DEFAULT_AI_NOTIFY_DELAY     1000
+
 void
 Map::PlayerRelocation(Player *player, float x, float y, float z, float orientation)
 {
@@ -765,7 +767,7 @@ Map::PlayerRelocation(Player *player, float x, float y, float z, float orientati
     player->GetViewPoint().Call_UpdateVisibilityForOwner();
     // if move then update what player see and who seen
     UpdateObjectVisibility(player, new_cell, new_val);
-    PlayerRelocationNotify(player,new_cell,new_val);
+    player->SheduleAINotify(DEFAULT_AI_NOTIFY_DELAY);
 
     NGridType* newGrid = getNGrid(new_cell.GridX(), new_cell.GridY());
     if( !same_cell && newGrid->GetGridState()!= GRID_STATE_ACTIVE )
@@ -802,8 +804,7 @@ Map::CreatureRelocation(Creature *creature, float x, float y, float z, float ang
     creature->GetViewPoint().Call_UpdateVisibilityForOwner();
     // do not use new_val, new_cell parameters here: they couldn't be actual after CreatureRespawnRelocation call
     UpdateObjectVisibility(creature,creature->GetCurrentCell(),creature->GetCurrentCell().cellPair());
-    // notifiers called in Creature::Update
-    creature->SetNeedNotify();
+    creature->SheduleAINotify(DEFAULT_AI_NOTIFY_DELAY);
 
     ASSERT(CheckGridIntegrity(creature,true));
 }
@@ -886,9 +887,7 @@ bool Map::CreatureRespawnRelocation(Creature *c)
     // teleport it to respawn point (like normal respawn if player see)
     if(CreatureCellRelocation(c,resp_cell))
     {
-        c->Relocate(resp_x, resp_y, resp_z, resp_o);
         c->GetMotionMaster()->Initialize();                 // prevent possible problems with default move generators
-        c->SetNeedNotify();
         return true;
     }
     else

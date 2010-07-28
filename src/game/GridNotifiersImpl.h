@@ -86,9 +86,11 @@ inline void MaNGOS::CreatureRelocationNotifier::Visit(PlayerMapType &m)
         return;
 
     for(PlayerMapType::iterator iter=m.begin(); iter != m.end(); ++iter)
-        if (Player* player = iter->getSource())
-            if (player->isAlive() && !player->isInFlight())
-                PlayerCreatureRelocationWorker(player, &i_creature);
+    {
+        Player* player = iter->getSource();
+        if (player->isAlive() && !player->isInFlight())
+            PlayerCreatureRelocationWorker(player, &i_creature);
+    }
 }
 
 template<>
