@@ -1867,7 +1867,7 @@ void WorldObject::SetPhaseMask(uint32 newPhaseMask, bool update)
     if(update && IsInWorld())
     {
         UpdateObjectVisibility();
-        GetViewPoint().Event_ViewPointVisibilityChanged();
+        GetViewPoint().Notify(&WorldObjectEvents::on_visibility_changed);
     }
 }
 

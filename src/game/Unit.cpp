@@ -10846,7 +10846,7 @@ void Unit::SetVisibility(UnitVisibility x)
         else
             m->CreatureRelocation((Creature*)this,GetPositionX(),GetPositionY(),GetPositionZ(),GetOrientation());
 
-        GetViewPoint().Event_ViewPointVisibilityChanged();
+        GetViewPoint().Notify(&WorldObjectEvents::on_visibility_changed);
     }
 }
 
@@ -12099,7 +12099,7 @@ void Unit::RemoveFromWorld()
         RemoveAllGameObjects();
         RemoveAllDynObjects();
         CleanupDeletedAuras();
-        GetViewPoint().Event_RemovedFromWorld();
+        GetViewPoint().Notify(&WorldObjectEvents::on_removed_from_world);
     }
 
     Object::RemoveFromWorld();

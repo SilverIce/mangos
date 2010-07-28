@@ -370,7 +370,7 @@ bool Map::Add(Player *player)
     SendInitTransports(player);
 
     NGridType* grid = getNGrid(cell.GridX(), cell.GridY());
-    player->GetViewPoint().Event_AddedToWorld(&(*grid)(cell.CellX(), cell.CellY()));
+    player->GetViewPoint().Notify(&WorldObjectEvents::on_added_to_world);
     UpdateObjectVisibility(player,cell,p);
 
     AddNotifier(player,cell,p);
@@ -409,7 +409,7 @@ Map::Add(T *obj)
 
     DEBUG_LOG("Object %u enters grid[%u,%u]", GUID_LOPART(obj->GetGUID()), cell.GridX(), cell.GridY());
 
-    obj->GetViewPoint().Event_AddedToWorld(&(*grid)(cell.CellX(), cell.CellY()));
+    obj->GetViewPoint().Notify(&WorldObjectEvents::on_added_to_world);
     UpdateObjectVisibility(obj,cell,p);
 
     AddNotifier(obj,cell,p);
@@ -763,7 +763,7 @@ Map::PlayerRelocation(Player *player, float x, float y, float z, float orientati
             EnsureGridLoadedAtEnter(new_cell, player);
     }
 
-    player->GetViewPoint().Call_UpdateVisibilityForOwner();
+    player->GetViewPoint().Notify(&WorldObjectEvents::on_moved);
     // if move then update what player see and who seen
     UpdateObjectVisibility(player, new_cell, new_val);
     PlayerRelocationNotify(player,new_cell,new_val);
@@ -818,7 +818,7 @@ Map::CreatureRelocation(Creature *creature, float x, float y, float z, float ang
         creature->SetNeedNotify();
     }
 
-    creature->GetViewPoint().Call_UpdateVisibilityForOwner();
+    creature->GetViewPoint().Notify(&WorldObjectEvents::on_moved);
     ASSERT(CheckGridIntegrity(creature,true));
 }
 

@@ -130,7 +130,7 @@ void LoadHelper(CellGuidSet const& guid_set, CellPair &cell, GridRefManager<T> &
         if(obj->isActiveObject())
             map->AddToActive(obj);
 
-        obj->GetViewPoint().Event_AddedToWorld(&grid);
+        obj->GetViewPoint().Notify(&WorldObjectEvents::on_added_to_world);
 
         if (bg)
             bg->OnObjectDBLoad(obj);

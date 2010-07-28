@@ -3,6 +3,7 @@
 #define MANGOSSERVER_CAMERA_H
 
 #include "GridDefines.h"
+#include "Dynamic/Signals.h"
 
 class ViewPoint;
 class WorldObject;
@@ -10,8 +11,17 @@ class UpdateData;
 class WorldPacket;
 class Player;
 
+struct WorldObjectEvents
+{
+    MAKE_EVENT(WorldObjectEvents, on_added_to_world, void);
+    MAKE_EVENT(WorldObjectEvents, on_removed_from_world, void);
+
+    MAKE_EVENT(WorldObjectEvents, on_visibility_changed, void);
+    MAKE_EVENT(WorldObjectEvents, on_moved, void);
+};
+
 /// Camera - object-receiver. Receives broadcast packets from nearby worldobjects, object visibility changes and sends them to client
-class MANGOS_DLL_SPEC Camera
+class MANGOS_DLL_SPEC Camera : public IRecvr<WorldObjectEvents>
 {
     friend class ViewPoint;
     public:
@@ -41,10 +51,11 @@ class MANGOS_DLL_SPEC Camera
 
     private:
         // called when viewpoint changes visibility state
-        void Event_AddedToWorld();
-        void Event_RemovedFromWorld();
-        void Event_Moved();
-        void Event_ViewPointVisibilityChanged();
+        void on_added_to_world(void);
+        void on_removed_from_world(void);
+
+        void on_visibility_changed(void);
+        void on_moved(void);
 
         Player& m_owner;
         WorldObject* m_source;
@@ -63,63 +74,31 @@ class MANGOS_DLL_SPEC Camera
 };
 
 /// Object-observer, notifies farsight object state to cameras that attached to it
-class MANGOS_DLL_SPEC ViewPoint
+class MANGOS_DLL_SPEC ViewPoint : public Observer<WorldObjectEvents>
 {
     friend class Camera;
+    typedef Observer<WorldObjectEvents> base;
 
-    std::list<Camera*> m_cameras;
-    GridType * m_grid;
+    uint32 cameras_count;
 
-    void Attach(Camera* c) { m_cameras.push_back(c); }
-    void Detach(Camera* c) { m_cameras.remove(c); }
-
-    void CameraCall(void (Camera::*handler)())
+    void Attach(Camera* c)
     {
-        if (!m_cameras.empty())
-        {
-            for(std::list<Camera*>::iterator itr = m_cameras.begin(); itr != m_cameras.end();)
-            {
-                Camera *c = *(itr++);
-                (c->*handler)();
-            }
-        }
+        c->Observe(this);
+        ++cameras_count;
+    }
+
+    void Detach(Camera* c)
+    {
+        c->Detach();
+        --cameras_count;
     }
 
 public:
 
-    ViewPoint() : m_grid(0) {}
+    ViewPoint( ) : cameras_count(0) {}
     ~ViewPoint();
 
-    bool hasViewers() const { return !m_cameras.empty(); }
-
-    // these events are called when viewpoint changes visibility state
-    void Event_AddedToWorld(GridType *grid)
-    {
-        m_grid = grid;
-        CameraCall(&Camera::Event_AddedToWorld);
-    }
-
-    void Event_RemovedFromWorld()
-    {
-        m_grid = NULL;
-        CameraCall(&Camera::Event_RemovedFromWorld);
-    }
-
-    void Event_GridChanged(GridType *grid)
-    {
-        m_grid = grid;
-        CameraCall(&Camera::Event_Moved);
-    }
-
-    void Event_ViewPointVisibilityChanged()
-    {
-        CameraCall(&Camera::Event_ViewPointVisibilityChanged);
-    }
-
-    void Call_UpdateVisibilityForOwner()
-    {
-        CameraCall(&Camera::UpdateVisibilityForOwner);
-    }
+    bool hasViewers() const { return cameras_count != 0; }
 };
 
 #endif

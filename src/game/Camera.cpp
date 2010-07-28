@@ -7,6 +7,11 @@
 
 Camera::Camera(Player* pl) : m_owner(*pl), m_source(pl)
 {
+    connect(&WorldObjectEvents::on_added_to_world,      &Camera::on_added_to_world);
+    connect(&WorldObjectEvents::on_removed_from_world,  &Camera::on_removed_from_world);
+    connect(&WorldObjectEvents::on_visibility_changed,  &Camera::on_visibility_changed);
+    connect(&WorldObjectEvents::on_moved,               &Camera::on_moved);
+
     m_source->GetViewPoint().Attach(this);
 }
 
@@ -26,10 +31,11 @@ void Camera::ReceivePacket(WorldPacket *data)
 
 void Camera::UpdateForCurrentViewPoint()
 {
-    m_gridRef.unlink();
-
-    if (GridType* grid = m_source->GetViewPoint().m_grid)
-        grid->AddWorldObject(this);
+    if (m_currGrid != m_source->GetGrid())
+    {
+        m_currGrid->RemoveWorldObject(this);
+        m_source->GetGrid()->AddWorldObject(this);
+    }
 
     m_owner.SetUInt64Value(PLAYER_FARSIGHT, (m_source == &m_owner ? 0 : m_source->GetGUID()));
     UpdateVisibilityForOwner();
@@ -69,7 +75,7 @@ void Camera::SetView(WorldObject *obj)
     UpdateForCurrentViewPoint();
 }
 
-void Camera::Event_ViewPointVisibilityChanged()
+void Camera::on_visibility_changed(void)
 {
     if (!m_owner.HaveAtClient(m_source))
         ResetView();
@@ -80,30 +86,32 @@ void Camera::ResetView()
     SetView(&m_owner);
 }
 
-void Camera::Event_AddedToWorld()
+void Camera::on_added_to_world()
 {
-    GridType* grid = m_source->GetViewPoint().m_grid;
-    ASSERT(grid);
-    grid->AddWorldObject(this);
-
+    m_source->GetGrid()->AddWorldObject(this);
     UpdateVisibilityForOwner();
 }
 
-void Camera::Event_RemovedFromWorld()
+void Camera::on_removed_from_world(void)
 {
     if (m_source == &m_owner)
     {
-        m_gridRef.unlink();
+        m_currGrid->RemoveWorldObject(this);
         return;
     }
 
     ResetView();
 }
 
-void Camera::Event_Moved()
+void Camera::on_moved(void)
 {
-    m_gridRef.unlink();
-    m_source->GetViewPoint().m_grid->AddWorldObject(this);
+    if (m_currGrid != m_source->GetGrid())
+    {
+        m_currGrid->RemoveWorldObject(this);
+        m_source->GetGrid()->AddWorldObject(this);
+    }
+
+    UpdateVisibilityForOwner();
 }
 
 void Camera::UpdateVisibilityOf(WorldObject* target)
@@ -130,12 +138,4 @@ void Camera::UpdateVisibilityForOwner()
     notifier.Notify();
 }
 
-//////////////////
-
-ViewPoint::~ViewPoint()
-{
-    if (!m_cameras.empty())
-    {
-        sLog.outError("ViewPoint destructor called, but some cameras referenced to it");
-    }
-}
+ViewPoint::~ViewPoint() {}
