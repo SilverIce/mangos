@@ -61,6 +61,7 @@ class MANGOS_DLL_DECL Grid
         template<class SPECIFIC_OBJECT>
         bool AddWorldObject(SPECIFIC_OBJECT *obj)
         {
+            obj->SetGrid(this);
             return i_objects.template insert<SPECIFIC_OBJECT>(obj);
         }
 
@@ -69,6 +70,7 @@ class MANGOS_DLL_DECL Grid
         template<class SPECIFIC_OBJECT>
         bool RemoveWorldObject(SPECIFIC_OBJECT *obj)
         {
+            obj->SetGrid(NULL);
             return i_objects.template remove<SPECIFIC_OBJECT>(obj);
         }
 
@@ -103,6 +105,7 @@ class MANGOS_DLL_DECL Grid
             if (obj->isActiveObject())
                 m_activeGridObjects.insert(obj);
 
+            obj->SetGrid(this);
             return i_container.template insert<SPECIFIC_OBJECT>(obj);
         }
 
@@ -114,6 +117,7 @@ class MANGOS_DLL_DECL Grid
             if (obj->isActiveObject())
                 m_activeGridObjects.erase(obj);
 
+            obj->SetGrid(NULL);
             return i_container.template remove<SPECIFIC_OBJECT>(obj);
         }
 

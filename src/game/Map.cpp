@@ -761,9 +761,6 @@ Map::PlayerRelocation(Player *player, float x, float y, float z, float orientati
             AddToGrid(player, oldGrid,new_cell);
         else
             EnsureGridLoadedAtEnter(new_cell, player);
-
-        NGridType* newGrid = getNGrid(new_cell.GridX(), new_cell.GridY());
-        player->GetViewPoint().Event_GridChanged(&(*newGrid)(new_cell.CellX(),new_cell.CellY()));
     }
 
     player->GetViewPoint().Call_UpdateVisibilityForOwner();
@@ -839,8 +836,6 @@ bool Map::CreatureCellRelocation(Creature *c, Cell new_cell)
 
             NGridType* new_grid = getNGrid(new_cell.GridX(), new_cell.GridY());
             AddToGrid(c,new_grid,new_cell);
-
-            c->GetViewPoint().Event_GridChanged( &(*new_grid)(new_cell.CellX(),new_cell.CellY()) );
         }
         else
         {
@@ -861,8 +856,6 @@ bool Map::CreatureCellRelocation(Creature *c, Cell new_cell)
 
         NGridType* new_grid = getNGrid(new_cell.GridX(), new_cell.GridY());
         AddToGrid(c,new_grid,new_cell);
-        c->GetViewPoint().Event_GridChanged( &(*new_grid)(new_cell.CellX(),new_cell.CellY()) );
-
         return true;
     }
 
@@ -876,7 +869,6 @@ bool Map::CreatureCellRelocation(Creature *c, Cell new_cell)
             EnsureGridCreated(GridPair(new_cell.GridX(), new_cell.GridY()));
             NGridType* new_grid = getNGrid(new_cell.GridX(), new_cell.GridY());
             AddToGrid(c,new_grid,new_cell);
-            c->GetViewPoint().Event_GridChanged( &(*new_grid)(new_cell.CellX(),new_cell.CellY()) );
         }
 
         return true;

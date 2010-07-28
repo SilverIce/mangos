@@ -490,6 +490,9 @@ class MANGOS_DLL_SPEC WorldObject : public Object
         bool isActiveObject() const { return m_isActiveObject || m_viewPoint.hasViewers(); }
 
         ViewPoint& GetViewPoint() { return m_viewPoint; }
+
+        GridType* GetGrid() { return m_currGrid; }
+
     protected:
         explicit WorldObject();
 
@@ -504,6 +507,11 @@ class MANGOS_DLL_SPEC WorldObject : public Object
         bool m_isActiveObject;
     private:
         Map * m_currMap;                                    //current object's Map location
+
+        template<class A, class T, class Y> friend class Grid;
+        void SetGrid(GridType * g) { m_currGrid = g; }
+
+        GridType * m_currGrid;
 
         uint32 m_mapId;                                     // object at map with map_id
         uint32 m_InstanceId;                                // in map copy with instance id

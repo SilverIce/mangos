@@ -55,6 +55,10 @@ class MANGOS_DLL_SPEC Camera
         GridReference<Camera>& GetGridRef() { return m_gridRef; }
         bool isActiveObject() const { return false; }
     private:
+        template<class A, class T, class Y> friend class Grid;
+        void SetGrid(GridType * g) { m_currGrid = g; }
+
+        GridType * m_currGrid;
         GridReference<Camera> m_gridRef;
 };
 
