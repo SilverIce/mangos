@@ -73,8 +73,8 @@ class Corpse : public WorldObject
         bool IsHostileTo(Unit const* unit) const;
         bool IsFriendlyTo(Unit const* unit) const;
 
-        GridPair const& GetGrid() const { return m_grid; }
-        void SetGrid(GridPair const& grid) { m_grid = grid; }
+        GridPair const& GetGridPair() const { return m_grid; }
+        void SetGridPair(GridPair const& grid) { m_grid = grid; }
 
         bool isVisibleForInState(Player const* u, WorldObject const* viewPoint, bool inVisibleList) const;
 
