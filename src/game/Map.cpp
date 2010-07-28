@@ -787,23 +787,24 @@ Map::CreatureRelocation(Creature *creature, float x, float y, float z, float ang
     CellPair new_val = MaNGOS::ComputeCellPair(x, y);
     Cell new_cell(new_val);
 
+    bool moved_to_resp = false;
     if (old_cell.DiffCell(new_cell) || old_cell.DiffGrid(new_cell))
     {
         DEBUG_FILTER_LOG(LOG_FILTER_CREATURE_MOVES, "Creature (GUID: %u Entry: %u) added to moving list from grid[%u,%u]cell[%u,%u] to grid[%u,%u]cell[%u,%u].", creature->GetGUIDLow(), creature->GetEntry(), old_cell.GridX(), old_cell.GridY(), old_cell.CellX(), old_cell.CellY(), new_cell.GridX(), new_cell.GridY(), new_cell.CellX(), new_cell.CellY());
 
         // try to move to the new cell or move it to respawn -- do nothing if both operations failed
-        if (!CreatureCellRelocation(creature,new_cell) && !CreatureRespawnRelocation(creature))
+        if (!CreatureCellRelocation(creature,new_cell) && !(moved_to_resp = CreatureRespawnRelocation(creature)))
         {
             DEBUG_FILTER_LOG(LOG_FILTER_CREATURE_MOVES, "Creature (GUID: %u Entry: %u ) can't be move to unloaded respawn grid.",creature->GetGUIDLow(),creature->GetEntry());
             return;
         }
     }
 
-    creature->Relocate(x, y, z, ang);
+    if (!moved_to_resp)
+        creature->Relocate(x, y, z, ang);
 
     creature->GetViewPoint().Call_UpdateVisibilityForOwner();
-    // do not use new_val, new_cell parameters here: they couldn't be actual after CreatureRespawnRelocation call
-    UpdateObjectVisibility(creature,creature->GetCurrentCell(),creature->GetCurrentCell().cellPair());
+    creature->UpdateObjectVisibility();
     creature->SheduleAINotify(DEFAULT_AI_NOTIFY_DELAY);
 
     ASSERT(CheckGridIntegrity(creature,true));
@@ -887,6 +888,7 @@ bool Map::CreatureRespawnRelocation(Creature *c)
     // teleport it to respawn point (like normal respawn if player see)
     if(CreatureCellRelocation(c,resp_cell))
     {
+        c->Relocate(resp_x, resp_y, resp_z, resp_o);
         c->GetMotionMaster()->Initialize();                 // prevent possible problems with default move generators
         return true;
     }
