@@ -2689,6 +2689,19 @@ void Unit::SendMeleeAttackStop(Unit* victim)
     ((Creature*)victim)->AI().EnterEvadeMode(this);*/
 }
 
+void Unit::SendInitialVisiblePacketsFor(Player *player)
+{
+    player->SendAurasForTarget(this);
+    if(isAlive())
+    {
+        if(GetTypeId() == TYPEID_UNIT)
+            ((Creature*)this)->SendMonsterMoveWithSpeedToCurrentDestination(player);
+
+        if(hasUnitState(UNIT_STAT_MELEE_ATTACKING) && getVictim())
+            SendMeleeAttackStart(getVictim());
+    }
+}
+
 bool Unit::IsSpellBlocked(Unit *pCaster, SpellEntry const * /*spellProto*/, WeaponAttackType attackType)
 {
     if (HasInArc(M_PI_F,pCaster))
@@ -7842,12 +7855,7 @@ void Unit::SetVisibility(UnitVisibility x)
             }
         }
 
-        Map *m = GetMap();
-
-        if(GetTypeId()==TYPEID_PLAYER)
-            m->PlayerRelocation((Player*)this,GetPositionX(),GetPositionY(),GetPositionZ(),GetOrientation());
-        else
-            m->CreatureRelocation((Creature*)this,GetPositionX(),GetPositionY(),GetPositionZ(),GetOrientation());
+        GetMap()->AddNotifier(this, true);
 
         GetViewPoint().Event_ViewPointVisibilityChanged();
     }

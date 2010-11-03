@@ -344,15 +344,6 @@ void Creature::Update(uint32 diff)
     else
         m_GlobalCooldown -= diff;
 
-    if (m_needNotify)
-    {
-        m_needNotify = false;
-        RelocationNotify();
-
-        if (!IsInWorld())
-            return;
-    }
-
     switch( m_deathState )
     {
         case JUST_ALIVED:
@@ -2206,11 +2197,4 @@ void Creature::SendAreaSpiritHealerQueryOpcode(Player *pl)
     WorldPacket data(SMSG_AREA_SPIRIT_HEALER_TIME, 8 + 4);
     data << GetGUID() << next_resurrect;
     pl->SendDirectMessage(&data);
-}
-
-void Creature::RelocationNotify()
-{
-    MaNGOS::CreatureRelocationNotifier relocationNotifier(*this);
-    float radius = MAX_CREATURE_ATTACK_RADIUS * sWorld.getConfig(CONFIG_FLOAT_RATE_CREATURE_AGGRO);
-    Cell::VisitAllObjects(this, relocationNotifier, radius);
 }

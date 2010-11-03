@@ -216,6 +216,9 @@ class MANGOS_DLL_SPEC Map : public GridRefManager<NGridType>, public MaNGOS::Obj
 
         void AddObjectToRemoveList(WorldObject *obj);
 
+        template<class T>
+            void AddNotifier(T*, bool /*force*/);
+
         void UpdateObjectVisibility(WorldObject* obj, Cell cell, CellPair cellpair);
 
         void resetMarkedCells() { marked_cells.reset(); }
@@ -261,6 +264,8 @@ class MANGOS_DLL_SPEC Map : public GridRefManager<NGridType>, public MaNGOS::Obj
             i_objectsToClientUpdate.erase( obj );
         }
 
+        static int32 m_VisibilityNotifyPeriod;
+
         // DynObjects currently
         uint32 GenerateLocalLowGuid(HighGuid guidhigh);
         bool GetAreaInfo(float x, float y, float z, uint32 &mogpflags, int32 &adtId, int32 &rootId, int32 &groupId) const;
@@ -271,14 +276,16 @@ class MANGOS_DLL_SPEC Map : public GridRefManager<NGridType>, public MaNGOS::Obj
         void LoadMap(int gx,int gy, bool reload = false);
         GridMap *GetGrid(float x, float y);
 
+        //these functions used to process player/mob aggro reactions and
+        //visibility calculations. Highly optimized for massive calculations
+        void ProcessRelocationNotifies(uint32 diff);
+
         void SetTimer(uint32 t) { i_gridExpiry = t < MIN_GRID_DELAY ? MIN_GRID_DELAY : t; }
 
         void SendInitSelf( Player * player );
 
         void SendInitTransports( Player * player );
         void SendRemoveTransports( Player * player );
-
-        void PlayerRelocationNotify(Player* player, Cell cell, CellPair cellpair);
 
         bool CreatureCellRelocation(Creature *creature, Cell new_cell);
 
@@ -349,9 +356,6 @@ class MANGOS_DLL_SPEC Map : public GridRefManager<NGridType>, public MaNGOS::Obj
         // Type specific code for add/remove to/from grid
         template<class T>
             void AddToGrid(T*, NGridType *, Cell const&);
-
-        template<class T>
-            void AddNotifier(T*, Cell const&, CellPair const&);
 
         template<class T>
             void RemoveFromGrid(T*, NGridType *, Cell const&);

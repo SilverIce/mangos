@@ -17,6 +17,7 @@
  */
 
 #include "GridNotifiers.h"
+#include "CellImpl.h"
 #include "WorldPacket.h"
 #include "WorldSession.h"
 #include "UpdateData.h"
@@ -24,6 +25,7 @@
 #include "Map.h"
 #include "Transports.h"
 #include "ObjectAccessor.h"
+#include "World.h"
 
 using namespace MaNGOS;
 
@@ -56,33 +58,24 @@ VisibleNotifier::Notify()
         }
     }
 
-    // generate outOfRange for not iterate objects
-    i_data.AddOutOfRangeGUID(i_clientGUIDs);
     for(ObjectGuidSet::iterator itr = i_clientGUIDs.begin();itr!=i_clientGUIDs.end();++itr)
     {
         player.m_clientGUIDs.erase(*itr);
+        if (!itr->IsPlayer())
+            continue;
 
-        DEBUG_FILTER_LOG(LOG_FILTER_VISIBILITY_CHANGES, "%s is out of range (no in active cells set) now for %s",
-            itr->GetString().c_str(), player.GetObjectGuid().GetString().c_str());
+        if(Player *plr = ObjectAccessor::FindPlayer(*itr))
+            if(plr->IsInWorld() && !plr->isNeedNotify(NOTIFY_VISIBILITY_CHANGED))
+                plr->GetCamera().UpdateVisibilityOf(&player);
     }
 
+    // generate outOfRange for not iterate objects
+    i_data.AddOutOfRangeGUID(i_clientGUIDs);
     if (i_data.HasData())
     {
-        // send create/outofrange packet to player (except player create updates that already sent using SendUpdateToPlayer)
         WorldPacket packet;
         i_data.BuildPacket(&packet);
         player.GetSession()->SendPacket(&packet);
-
-        // send out of range to other players if need
-        ObjectGuidSet const& oor = i_data.GetOutOfRangeGUIDs();
-        for(ObjectGuidSet::const_iterator iter = oor.begin(); iter != oor.end(); ++iter)
-        {
-            if (!iter->IsPlayer())
-                continue;
-
-            if (Player* plr = ObjectAccessor::FindPlayer(*iter))
-                plr->UpdateVisibilityOf(plr->GetCamera().GetBody(), &player);
-        }
     }
 
     // Now do operations that required done at object visibility change to visible
@@ -98,6 +91,96 @@ VisibleNotifier::Notify()
         if ((*vItr)->GetTypeId()==TYPEID_UNIT && ((Creature*)(*vItr))->isAlive())
             ((Creature*)(*vItr))->SendMonsterMoveWithSpeedToCurrentDestination(&player);
     }
+}
+
+inline void CreatureUnitRelocationWorker(Creature* c, Unit* u)
+{
+    if(!c->isAlive() || !u->isAlive() || u->IsTaxiFlying())
+        return;
+
+    if(!c->hasUnitState(UNIT_STAT_FLEEING))
+    {
+        if( c->AI() && c->AI()->IsVisible(u) && !c->IsInEvadeMode() )
+            c->AI()->MoveInLineOfSight(u);
+    }
+}
+
+void AI_RelocationNotifier::Visit(CreatureMapType &m)
+{
+    for(CreatureMapType::iterator iter=m.begin(); iter != m.end(); ++iter)
+    {
+        Creature* c = iter->getSource();
+        if (i_unit.GetTypeId() == TYPEID_UNIT)
+            CreatureUnitRelocationWorker((Creature*)&i_unit, c);
+
+        if (!c->isNeedNotify(NOTIFY_AI_RELOCATION))   // notify passive object only
+            CreatureUnitRelocationWorker(c, &i_unit);
+    }
+}
+
+inline void handleUnitRelocation(Unit & unit)
+{
+    if (!unit.IsInWorld())
+        return;
+
+    if (unit.isNeedNotify(NOTIFY_VISIBILITY_CHANGED))
+    {
+        VisibleChangesNotifier notif(unit);
+        Cell::VisitAllObjects(&unit, notif, unit.GetMap()->GetVisibilityDistance());
+    }
+
+    if (unit.isNeedNotify(NOTIFY_AI_RELOCATION))
+    {
+        AI_RelocationNotifier notif(unit);
+        Cell::VisitAllObjects(&unit, notif, MAX_CREATURE_ATTACK_RADIUS * sWorld.getConfig(CONFIG_FLOAT_RATE_CREATURE_AGGRO));
+    }
+}
+
+struct MANGOS_DLL_DECL opt_VisibleNotifier : public VisibleNotifier
+{
+    explicit opt_VisibleNotifier(Camera& c) : VisibleNotifier(c) {}
+
+    void Visit(CameraMapType&) {}
+
+    template<class T> void Visit(GridRefManager<T> &m)
+    {
+        for (GridRefManager<T>::iterator it = m.begin();it!= m.end(); ++it)
+        {
+            T * obj = it->getSource();
+            i_clientGUIDs.erase(obj->GetObjectGuid());
+
+            if (!obj->isNeedNotify(NOTIFY_VISIBILITY_CHANGED))   // update visibility of passive objects only
+                i_camera.UpdateVisibilityOf(obj,i_data,i_visibleNow);
+        }
+    }
+};
+
+inline void handleCameraRelocation(Camera & c)
+{
+    if (c.GetOwner()->IsInWorld() && c.GetBody()->isNeedNotify(NOTIFY_VISIBILITY_CHANGED))
+    {
+        opt_VisibleNotifier notifier(c);
+        Cell::VisitAllObjects(c.GetBody(),notifier,c.GetBody()->GetMap()->GetVisibilityDistance(),false);
+        notifier.Notify(); 
+    }
+}
+
+void DelayedUnitRelocation::Visit(PlayerMapType &m)
+{
+    for(PlayerMapType::iterator iter = m.begin(); iter != m.end(); ++iter)
+        handleUnitRelocation( (Unit&)(*iter->getSource()) );
+}
+
+void DelayedUnitRelocation::Visit(CreatureMapType &m)
+{
+    for(CreatureMapType::iterator iter = m.begin(); iter != m.end(); ++iter)
+        handleUnitRelocation( (Unit&)(*iter->getSource()) );
+}
+
+void DelayedUnitRelocation::Visit(CameraMapType &m)
+{
+    for(CameraMapType::iterator iter = m.begin(); iter != m.end(); ++iter)
+        handleCameraRelocation( (Camera&)(*iter->getSource()) );
 }
 
 void

@@ -44,23 +44,6 @@ inline void MaNGOS::ObjectUpdater::Visit(CreatureMapType &m)
         iter->getSource()->Update(i_timeDiff);
 }
 
-inline void MaNGOS::PlayerRelocationNotifier::Visit(PlayerMapType &m)
-{
-    for(PlayerMapType::iterator iter = m.begin(); iter != m.end(); ++iter)
-    {
-        if (&i_player==iter->getSource())
-            continue;
-
-        // visibility for players updated by ObjectAccessor::UpdateVisibilityFor calls in appropriate places
-
-        // Cancel Trade
-        if (i_player.GetTrader()==iter->getSource())
-                                                            // iteraction distance
-            if (!i_player.IsWithinDistInMap(iter->getSource(), INTERACTION_DISTANCE))
-                i_player.GetSession()->SendCancelTrade();   // will clode both side trade windows
-    }
-}
-
 inline void PlayerCreatureRelocationWorker(Player* pl, WorldObject const* viewPoint, Creature* c)
 {
     // update creature visibility at player/creature move
@@ -86,44 +69,6 @@ inline void CreatureCreatureRelocationWorker(Creature* c1, Creature* c2)
     {
         if (c2->AI() && c2->AI()->IsVisible(c1) && !c2->IsInEvadeMode())
             c2->AI()->MoveInLineOfSight(c1);
-    }
-}
-
-inline void MaNGOS::PlayerRelocationNotifier::Visit(CreatureMapType &m)
-{
-    if (!i_player.isAlive() || i_player.IsTaxiFlying())
-        return;
-
-    WorldObject const* viewPoint = i_player.GetCamera().GetBody();
-
-    for(CreatureMapType::iterator iter = m.begin(); iter != m.end(); ++iter)
-        if (iter->getSource()->isAlive())
-            PlayerCreatureRelocationWorker(&i_player, viewPoint, iter->getSource());
-}
-
-template<>
-inline void MaNGOS::CreatureRelocationNotifier::Visit(PlayerMapType &m)
-{
-    if (!i_creature.isAlive())
-        return;
-
-    for(PlayerMapType::iterator iter=m.begin(); iter != m.end(); ++iter)
-        if (Player* player = iter->getSource())
-            if (player->isAlive() && !player->IsTaxiFlying())
-                PlayerCreatureRelocationWorker(player, player->GetCamera().GetBody(), &i_creature);
-}
-
-template<>
-inline void MaNGOS::CreatureRelocationNotifier::Visit(CreatureMapType &m)
-{
-    if (!i_creature.isAlive())
-        return;
-
-    for(CreatureMapType::iterator iter = m.begin(); iter != m.end(); ++iter)
-    {
-        Creature* c = iter->getSource();
-        if (c != &i_creature && c->isAlive())
-            CreatureCreatureRelocationWorker(c, &i_creature);
     }
 }
 
