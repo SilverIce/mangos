@@ -1120,11 +1120,11 @@ GM.AllowAchievementGain  = 1
 #    Visibility.RelocationLoverLimit
 #        Object's visibility update called, when distance between current object's position and position,
 #        where visiblity was updated last time, reaches RelocationLoverLimit value
-#        Default:
+#        Default: 10 (yards)
 #
 #    Visibility.AIRelocationNotifyDelay
 #        Time(in milliseconds) between the creature/player relocation and the nearby creature's AI reaction
-#        Default:
+#        Default: 1000 (milliseconds)
 #
 ###################################################################################################################
 
@@ -1137,7 +1137,7 @@ Visibility.Distance.InFlight      = 100
 Visibility.Distance.Grey.Unit    = 1
 Visibility.Distance.Grey.Object  = 10
 
-Visibility.RelocationLoverLimit    = 4
+Visibility.RelocationLoverLimit    = 10
 Visibility.AIRelocationNotifyDelay = 1000
 
 ###################################################################################################################

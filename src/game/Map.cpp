@@ -732,7 +732,7 @@ Map::Remove(T *obj, bool remove)
     }
 }
 
-float  Map::relocation_lower_limit_sq   = 4.f * 4.f;
+float  Map::relocation_lower_limit_sq   = 10.f * 10.f;
 uint32 Map::relocation_ai_notify_delay  = 1000u;
 
 inline void _F_optimized(Unit & u)
