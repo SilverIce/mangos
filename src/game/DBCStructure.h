@@ -802,10 +802,10 @@ struct FactionEntry
     int32       BaseRepValue[4];                            // 10-13    m_reputationBase
     uint32      ReputationFlags[4];                         // 14-17    m_reputationFlags
     uint32      team;                                       // 18       m_parentFactionID
-    //float     unk1;                                       // 19
-    //float     unk2;                                       // 20
-    //uint32    unk3                                        // 21
-    //uint32    unk4;                                       // 22
+    //float     spilloverRate1;                             // 19       Members of the team gain (received_rep*rate). If spilloverRate1 is (0.0 || 1.0), spilloverRate2 are used instead...
+    //float     spilloverRate2;                             // 20       ...but only if spilloverRate2 is not (1.0 || 0.0). Faction must be member of a team before spillover are given.
+    //uint32    spilloverMaxRank;                           // 21       The highest rank player will receive spillover at (the cap). Above this rank will not give any spillover for this faction
+    //uint32    spilloverRank_unk;                          // 22
     char*       name[16];                                   // 23-38    m_name_lang
                                                             // 39 string flags
     //char*     description[16];                            // 40-55    m_description_lang
@@ -1779,6 +1779,23 @@ struct VehicleSeatEntry
     int32   m_uiSkin;                                       // 44
     uint32  m_flagsB;                                       // 45
                                                             // 46-57 added in 3.1, floats mostly
+};
+
+struct WMOAreaTableEntry
+{
+    uint32 Id;                                              // 0 index
+    int32 rootId;                                           // 1 used in root WMO
+    int32 adtId;                                            // 2 used in adt file
+    int32 groupId;                                          // 3 used in group WMO
+    //uint32 field4;
+    //uint32 field5;
+    //uint32 field6;
+    //uint32 field7;
+    //uint32 field8;
+    uint32 Flags;                                           // 9 used for indoor/outdoor determination
+    uint32 areaId;                                          // 10 link to AreaTableEntry.ID
+    //char *Name[16];
+    //uint32 nameFlags;
 };
 
 struct WorldMapAreaEntry

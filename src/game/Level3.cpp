@@ -512,6 +512,22 @@ bool ChatHandler::HandleReloadReservedNameCommand(const char*)
     return true;
 }
 
+bool ChatHandler::HandleReloadReputationRewardRateCommand(const char*)
+{
+    sLog.outString( "Re-Loading `reputation_reward_rate` Table!" );
+    sObjectMgr.LoadReputationRewardRate();
+    SendGlobalSysMessage("DB table `reputation_reward_rate` reloaded.");
+    return true;
+}
+
+bool ChatHandler::HandleReloadReputationSpilloverTemplateCommand(const char*)
+{
+    sLog.outString( "Re-Loading `reputation_spillover_template` Table!" );
+    sObjectMgr.LoadReputationSpilloverTemplate();
+    SendGlobalSysMessage("DB table `reputation_spillover_template` reloaded.");
+    return true;
+}
+
 bool ChatHandler::HandleReloadSkillDiscoveryTemplateCommand(const char* /*args*/)
 {
     sLog.outString( "Re-Loading Skill Discovery Table..." );
@@ -2379,7 +2395,7 @@ bool ChatHandler::HandleListItemCommand(const char* args)
 
     // auction case
     uint32 auc_count = 0;
-    result=CharacterDatabase.PQuery("SELECT COUNT(item_template) FROM auctionhouse WHERE item_template='%u'",item_id);
+    result=CharacterDatabase.PQuery("SELECT COUNT(item_template) FROM auction WHERE item_template='%u'",item_id);
     if(result)
     {
         auc_count = (*result)[0].GetUInt32();
@@ -2390,8 +2406,8 @@ bool ChatHandler::HandleListItemCommand(const char* args)
     {
         result=CharacterDatabase.PQuery(
         //           0                      1                       2                   3
-            "SELECT  auctionhouse.itemguid, auctionhouse.itemowner, characters.account, characters.name "
-            "FROM auctionhouse,characters WHERE auctionhouse.item_template='%u' AND characters.guid = auctionhouse.itemowner LIMIT %u",
+            "SELECT  auction.itemguid, auction.itemowner, characters.account, characters.name "
+            "FROM auction,characters WHERE auction.item_template='%u' AND characters.guid = auction.itemowner LIMIT %u",
             item_id,uint32(count));
     }
     else
@@ -3563,6 +3579,10 @@ bool ChatHandler::HandleAuraCommand(const char* args)
     SpellEntry const *spellInfo = sSpellStore.LookupEntry( spellID );
     if(spellInfo)
     {
+        SpellAuraHolder *holder = NULL;
+        if (IsSpellAppliesAura(spellInfo, (1 << EFFECT_INDEX_0) | (1 << EFFECT_INDEX_1) | (1 << EFFECT_INDEX_2)) || IsSpellHaveEffect(spellInfo, SPELL_EFFECT_PERSISTENT_AREA_AURA))
+            holder = CreateSpellAuraHolder(spellInfo, target, m_session->GetPlayer());
+
         for(uint32 i = 0; i < MAX_EFFECT_INDEX; ++i)
         {
             uint8 eff = spellInfo->Effect[i];
@@ -3572,10 +3592,11 @@ bool ChatHandler::HandleAuraCommand(const char* args)
                 eff == SPELL_EFFECT_APPLY_AURA  ||
                 eff == SPELL_EFFECT_PERSISTENT_AREA_AURA )
             {
-                Aura *Aur = CreateAura(spellInfo, SpellEffectIndex(i), NULL, target);
-                target->AddAura(Aur);
+                Aura *aur = CreateAura(spellInfo, SpellEffectIndex(i), NULL, holder, target);
+                holder->AddAura(aur, SpellEffectIndex(i));
             }
         }
+        target->AddSpellAuraHolder(holder);
     }
 
     return true;
@@ -4132,9 +4153,45 @@ bool ChatHandler::HandleHideAreaCommand(const char* args)
     return true;
 }
 
+bool ChatHandler::HandleAuctionAllianceCommand(const char* /*args*/)
+{
+    m_session->GetPlayer()->SetAuctionAccessMode(m_session->GetPlayer()->GetTeam() != ALLIANCE ? -1 : 0);
+    m_session->SendAuctionHello(m_session->GetPlayer());
+    return true;
+}
+
+bool ChatHandler::HandleAuctionHordeCommand(const char* /*args*/)
+{
+    m_session->GetPlayer()->SetAuctionAccessMode(m_session->GetPlayer()->GetTeam() != HORDE ? -1 : 0);
+    m_session->SendAuctionHello(m_session->GetPlayer());
+    return true;
+}
+
+bool ChatHandler::HandleAuctionGoblinCommand(const char* /*args*/)
+{
+    m_session->GetPlayer()->SetAuctionAccessMode(1);
+    m_session->SendAuctionHello(m_session->GetPlayer());
+    return true;
+}
+
+bool ChatHandler::HandleAuctionCommand(const char* /*args*/)
+{
+    m_session->GetPlayer()->SetAuctionAccessMode(0);
+    m_session->SendAuctionHello(m_session->GetPlayer());
+
+    return true;
+}
+
 bool ChatHandler::HandleBankCommand(const char* /*args*/)
 {
     m_session->SendShowBank( m_session->GetPlayer()->GetGUID() );
+
+    return true;
+}
+
+bool ChatHandler::HandleStableCommand(const char* /*args*/)
+{
+    m_session->SendStablePet(m_session->GetPlayer()->GetGUID());
 
     return true;
 }
@@ -4252,32 +4309,40 @@ bool ChatHandler::HandleListAurasCommand (const char * /*args*/)
     char const* talentStr = GetMangosString(LANG_TALENT);
     char const* passiveStr = GetMangosString(LANG_PASSIVE);
 
-    Unit::AuraMap const& uAuras = unit->GetAuras();
+    Unit::SpellAuraHolderMap const& uAuras = unit->GetSpellAuraHolderMap();
     PSendSysMessage(LANG_COMMAND_TARGET_LISTAURAS, uAuras.size());
-    for (Unit::AuraMap::const_iterator itr = uAuras.begin(); itr != uAuras.end(); ++itr)
+    for (Unit::SpellAuraHolderMap::const_iterator itr = uAuras.begin(); itr != uAuras.end(); ++itr)
     {
         bool talent = GetTalentSpellCost(itr->second->GetId()) > 0;
+        
+        SpellAuraHolder *holder = itr->second;
+        char const* name = holder->GetSpellProto()->SpellName[GetSessionDbcLocale()];
 
-        char const* name = itr->second->GetSpellProto()->SpellName[GetSessionDbcLocale()];
-
-        if (m_session)
+        for (int32 i = 0; i < MAX_EFFECT_INDEX; ++i)
         {
-            std::ostringstream ss_name;
-            ss_name << "|cffffffff|Hspell:" << itr->second->GetId() << "|h[" << name << "]|h|r";
+            Aura *aur = holder->GetAuraByEffectIndex(SpellEffectIndex(i));
+            if (!aur)
+                continue;
+            
+            if (m_session)
+            {
+                std::ostringstream ss_name;
+                ss_name << "|cffffffff|Hspell:" << itr->second->GetId() << "|h[" << name << "]|h|r";
 
-            PSendSysMessage(LANG_COMMAND_TARGET_AURADETAIL, itr->second->GetId(), itr->second->GetEffIndex(),
-                itr->second->GetModifier()->m_auraname, itr->second->GetAuraDuration(), itr->second->GetAuraMaxDuration(),
-                ss_name.str().c_str(),
-                (itr->second->IsPassive() ? passiveStr : ""),(talent ? talentStr : ""),
-                IS_PLAYER_GUID(itr->second->GetCasterGUID()) ? "player" : "creature",GUID_LOPART(itr->second->GetCasterGUID()));
-        }
-        else
-        {
-            PSendSysMessage(LANG_COMMAND_TARGET_AURADETAIL, itr->second->GetId(), itr->second->GetEffIndex(),
-                itr->second->GetModifier()->m_auraname, itr->second->GetAuraDuration(), itr->second->GetAuraMaxDuration(),
-                name,
-                (itr->second->IsPassive() ? passiveStr : ""),(talent ? talentStr : ""),
-                IS_PLAYER_GUID(itr->second->GetCasterGUID()) ? "player" : "creature",GUID_LOPART(itr->second->GetCasterGUID()));
+                PSendSysMessage(LANG_COMMAND_TARGET_AURADETAIL, holder->GetId(), aur->GetEffIndex(),
+                    aur->GetModifier()->m_auraname, aur->GetAuraDuration(), aur->GetAuraMaxDuration(),
+                    ss_name.str().c_str(),
+                    (holder->IsPassive() ? passiveStr : ""),(talent ? talentStr : ""),
+                    IS_PLAYER_GUID(holder->GetCasterGUID()) ? "player" : "creature",GUID_LOPART(holder->GetCasterGUID()));
+            }
+            else
+            {
+                PSendSysMessage(LANG_COMMAND_TARGET_AURADETAIL, holder->GetId(), aur->GetEffIndex(),
+                    aur->GetModifier()->m_auraname, aur->GetAuraDuration(), aur->GetAuraMaxDuration(),
+                    name,
+                    (holder->IsPassive() ? passiveStr : ""),(talent ? talentStr : ""),
+                    IS_PLAYER_GUID(holder->GetCasterGUID()) ? "player" : "creature",GUID_LOPART(holder->GetCasterGUID()));
+            }
         }
     }
     for (int i = 0; i < TOTAL_AURAS; ++i)
@@ -4297,13 +4362,13 @@ bool ChatHandler::HandleListAurasCommand (const char * /*args*/)
                 ss_name << "|cffffffff|Hspell:" << (*itr)->GetId() << "|h[" << name << "]|h|r";
 
                 PSendSysMessage(LANG_COMMAND_TARGET_AURASIMPLE, (*itr)->GetId(), (*itr)->GetEffIndex(),
-                    ss_name.str().c_str(),((*itr)->IsPassive() ? passiveStr : ""),(talent ? talentStr : ""),
+                    ss_name.str().c_str(),((*itr)->GetHolder()->IsPassive() ? passiveStr : ""),(talent ? talentStr : ""),
                     IS_PLAYER_GUID((*itr)->GetCasterGUID()) ? "player" : "creature",GUID_LOPART((*itr)->GetCasterGUID()));
             }
             else
             {
                 PSendSysMessage(LANG_COMMAND_TARGET_AURASIMPLE, (*itr)->GetId(), (*itr)->GetEffIndex(),
-                    name,((*itr)->IsPassive() ? passiveStr : ""),(talent ? talentStr : ""),
+                    name,((*itr)->GetHolder()->IsPassive() ? passiveStr : ""),(talent ? talentStr : ""),
                     IS_PLAYER_GUID((*itr)->GetCasterGUID()) ? "player" : "creature",GUID_LOPART((*itr)->GetCasterGUID()));
             }
         }
