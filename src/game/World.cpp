@@ -757,6 +757,9 @@ void World::LoadConfigSettings(bool reload)
     setConfig(CONFIG_UINT32_TIMERBAR_FIRE_GMLEVEL,    "TimerBar.Fire.GMLevel", SEC_CONSOLE);
     setConfig(CONFIG_UINT32_TIMERBAR_FIRE_MAX,        "TimerBar.Fire.Max", 1);
 
+    Map::relocation_ai_notify_delay = sConfig.GetIntDefault("Visibility.AIRelocationNotifyDelay",1000);
+    Map::relocation_lower_limit_sq  = pow(sConfig.GetFloatDefault("Visibility.RelocationLoverLimit",16.f), 2);
+
     m_VisibleUnitGreyDistance = sConfig.GetFloatDefault("Visibility.Distance.Grey.Unit", 1);
     if(m_VisibleUnitGreyDistance >  MAX_VISIBILITY_DISTANCE)
     {

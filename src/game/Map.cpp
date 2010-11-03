@@ -732,8 +732,8 @@ Map::Remove(T *obj, bool remove)
     }
 }
 
-#define RELOCATION_LOWER_LIMIT_SQ       (4.0f*4.0f)
-#define DEFAULT_AI_NOTIFY_DELAY         1000
+float  Map::relocation_lower_limit_sq   = 4.f * 4.f;
+uint32 Map::relocation_ai_notify_delay  = 1000u;
 
 inline void _F_optimized(Unit & u)
 {
@@ -742,7 +742,7 @@ inline void _F_optimized(Unit & u)
     float dz = u.m_last_notified_position.z - u.GetPositionZ();
     float distsq = dx*dx+dy*dy+dz*dz;
 
-    if (distsq > RELOCATION_LOWER_LIMIT_SQ)
+    if (distsq > Map::relocation_lower_limit_sq)
     {
         u.m_last_notified_position.x = u.GetPositionX();
         u.m_last_notified_position.y = u.GetPositionY();
@@ -752,7 +752,7 @@ inline void _F_optimized(Unit & u)
         u.UpdateObjectVisibility();
     }
 
-    u.SheduleAINotify(DEFAULT_AI_NOTIFY_DELAY);
+    u.SheduleAINotify(Map::relocation_ai_notify_delay);
 }
 
 void

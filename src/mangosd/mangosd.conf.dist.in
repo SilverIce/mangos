@@ -1103,6 +1103,14 @@ GM.AllowAchievementGain  = 1
 #        Visibility grey distance for dynobjects/gameobjects/corpses/creature bodies
 #        Default: 10 (yards)
 #
+#    Visibility.RelocationLoverLimit
+#        Object's visibility update called, when distance between current object's position and position,
+#        where visiblity was updated last time, reaches RelocationLoverLimit value
+#        Default:
+#
+#    Visibility.AIRelocationNotifyDelay
+#        Time(in milliseconds) between the creature/player relocation and the nearby creature's AI reaction
+#        Default:
 #
 ###################################################################################################################
 
@@ -1112,8 +1120,11 @@ Visibility.Distance.Instances     = 120
 Visibility.Distance.BGArenas      = 180
 Visibility.Distance.Object        = 100
 Visibility.Distance.InFlight      = 100
-Visibility.Distance.Grey.Unit   = 1
-Visibility.Distance.Grey.Object = 10
+Visibility.Distance.Grey.Unit    = 1
+Visibility.Distance.Grey.Object  = 10
+
+Visibility.RelocationLoverLimit    = 4
+Visibility.AIRelocationNotifyDelay = 1000
 
 ###################################################################################################################
 # SERVER RATES
