@@ -105,20 +105,37 @@ inline void CreatureUnitRelocationWorker(Creature* c, Unit* u)
     }
 }
 
-void AI_RelocationNotifier::Visit(CreatureMapType &m)
+template<> void AI_RelocationNotifier<Player>::Visit(CreatureMapType &m)
+{
+    for(CreatureMapType::iterator iter=m.begin(); iter != m.end(); ++iter)
+    {
+        //if (!c->isNeedNotify(NOTIFY_AI_RELOCATION))   // handle passive object only
+            CreatureUnitRelocationWorker(iter->getSource(), &i_unit);
+    }
+}
+
+template<> void AI_RelocationNotifier<Creature>::Visit(PlayerMapType &m)
+{
+    for(PlayerMapType::iterator iter=m.begin(); iter != m.end(); ++iter)
+    {
+        Player* p = iter->getSource();
+        if (!p->isNeedNotify(NOTIFY_AI_RELOCATION))   // handle passive object only
+            CreatureUnitRelocationWorker(&i_unit, p);
+    }
+}
+
+template<> void AI_RelocationNotifier<Creature>::Visit(CreatureMapType &m)
 {
     for(CreatureMapType::iterator iter=m.begin(); iter != m.end(); ++iter)
     {
         Creature* c = iter->getSource();
-        if (i_unit.GetTypeId() == TYPEID_UNIT)
-            CreatureUnitRelocationWorker((Creature*)&i_unit, c);
-
-        if (!c->isNeedNotify(NOTIFY_AI_RELOCATION))   // notify passive object only
+        CreatureUnitRelocationWorker(&i_unit, c);
+        if (!c->isNeedNotify(NOTIFY_AI_RELOCATION))   // handle passive object only
             CreatureUnitRelocationWorker(c, &i_unit);
     }
 }
 
-inline void handleUnitRelocation(Unit & unit)
+template<class U> inline void handleUnitRelocation(U & unit)
 {
     if (!unit.IsInWorld())
         return;
@@ -131,7 +148,7 @@ inline void handleUnitRelocation(Unit & unit)
 
     if (unit.isNeedNotify(NOTIFY_AI_RELOCATION))
     {
-        AI_RelocationNotifier notif(unit);
+        AI_RelocationNotifier<U> notif(unit);
         Cell::VisitAllObjects(&unit, notif, MAX_CREATURE_ATTACK_RADIUS * sWorld.getConfig(CONFIG_FLOAT_RATE_CREATURE_AGGRO));
     }
 }
@@ -168,13 +185,13 @@ inline void handleCameraRelocation(Camera & c)
 void DelayedUnitRelocation::Visit(PlayerMapType &m)
 {
     for(PlayerMapType::iterator iter = m.begin(); iter != m.end(); ++iter)
-        handleUnitRelocation( (Unit&)(*iter->getSource()) );
+        handleUnitRelocation<Player>(*iter->getSource());
 }
 
 void DelayedUnitRelocation::Visit(CreatureMapType &m)
 {
     for(CreatureMapType::iterator iter = m.begin(); iter != m.end(); ++iter)
-        handleUnitRelocation( (Unit&)(*iter->getSource()) );
+        handleUnitRelocation<Creature>(*iter->getSource());
 }
 
 void DelayedUnitRelocation::Visit(CameraMapType &m)

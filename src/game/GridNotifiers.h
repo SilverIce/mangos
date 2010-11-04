@@ -145,12 +145,14 @@ namespace MaNGOS
         void Visit(CreatureMapType &);
     };
 
+    template<class U>
     struct MANGOS_DLL_DECL AI_RelocationNotifier
     {
-        Unit &i_unit;
-        AI_RelocationNotifier(Unit &c) : i_unit(c) {}
+        U &i_unit;
+        AI_RelocationNotifier(U &c) : i_unit(c) {}
         template<class T> void Visit(GridRefManager<T> &) {}
-        void Visit(CreatureMapType &);
+        void Visit(CreatureMapType&){}
+        void Visit(PlayerMapType&){}
     };
 
     struct MANGOS_DLL_DECL DelayedUnitRelocation
