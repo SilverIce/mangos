@@ -1117,6 +1117,9 @@ GM.AllowAchievementGain  = 1
 #        Visibility grey distance for dynobjects/gameobjects/corpses/creature bodies
 #        Default: 10 (yards)
 #
+#    Visibility.NotifyPeriod
+#        Delay of the time between player/creature relocation and the nearby creature's AI reaction and visibility update
+#        Default: 1000 (milliseconds)
 #
 ###################################################################################################################
 

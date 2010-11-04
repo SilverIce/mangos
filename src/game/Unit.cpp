@@ -2689,19 +2689,6 @@ void Unit::SendMeleeAttackStop(Unit* victim)
     ((Creature*)victim)->AI().EnterEvadeMode(this);*/
 }
 
-void Unit::SendInitialVisiblePacketsFor(Player *player)
-{
-    player->SendAurasForTarget(this);
-    if(isAlive())
-    {
-        if(GetTypeId() == TYPEID_UNIT)
-            ((Creature*)this)->SendMonsterMoveWithSpeedToCurrentDestination(player);
-
-        if(hasUnitState(UNIT_STAT_MELEE_ATTACKING) && getVictim())
-            SendMeleeAttackStart(getVictim());
-    }
-}
-
 bool Unit::IsSpellBlocked(Unit *pCaster, SpellEntry const * /*spellProto*/, WeaponAttackType attackType)
 {
     if (HasInArc(M_PI_F,pCaster))

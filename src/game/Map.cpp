@@ -376,15 +376,12 @@ bool Map::Add(Player *player)
     Cell cell(p);
 
     EnsureGridLoadedAtEnter(cell, player);
-    NGridType *grid = getNGrid(cell.GridX(), cell.GridY());
-    assert( grid != NULL );
-    AddToGrid(player, grid, cell);
-
     player->AddToWorld();
 
     SendInitSelf(player);
     SendInitTransports(player);
 
+    NGridType *grid = getNGrid(cell.GridX(), cell.GridY());
     player->GetViewPoint().Event_AddedToWorld( &(*grid)(cell.CellX(),cell.CellY()) );
     AddNotifier(player, true);
     return true;
@@ -866,7 +863,6 @@ Map::PlayerRelocation(Player *player, float x, float y, float z, float orientati
 
         NGridType* newGrid = getNGrid(new_cell.GridX(), new_cell.GridY());
         player->GetViewPoint().Event_GridChanged(&(*newGrid)(new_cell.CellX(),new_cell.CellY()));
-        AddToGrid(player, newGrid,new_cell);
     }
 
     AddNotifier(player, false);
