@@ -748,8 +748,7 @@ inline void _F_optimized(Unit & u)
         u.m_last_notified_position.y = u.GetPositionY();
         u.m_last_notified_position.z = u.GetPositionZ();
 
-        u.GetViewPoint().Call_UpdateVisibilityForOwner();
-        u.UpdateObjectVisibility();
+        u.SheduleVisibilityUpdate();
     }
 
     u.SheduleAINotify(Map::relocation_ai_notify_delay);

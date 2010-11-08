@@ -829,6 +829,13 @@ inline ByteBuffer& operator>> (ByteBuffer& buf, MovementInfo& mi)
     return buf;
 }
 
+enum RelocationOperations
+{
+    AI_Notify_Sheduled          = 0x01,
+    AI_Notify_Execution         = 0x02,
+    Visibility_Update_Sheduled  = 0x04,
+};
+
 enum DiminishingLevels
 {
     DIMINISHING_LEVEL_1             = 0,
@@ -1890,8 +1897,9 @@ class MANGOS_DLL_SPEC Unit : public WorldObject
         MovementInfo m_movementInfo;
 
         void SheduleAINotify(uint32 delay);
+        void SheduleVisibilityUpdate();
 
-        bool m_notify_sheduled;
+        uint8 m_notify_sheduled;
         struct 
         {
             float x, y, z;

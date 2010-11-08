@@ -10518,7 +10518,7 @@ class RelocationNotifyEvent : public BasicEvent
     public:
         RelocationNotifyEvent(Unit& owner) : BasicEvent(), m_owner(owner)
         {
-            m_owner.m_notify_sheduled = true;
+            m_owner.m_notify_sheduled |= AI_Notify_Sheduled;
         }
 
         bool Execute(uint64, uint32)
@@ -10535,13 +10535,38 @@ class RelocationNotifyEvent : public BasicEvent
                 MaNGOS::CreatureRelocationNotifier notify((Creature&)m_owner);
                 Cell::VisitAllObjects(&m_owner,notify,radius);
             }
-            m_owner.m_notify_sheduled = false;
+            m_owner.m_notify_sheduled &= ~AI_Notify_Sheduled;
             return true;
         }
 
         void Abort(uint64)
         {
-            m_owner.m_notify_sheduled = false;
+            m_owner.m_notify_sheduled &= ~AI_Notify_Sheduled;
+        }
+
+    private:
+        Unit& m_owner;
+};
+
+class UpdateVisibilityEvent : public BasicEvent
+{
+    public:
+        UpdateVisibilityEvent(Unit& owner) : BasicEvent(), m_owner(owner)
+        {
+            m_owner.m_notify_sheduled |= Visibility_Update_Sheduled;
+        }
+
+        bool Execute(uint64, uint32)
+        {
+            m_owner.GetViewPoint().Call_UpdateVisibilityForOwner();
+            m_owner.UpdateObjectVisibility();
+            m_owner.m_notify_sheduled &= ~Visibility_Update_Sheduled;
+            return true;
+        }
+
+        void Abort(uint64)
+        {
+            m_owner.m_notify_sheduled &= ~Visibility_Update_Sheduled;
         }
 
     private:
@@ -10550,9 +10575,18 @@ class RelocationNotifyEvent : public BasicEvent
 
 void Unit::SheduleAINotify(uint32 delay)
 {
-    if (m_notify_sheduled)
+    if (m_notify_sheduled & AI_Notify_Sheduled)
         return;
 
     RelocationNotifyEvent *notify = new RelocationNotifyEvent(*this);
     m_Events.AddEvent(notify, m_Events.CalculateTime(delay));
+}
+
+void Unit::SheduleVisibilityUpdate()
+{
+    if (m_notify_sheduled & Visibility_Update_Sheduled)
+        return;
+
+    UpdateVisibilityEvent *notify = new UpdateVisibilityEvent(*this);
+    m_Events.AddEvent(notify, m_Events.CalculateTime(0));
 }
