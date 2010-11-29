@@ -275,9 +275,9 @@ const uint32 ItemQualityColors[MAX_ITEM_QUALITY] = {
 #define SPELL_ATTR_EX_UNK17                       0x00020000            // 17 for auras SPELL_AURA_TRACK_CREATURES, SPELL_AURA_TRACK_RESOURCES and SPELL_AURA_TRACK_STEALTHED select non-stacking tracking spells
 #define SPELL_ATTR_EX_UNK18                       0x00040000            // 18
 #define SPELL_ATTR_EX_UNK19                       0x00080000            // 19
-#define SPELL_ATTR_EX_REQ_COMBO_POINTS1           0x00100000            // 20 Req combo points on target
+#define SPELL_ATTR_EX_REQ_TARGET_COMBO_POINTS     0x00100000            // 20 Req combo points on target
 #define SPELL_ATTR_EX_UNK21                       0x00200000            // 21
-#define SPELL_ATTR_EX_REQ_COMBO_POINTS2           0x00400000            // 22 Req combo points on target
+#define SPELL_ATTR_EX_REQ_COMBO_POINTS            0x00400000            // 22 Use combo points (in 4.x not required combo point target selected)
 #define SPELL_ATTR_EX_UNK23                       0x00800000            // 23
 #define SPELL_ATTR_EX_UNK24                       0x01000000            // 24 Req fishing pole??
 #define SPELL_ATTR_EX_UNK25                       0x02000000            // 25
@@ -449,7 +449,7 @@ const uint32 ItemQualityColors[MAX_ITEM_QUALITY] = {
 #define SPELL_ATTR_EX6_UNK26                      0x04000000            // 26 not set in 3.0.3
 #define SPELL_ATTR_EX6_UNK27                      0x08000000            // 27 not set in 3.0.3
 #define SPELL_ATTR_EX6_UNK28                      0x10000000            // 28 not set in 3.0.3
-#define SPELL_ATTR_EX6_NO_DMG_PERCENT_MODS        0x20000000            // 29 do not apply damage percent mods (usually in cases where it has already been applied)
+#define SPELL_ATTR_EX6_NO_DMG_MODS                0x20000000            // 29 do not apply damage mods (usually in cases where it has already been applied)
 #define SPELL_ATTR_EX6_UNK30                      0x40000000            // 30 not set in 3.0.3
 #define SPELL_ATTR_EX6_UNK31                      0x80000000            // 31 not set in 3.0.3
 
@@ -519,20 +519,17 @@ enum Language
 
 #define LANGUAGES_COUNT   19
 
+// In fact !=0 values is alliance/horde root faction ids
 enum Team
 {
+    TEAM_NONE           = 0,                                // used when team value unknown or not set, 0 is also meaning that can be used !team check
     HORDE               = 67,
     ALLIANCE            = 469,
-    //TEAM_STEAMWHEEDLE_CARTEL = 169,                       // not used in code
-    //TEAM_ALLIANCE_FORCES     = 891,
-    //TEAM_HORDE_FORCES        = 892,
-    //TEAM_SANCTUARY           = 936,
-    //TEAM_OUTLAND             = 980,
-    //TEAM_OTHER               = 0,                         // if ReputationListId > 0 && Flags != FACTION_FLAG_TEAM_HEADER
 };
 
 enum SpellEffects
 {
+    SPELL_EFFECT_NONE                      = 0,
     SPELL_EFFECT_INSTAKILL                 = 1,
     SPELL_EFFECT_SCHOOL_DAMAGE             = 2,
     SPELL_EFFECT_DUMMY                     = 3,
@@ -622,7 +619,7 @@ enum SpellEffects
     SPELL_EFFECT_WMO_DAMAGE                = 87,
     SPELL_EFFECT_WMO_REPAIR                = 88,
     SPELL_EFFECT_WMO_CHANGE                = 89,
-    SPELL_EFFECT_KILL_CREDIT               = 90,
+    SPELL_EFFECT_KILL_CREDIT_PERSONAL      = 90,
     SPELL_EFFECT_THREAT_ALL                = 91,
     SPELL_EFFECT_ENCHANT_HELD_ITEM         = 92,
     SPELL_EFFECT_BREAK_PLAYER_TARGETING    = 93,
@@ -666,7 +663,7 @@ enum SpellEffects
     SPELL_EFFECT_131                       = 131,
     SPELL_EFFECT_PLAY_MUSIC                = 132,
     SPELL_EFFECT_UNLEARN_SPECIALIZATION    = 133,
-    SPELL_EFFECT_KILL_CREDIT2              = 134,
+    SPELL_EFFECT_KILL_CREDIT_GROUP         = 134,
     SPELL_EFFECT_CALL_PET                  = 135,
     SPELL_EFFECT_HEAL_PCT                  = 136,
     SPELL_EFFECT_ENERGIZE_PCT              = 137,
@@ -681,11 +678,11 @@ enum SpellEffects
     SPELL_EFFECT_ACTIVATE_RUNE             = 146,
     SPELL_EFFECT_QUEST_FAIL                = 147,
     SPELL_EFFECT_148                       = 148,
-    SPELL_EFFECT_149                       = 149,
+    SPELL_EFFECT_CHARGE2                   = 149,
     SPELL_EFFECT_150                       = 150,
     SPELL_EFFECT_TRIGGER_SPELL_2           = 151,
     SPELL_EFFECT_152                       = 152,
-    SPELL_EFFECT_153                       = 153,
+    SPELL_EFFECT_CREATE_PET                = 153,
     SPELL_EFFECT_TEACH_TAXI_NODE           = 154,
     SPELL_EFFECT_TITAN_GRIP                = 155,
     SPELL_EFFECT_ENCHANT_ITEM_PRISMATIC    = 156,
@@ -901,7 +898,7 @@ enum AuraState
     AURA_STATE_DEFENSE                      = 1,            // C   |
     AURA_STATE_HEALTHLESS_20_PERCENT        = 2,            // CcT |
     AURA_STATE_BERSERKING                   = 3,            // C T |
-    AURA_STATE_FROZEN                       = 4,            //  c t| frozen target
+    AURA_STATE_FROZEN                       = 4,            //  cT | frozen target
     AURA_STATE_JUDGEMENT                    = 5,            // C   |
     //AURA_STATE_UNKNOWN6                   = 6,            //     | not used
     AURA_STATE_HUNTER_PARRY                 = 7,            // C   |
@@ -1036,6 +1033,7 @@ enum WeaponAttackType
 
 enum Targets
 {
+    TARGET_NONE                        = 0,
     TARGET_SELF                        = 1,
     TARGET_RANDOM_ENEMY_CHAIN_IN_AREA  = 2,                 // only one spell has that, but regardless, it's a target type after all
     TARGET_RANDOM_FRIEND_CHAIN_IN_AREA = 3,
@@ -1217,6 +1215,14 @@ enum GameObjectFlags
     GO_FLAG_UNK_9           = 0x00000100,                   //? Seen on type 33, possible meaning "destruct in progress"
     GO_FLAG_UNK_10          = 0x00000200,                   //? Seen on type 33
     GO_FLAG_UNK_11          = 0x00000400                    //? Seen on type 33, possibly meaning "destructed"
+};
+
+enum GameObjectDynamicLowFlags
+{
+    GO_DYNFLAG_LO_ACTIVATE          = 0x01,                 // enables interaction with GO
+    GO_DYNFLAG_LO_ANIMATE           = 0x02,                 // possibly more distinct animation of GO
+    GO_DYNFLAG_LO_NO_INTERACT       = 0x04,                 // appears to disable interaction (not fully verified)
+    GO_DYNFLAG_LO_SPARKLE           = 0x08,                 // makes GO sparkle
 };
 
 enum TextEmotes
@@ -1944,6 +1950,9 @@ enum CreatureTypeFlags
     CREATURE_TYPEFLAGS_UNK27            = 0x04000000,       // creature has no type, or forces creature to be considered as in party, may be related to creature assistance
     CREATURE_TYPEFLAGS_UNK28            = 0x08000000,       // used in Lua_ForceGossip
     CREATURE_TYPEFLAGS_UNK29            = 0x10000000,       // no idea, but it used by client
+    CREATURE_TYPEFLAGS_UNK30            = 0x20000000,
+    CREATURE_TYPEFLAGS_UNK31            = 0x40000000,
+    CREATURE_TYPEFLAGS_QUEST_BOSS       = 0x80000000,       // Lua_UnitIsQuestBoss
 };
 
 enum CreatureEliteType
@@ -2007,7 +2016,7 @@ enum QuestSort
     QUEST_SORT_ROGUE               = 162,
     QUEST_SORT_ALCHEMY             = 181,
     QUEST_SORT_LEATHERWORKING      = 182,
-    QUEST_SORT_ENGINERING          = 201,
+    QUEST_SORT_ENGINEERING         = 201,
     QUEST_SORT_TREASURE_MAP        = 221,
     QUEST_SORT_SUNKEN_TEMPLE_OLD   = 241,
     QUEST_SORT_HUNTER              = 261,
@@ -2109,7 +2118,7 @@ enum SkillType
     SKILL_PET_IMP                  = 188,
     SKILL_PET_FELHUNTER            = 189,
     SKILL_TAILORING                = 197,
-    SKILL_ENGINERING               = 202,
+    SKILL_ENGINEERING              = 202,
     SKILL_PET_SPIDER               = 203,
     SKILL_PET_VOIDWALKER           = 204,
     SKILL_PET_SUCCUBUS             = 205,
@@ -2229,7 +2238,7 @@ inline uint32 SkillByQuestSort(int32 QuestSort)
         case QUEST_SORT_BLACKSMITHING:  return SKILL_BLACKSMITHING;
         case QUEST_SORT_ALCHEMY:        return SKILL_ALCHEMY;
         case QUEST_SORT_LEATHERWORKING: return SKILL_LEATHERWORKING;
-        case QUEST_SORT_ENGINERING:     return SKILL_ENGINERING;
+        case QUEST_SORT_ENGINEERING:    return SKILL_ENGINEERING;
         case QUEST_SORT_TAILORING:      return SKILL_TAILORING;
         case QUEST_SORT_COOKING:        return SKILL_COOKING;
         case QUEST_SORT_FIRST_AID:      return SKILL_FIRST_AID;
@@ -2462,6 +2471,16 @@ enum DiminishingGroup
     // Other
     // Don't Diminish, but limit duration to 10s
     DIMINISHING_LIMITONLY
+};
+
+enum InstanceResetMethod
+{
+    INSTANCE_RESET_ALL,
+    INSTANCE_RESET_CHANGE_DIFFICULTY,
+    INSTANCE_RESET_GLOBAL,
+    INSTANCE_RESET_GROUP_DISBAND,
+    INSTANCE_RESET_GROUP_JOIN,
+    INSTANCE_RESET_RESPAWN_DELAY
 };
 
 enum ResponseCodes

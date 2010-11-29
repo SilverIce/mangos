@@ -28,7 +28,7 @@
 int
 ReactorAI::Permissible(const Creature *creature)
 {
-    if( creature->isCivilian() || creature->IsNeutralToAll() )
+    if( creature->IsCivilian() || creature->IsNeutralToAll() )
         return PERMIT_BASE_REACTIVE;
 
     return PERMIT_BASE_NO;
@@ -97,7 +97,7 @@ ReactorAI::EnterEvadeMode()
         return;
     }
 
-    Unit* victim = ObjectAccessor::GetUnit(*m_creature, i_victimGuid );
+    Unit* victim = m_creature->GetMap()->GetUnit(i_victimGuid);
 
     if (!victim)
     {

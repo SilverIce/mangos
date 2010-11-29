@@ -112,7 +112,7 @@ inline void MaNGOS::DynamicObjectUpdater::VisitHelper(Unit* target)
     if (!target->isAlive() || target->IsTaxiFlying() )
         return;
 
-    if (target->GetTypeId() == TYPEID_UNIT && ((Creature*)target)->isTotem())
+    if (target->GetTypeId() == TYPEID_UNIT && ((Creature*)target)->IsTotem())
         return;
 
     if (!i_dynobject.IsWithinDistInMap(target, i_dynobject.GetRadius()))
@@ -148,32 +148,41 @@ inline void MaNGOS::DynamicObjectUpdater::VisitHelper(Unit* target)
     SpellEffectIndex eff_index  = i_dynobject.GetEffIndex();
 
     // Check target immune to spell or aura
-    if (target->IsImmunedToSpell(spellInfo) || target->IsImmunedToSpellEffect(spellInfo, eff_index))
+    if (target->IsImmuneToSpell(spellInfo) || target->IsImmuneToSpellEffect(spellInfo, eff_index))
         return;
 
     // Apply PersistentAreaAura on target
-
+    // in case 2 dynobject overlap areas for same spell, same holder is selected, so dynobjects share holder
     SpellAuraHolder *holder = target->GetSpellAuraHolder(spellInfo->Id, i_dynobject.GetCaster()->GetGUID());
-                   
-    bool addedToExisting = true;
-    if (!holder)
-    {
-        holder = CreateSpellAuraHolder(spellInfo, target, i_dynobject.GetCaster());
-        addedToExisting = false;
-    
-    }
-    PersistentAreaAura* Aur = new PersistentAreaAura(spellInfo, eff_index, NULL, holder, target, i_dynobject.GetCaster());
-    holder->AddAura(Aur, eff_index);
 
-    if (addedToExisting)
+    if (holder)
     {
-        target->AddAuraToModList(Aur);
-        holder->SetInUse(true);
-        Aur->ApplyModifier(true,true);
-        holder->SetInUse(false);
+        if (Aura* aura = holder->GetAuraByEffectIndex(eff_index))
+        {
+            // already exists, refresh duration
+            if (aura->GetAuraDuration() >=0 && uint32(aura->GetAuraDuration()) < i_dynobject.GetDuration())
+            {
+                aura->SetAuraDuration(i_dynobject.GetDuration());
+                holder->SendAuraUpdate(false);
+            }
+        }
+        else
+        {
+            PersistentAreaAura* Aur = new PersistentAreaAura(spellInfo, eff_index, NULL, holder, target, i_dynobject.GetCaster());
+            holder->AddAura(Aur, eff_index);
+            target->AddAuraToModList(Aur);
+            holder->SetInUse(true);
+            Aur->ApplyModifier(true,true);
+            holder->SetInUse(false);
+        }
     }
     else
+    {
+        holder = CreateSpellAuraHolder(spellInfo, target, i_dynobject.GetCaster());
+        PersistentAreaAura* Aur = new PersistentAreaAura(spellInfo, eff_index, NULL, holder, target, i_dynobject.GetCaster());
+        holder->AddAura(Aur, eff_index);
         target->AddSpellAuraHolder(holder);
+    }
 
     i_dynobject.AddAffected(target);
 }

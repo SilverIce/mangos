@@ -19,11 +19,12 @@
 #ifndef MANGOS_BAG_H
 #define MANGOS_BAG_H
 
-// Maximum 36 Slots ( (CONTAINER_END - CONTAINER_FIELD_SLOT_1)/2
-#define MAX_BAG_SIZE 36                                     // 2.0.12
-
+#include "Common.h"
 #include "ItemPrototype.h"
 #include "Item.h"
+
+// Maximum 36 Slots ( (CONTAINER_END - CONTAINER_FIELD_SLOT_1)/2
+#define MAX_BAG_SIZE 36                                     // 2.0.12
 
 class Bag : public Item
 {
@@ -44,8 +45,8 @@ class Bag : public Item
         Item* GetItemByPos( uint8 slot ) const;
         Item* GetItemByEntry( uint32 item ) const;
         Item* GetItemByLimitedCategory(uint32 limitedCategory) const;
-        uint32 GetItemCount( uint32 item, Item* eItem = NULL ) const;
-        uint32 GetItemCountWithLimitCategory(uint32 limitCategory) const;
+        uint32 GetItemCount(uint32 item, Item* eItem = NULL) const;
+        uint32 GetItemCountWithLimitCategory(uint32 limitCategory, Item* eItem = NULL) const;
 
         uint8 GetSlotByItemGUID(uint64 guid) const;
         bool IsEmpty() const;
@@ -56,7 +57,7 @@ class Bag : public Item
         // overwrite virtual Item::SaveToDB
         void SaveToDB();
         // overwrite virtual Item::LoadFromDB
-        bool LoadFromDB(uint32 guid, uint64 owner_guid, QueryResult *result);
+        bool LoadFromDB(uint32 guidLow, Field *fields, ObjectGuid ownerGuid = ObjectGuid());
         // overwrite virtual Item::DeleteFromDB
         void DeleteFromDB();
 
@@ -70,6 +71,10 @@ class Bag : public Item
 
 inline Item* NewItemOrBag(ItemPrototype const * proto)
 {
-    return (proto->InventoryType == INVTYPE_BAG) ? new Bag : new Item;
+    if (proto->InventoryType == INVTYPE_BAG)
+        return new Bag;
+
+    return new Item;
 }
+
 #endif

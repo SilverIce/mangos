@@ -252,7 +252,7 @@ int32 BattleGroundAB::_GetNodeNameId(uint8 node)
         case BG_AB_NODE_LUMBER_MILL:return LANG_BG_AB_NODE_LUMBER_MILL;
         case BG_AB_NODE_GOLD_MINE:  return LANG_BG_AB_NODE_GOLD_MINE;
         default:
-            ASSERT(0);
+            MANGOS_ASSERT(0);
     }
     return 0;
 }
@@ -340,7 +340,7 @@ void BattleGroundAB::EventPlayerClickedOnFlag(Player *source, GameObject* target
         return;
     BG_AB_Nodes node = BG_AB_Nodes(event);
 
-    BattleGroundTeamId teamIndex = GetTeamIndexByTeamId(source->GetTeam());
+    BattleGroundTeamIndex teamIndex = GetTeamIndexByTeamId(source->GetTeam());
 
     // Check if player really could use this banner, not cheated
     if (!(m_Nodes[node] == 0 || teamIndex == m_Nodes[node] % 2))
@@ -484,7 +484,7 @@ void BattleGroundAB::Reset()
 
 }
 
-void BattleGroundAB::EndBattleGround(uint32 winner)
+void BattleGroundAB::EndBattleGround(Team winner)
 {
     //win reward
     if (winner == ALLIANCE)
@@ -500,7 +500,7 @@ void BattleGroundAB::EndBattleGround(uint32 winner)
 
 WorldSafeLocsEntry const* BattleGroundAB::GetClosestGraveYard(Player* player)
 {
-    BattleGroundTeamId teamIndex = GetTeamIndexByTeamId(player->GetTeam());
+    BattleGroundTeamIndex teamIndex = GetTeamIndexByTeamId(player->GetTeam());
 
     // Is there any occupied node for this team?
     std::vector<uint8> nodes;
@@ -557,7 +557,7 @@ void BattleGroundAB::UpdatePlayerScore(Player *Source, uint32 type, uint32 value
     }
 }
 
-bool BattleGroundAB::IsAllNodesConrolledByTeam(uint32 team) const
+bool BattleGroundAB::IsAllNodesConrolledByTeam(Team team) const
 {
     uint32 count = 0;
     for (int i = 0; i < BG_AB_NODES_MAX; ++i)

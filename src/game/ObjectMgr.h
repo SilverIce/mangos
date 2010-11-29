@@ -19,6 +19,7 @@
 #ifndef _OBJECTMGR_H
 #define _OBJECTMGR_H
 
+#include "Common.h"
 #include "Log.h"
 #include "Object.h"
 #include "Bag.h"
@@ -68,21 +69,251 @@ struct GameTele
 
 typedef UNORDERED_MAP<uint32, GameTele > GameTeleMap;
 
+enum eScriptCommand
+{
+    SCRIPT_COMMAND_TALK                     = 0,            // source = WorldObject, target = any/none, datalong (see enum ChatType for supported CHAT_TYPE_'s)
+                                                            // datalong2 = creature entry (searching for a buddy, closest to source), datalong3 = creature search radius, datalong4 = language
+                                                            // data_flags = flag_target_player_as_source    = 0x01
+                                                            //              flag_original_source_as_target  = 0x02
+                                                            //              flag_buddy_as_target            = 0x04
+                                                            // dataint = text entry from db_script_string -table. dataint2-4 optional for random selected text.
+    SCRIPT_COMMAND_EMOTE                    = 1,            // source = unit, datalong = emote_id
+    SCRIPT_COMMAND_FIELD_SET                = 2,            // source = any, datalong = field_id, datalong2 = value
+    SCRIPT_COMMAND_MOVE_TO                  = 3,            // source = Creature, datalong2 = time, x/y/z
+    SCRIPT_COMMAND_FLAG_SET                 = 4,            // source = any, datalong = field_id, datalong2 = bitmask
+    SCRIPT_COMMAND_FLAG_REMOVE              = 5,            // source = any, datalong = field_id, datalong2 = bitmask
+    SCRIPT_COMMAND_TELEPORT_TO              = 6,            // source or target with Player, datalong = map_id, x/y/z
+    SCRIPT_COMMAND_QUEST_EXPLORED           = 7,            // one from source or target must be Player, another GO/Creature, datalong=quest_id, datalong2=distance or 0
+    SCRIPT_COMMAND_KILL_CREDIT              = 8,            // source or target with Player, datalong = creature entry, datalong2 = bool (0=personal credit, 1=group credit)
+    SCRIPT_COMMAND_RESPAWN_GAMEOBJECT       = 9,            // source = any (summoner), datalong=db_guid, datalong2=despawn_delay
+    SCRIPT_COMMAND_TEMP_SUMMON_CREATURE     = 10,           // source = any (summoner), datalong=creature entry, datalong2=despawn_delay
+    SCRIPT_COMMAND_OPEN_DOOR                = 11,           // source = unit, datalong=db_guid, datalong2=reset_delay
+    SCRIPT_COMMAND_CLOSE_DOOR               = 12,           // source = unit, datalong=db_guid, datalong2=reset_delay
+    SCRIPT_COMMAND_ACTIVATE_OBJECT          = 13,           // source = unit, target=GO
+    SCRIPT_COMMAND_REMOVE_AURA              = 14,           // source (datalong2!=0) or target (datalong==0) unit, datalong = spell_id
+    SCRIPT_COMMAND_CAST_SPELL               = 15,           // source/target cast spell at target/source (script->datalong2: 0: s->t 1: s->s 2: t->t 3: t->s
+    SCRIPT_COMMAND_PLAY_SOUND               = 16,           // source = any object, target=any/player, datalong (sound_id), datalong2 (bitmask: 0/1=anyone/target, 0/2=with distance dependent, so 1|2 = 3 is target with distance dependent)
+    SCRIPT_COMMAND_CREATE_ITEM              = 17,           // source or target must be player, datalong = item entry, datalong2 = amount
+    SCRIPT_COMMAND_DESPAWN_SELF             = 18,           // source or target must be creature, datalong = despawn delay
+    SCRIPT_COMMAND_PLAY_MOVIE               = 19,           // target can only be a player, datalog = movie id
+    SCRIPT_COMMAND_MOVEMENT                 = 20,           // source or target must be creature. datalong = MovementType (0:idle, 1:random or 2:waypoint)
+                                                            // datalong2 = creature entry (searching for a buddy, closest to source), datalong3 = creature search radius
+    SCRIPT_COMMAND_SET_ACTIVEOBJECT         = 21,           // source=any, target=creature
+                                                            // datalong=bool 0=off, 1=on
+                                                            // datalong2=creature entry, datalong3=search radius
+    SCRIPT_COMMAND_SET_FACTION              = 22,           // source=any, target=creature
+                                                            // datalong=factionId,
+                                                            // datalong2=creature entry, datalong3=search radius
+    SCRIPT_COMMAND_MORPH_TO_ENTRY_OR_MODEL  = 23,           // source=any, target=creature
+                                                            // datalong=creature entry/modelid (depend on data_flags)
+                                                            // datalong2=creature entry, datalong3=search radius
+                                                            // dataflags= 0x01 to use datalong value as modelid explicit
+    SCRIPT_COMMAND_MOUNT_TO_ENTRY_OR_MODEL  = 24,           // source=any, target=creature
+                                                            // datalong=creature entry/modelid (depend on data_flags)
+                                                            // datalong2=creature entry, datalong3=search radius
+                                                            // dataflags= 0x01 to use datalong value as modelid explicit
+    SCRIPT_COMMAND_SET_RUN                  = 25,           // source=any, target=creature
+                                                            // datalong= bool 0=off, 1=on
+                                                            // datalong2=creature entry, datalong3=search radius
+};
+
+#define MAX_TEXT_ID 4                                       // used for SCRIPT_COMMAND_TALK
+
 struct ScriptInfo
 {
     uint32 id;
     uint32 delay;
     uint32 command;
-    uint32 datalong;
-    uint32 datalong2;
-    uint32 datalong3;
-    uint32 datalong4;
-    uint32 data_flags;
-    int32  dataint;
+
+    union
+    {
+        struct                                              // SCRIPT_COMMAND_TALK (0)
+        {
+            uint32 chatType;                                // datalong
+            uint32 creatureEntry;                           // datalong2
+            uint32 searchRadius;                            // datalong3
+            uint32 language;                                // datalong4
+            uint32 flags;                                   // data_flags
+            int32  textId[MAX_TEXT_ID];                     // dataint to dataint4
+        } talk;
+
+        struct                                              // SCRIPT_COMMAND_EMOTE (1)
+        {
+            uint32 emoteId;                                 // datalong
+        } emote;
+
+        struct                                              // SCRIPT_COMMAND_FIELD_SET (2)
+        {
+            uint32 fieldId;                                 // datalong
+            uint32 fieldValue;                              // datalong2
+        } setField;
+
+        struct                                              // SCRIPT_COMMAND_MOVE_TO (3)
+        {
+            uint32 unused1;                                 // datalong
+            uint32 travelTime;                              // datalong2
+        } moveTo;
+
+        struct                                              // SCRIPT_COMMAND_FLAG_SET (4)
+        {
+            uint32 fieldId;                                 // datalong
+            uint32 fieldValue;                              // datalong2
+        } setFlag;
+
+        struct                                              // SCRIPT_COMMAND_FLAG_REMOVE (5)
+        {
+            uint32 fieldId;                                 // datalong
+            uint32 fieldValue;                              // datalong2
+        } removeFlag;
+
+        struct                                              // SCRIPT_COMMAND_TELEPORT_TO (6)
+        {
+            uint32 mapId;                                   // datalong
+        } teleportTo;
+
+        struct                                              // SCRIPT_COMMAND_QUEST_EXPLORED (7)
+        {
+            uint32 questId;                                 // datalong
+            uint32 distance;                                // datalong2
+        } questExplored;
+
+        struct                                              // SCRIPT_COMMAND_KILL_CREDIT (8)
+        {
+            uint32 creatureEntry;                           // datalong
+            uint32 isGroupCredit;                           // datalong2
+        } killCredit;
+
+        struct                                              // SCRIPT_COMMAND_RESPAWN_GAMEOBJECT (9)
+        {
+            uint32 goGuid;                                  // datalong
+            int32 despawnDelay;                             // datalong2
+        } respawnGo;
+
+        struct                                              // SCRIPT_COMMAND_TEMP_SUMMON_CREATURE (10)
+        {
+            uint32 creatureEntry;                           // datalong
+            uint32 despawnDelay;                            // datalong2
+            uint32 unused1;                                 // datalong3
+            uint32 unused2;                                 // datalong4
+            uint32 flags;                                   // data_flags
+        } summonCreature;
+
+        struct                                              // SCRIPT_COMMAND_OPEN_DOOR (11)
+        {
+            uint32 goGuid;                                  // datalong
+            int32 resetDelay;                               // datalong2
+        } openDoor;
+
+        struct                                              // SCRIPT_COMMAND_CLOSE_DOOR (12)
+        {
+            uint32 goGuid;                                  // datalong
+            int32 resetDelay;                               // datalong2
+        } closeDoor;
+
+                                                            // SCRIPT_COMMAND_ACTIVATE_OBJECT (13)
+
+        struct                                              // SCRIPT_COMMAND_REMOVE_AURA (14)
+        {
+            uint32 spellId;                                 // datalong
+            uint32 isSourceTarget;                          // datalong2
+        } removeAura;
+
+        struct                                              // SCRIPT_COMMAND_CAST_SPELL (15)
+        {
+            uint32 spellId;                                 // datalong
+            uint32 flags;                                   // datalong2
+        } castSpell;
+
+        struct                                              // SCRIPT_COMMAND_PLAY_SOUND (16)
+        {
+            uint32 soundId;                                 // datalong
+            uint32 flags;                                   // datalong2
+        } playSound;
+
+        struct                                              // SCRIPT_COMMAND_CREATE_ITEM (17)
+        {
+            uint32 itemEntry;                               // datalong
+            uint32 amount;                                  // datalong2
+        } createItem;
+
+        struct                                              // SCRIPT_COMMAND_DESPAWN_SELF (18)
+        {
+            uint32 despawnDelay;                            // datalong
+        } despawn;
+
+        struct                                              // SCRIPT_COMMAND_PLAY_MOVIE (19)
+        {
+            uint32 movieId;                                 // datalong
+        } playMovie;
+
+        struct                                              // SCRIPT_COMMAND_MOVEMENT (20)
+        {
+            uint32 movementType;                            // datalong
+            uint32 creatureEntry;                           // datalong2
+            uint32 searchRadius;                            // datalong3
+        } movement;
+
+        struct                                              // SCRIPT_COMMAND_SET_ACTIVEOBJECT (21)
+        {
+            uint32 activate;                                // datalong
+            uint32 creatureEntry;                           // datalong2
+            uint32 searchRadius;                            // datalong3
+        } activeObject;
+
+        struct                                              // SCRIPT_COMMAND_SET_FACTION (22)
+        {
+            uint32 factionId;                               // datalong
+            uint32 creatureEntry;                           // datalong2
+            uint32 searchRadius;                            // datalong3
+        } faction;
+
+        struct                                              // SCRIPT_COMMAND_MORPH_TO_ENTRY_OR_MODEL (23)
+        {
+            uint32 creatureOrModelEntry;                    // datalong
+            uint32 creatureEntry;                           // datalong2
+            uint32 searchRadius;                            // datalong3
+            uint32 empty1;                                  // datalong4
+            uint32 flags;                                   // data_flags
+        } morph;
+
+        struct                                              // SCRIPT_COMMAND_MOUNT_TO_ENTRY_OR_MODEL (24)
+        {
+            uint32 creatureOrModelEntry;                    // datalong
+            uint32 creatureEntry;                           // datalong2
+            uint32 searchRadius;                            // datalong3
+            uint32 empty1;                                  // datalong4
+            uint32 flags;                                   // data_flags
+        } mount;
+
+        struct                                              // SCRIPT_COMMAND_SET_RUN (25)
+        {
+            uint32 run;                                     // datalong
+            uint32 creatureEntry;                           // datalong2
+            uint32 searchRadius;                            // datalong3
+        } run;
+
+        struct
+        {
+            uint32 data[9];
+        } raw;
+    };
+
     float x;
     float y;
     float z;
     float o;
+
+    // helpers
+    uint32 GetGOGuid() const
+    {
+        switch(command)
+        {
+            case SCRIPT_COMMAND_RESPAWN_GAMEOBJECT: return respawnGo.goGuid;
+            case SCRIPT_COMMAND_OPEN_DOOR: return openDoor.goGuid;
+            case SCRIPT_COMMAND_CLOSE_DOOR: return closeDoor.goGuid;
+            default: return 0;
+        }
+    }
 };
 
 typedef std::multimap<uint32, ScriptInfo> ScriptMap;
@@ -209,10 +440,14 @@ typedef UNORDERED_MAP<uint32,PageTextLocale> PageTextLocaleMap;
 typedef UNORDERED_MAP<int32,MangosStringLocale> MangosStringLocaleMap;
 typedef UNORDERED_MAP<uint32,GossipMenuItemsLocale> GossipMenuItemsLocaleMap;
 typedef UNORDERED_MAP<uint32,PointOfInterestLocale> PointOfInterestLocaleMap;
+typedef UNORDERED_MAP<uint32,uint32> ItemConvertMap;
 
-typedef std::multimap<uint32,uint32> QuestRelations;
-typedef std::multimap<uint32,ItemRequiredTarget> ItemRequiredTargetMap;
-typedef std::pair<ItemRequiredTargetMap::const_iterator, ItemRequiredTargetMap::const_iterator>  ItemRequiredTargetMapBounds;
+typedef std::multimap<int32, uint32> ExclusiveQuestGroupsMap;
+typedef std::multimap<uint32, ItemRequiredTarget> ItemRequiredTargetMap;
+typedef std::multimap<uint32, uint32> QuestRelationsMap;
+typedef std::pair<ExclusiveQuestGroupsMap::const_iterator, ExclusiveQuestGroupsMap::const_iterator> ExclusiveQuestGroupsMapBounds;
+typedef std::pair<ItemRequiredTargetMap::const_iterator, ItemRequiredTargetMap::const_iterator> ItemRequiredTargetMapBounds;
+typedef std::pair<QuestRelationsMap::const_iterator, QuestRelationsMap::const_iterator> QuestRelationsMapBounds;
 
 struct PetLevelInfo
 {
@@ -240,9 +475,9 @@ typedef UNORDERED_MAP<uint8,MailLevelRewardList> MailLevelRewardMap;
 // We assume the rate is in general the same for all three types below, but chose to keep three for scalability and customization
 struct RepRewardRate
 {
-    float quest_rate;                                       // We allow rate = 0.0 in database. For this case, it means that
-    float creature_rate;                                    // no reputation are given at all for this faction/rate type.
-    float spell_rate;                                       // not implemented yet (SPELL_EFFECT_REPUTATION)
+    float quest_rate;                                       // We allow rate = 0.0 in database. For this case,
+    float creature_rate;                                    // it means that no reputation are given at all
+    float spell_rate;                                       // for this faction/rate type.
 };
 
 struct ReputationOnKillEntry
@@ -284,7 +519,7 @@ struct GossipMenuItems
     std::string     option_text;
     uint32          option_id;
     uint32          npc_option_npcflag;
-    uint32          action_menu_id;
+    int32           action_menu_id;
     uint32          action_poi_id;
     uint32          action_script_id;
     bool            box_coded;
@@ -351,15 +586,16 @@ struct WeatherZoneChances
 struct GraveYardData
 {
     uint32 safeLocId;
-    uint32 team;
+    Team team;
 };
-typedef std::multimap<uint32,GraveYardData> GraveYardMap;
+typedef std::multimap<uint32, GraveYardData> GraveYardMap;
+typedef std::pair<GraveYardMap::const_iterator, GraveYardMap::const_iterator> GraveYardMapBounds;
 
 enum ConditionType
 {                                                           // value1       value2  for the Condition enumed
     CONDITION_NONE                  = 0,                    // 0            0
     CONDITION_AURA                  = 1,                    // spell_id     effindex
-    CONDITION_ITEM                  = 2,                    // item_id      count
+    CONDITION_ITEM                  = 2,                    // item_id      count   check present req. amount items in inventory
     CONDITION_ITEM_EQUIPPED         = 3,                    // item_id      0
     CONDITION_AREAID                = 4,                    // area_id      0, 1 (0: in (sub)area, 1: not in (sub)area)
     CONDITION_REPUTATION_RANK       = 5,                    // faction_id   min_rank
@@ -373,15 +609,18 @@ enum ConditionType
     CONDITION_AREA_FLAG             = 13,                   // area_flag    area_flag_not
     CONDITION_RACE_CLASS            = 14,                   // race_mask    class_mask
     CONDITION_LEVEL                 = 15,                   // player_level 0, 1 or 2 (0: equal to, 1: equal or higher than, 2: equal or less than)
-    CONDITION_NOITEM                = 16,                   // item_id      count
+    CONDITION_NOITEM                = 16,                   // item_id      count   check not present req. amount items in inventory
     CONDITION_SPELL                 = 17,                   // spell_id     0, 1 (0: has spell, 1: hasn't spell)
     CONDITION_INSTANCE_SCRIPT       = 18,                   // map_id       instance_condition_id (instance script specific enum)
     CONDITION_QUESTAVAILABLE        = 19,                   // quest_id     0       for case when loot/gossip possible only if player can start quest
     CONDITION_ACHIEVEMENT           = 20,                   // ach_id       0, 1 (0: has achievement, 1: hasn't achievement) for player
     CONDITION_ACHIEVEMENT_REALM     = 21,                   // ach_id       0, 1 (0: has achievement, 1: hasn't achievement) for server
+    CONDITION_QUEST_NONE            = 22,                   // quest_id     0 (quest did not take and not rewarded)
+    CONDITION_ITEM_WITH_BANK        = 23,                   // item_id      count   check present req. amount items in inventory or bank
+    CONDITION_NOITEM_WITH_BANK      = 24,                   // item_id      count   check not present req. amount items in inventory or bank
 };
 
-#define MAX_CONDITION                 22                    // maximum value in ConditionType enum
+#define MAX_CONDITION                 25                    // maximum value in ConditionType enum
 
 struct PlayerCondition
 {
@@ -476,6 +715,7 @@ class ObjectMgr
         typedef UNORDERED_MAP<uint32, AreaTrigger> AreaTriggerMap;
 
         typedef UNORDERED_MAP<uint32, uint32> AreaTriggerScriptMap;
+        typedef UNORDERED_MAP<uint32, uint32> EventIdScriptMap;
 
         typedef UNORDERED_MAP<uint32, RepRewardRate > RepRewardRateMap;
         typedef UNORDERED_MAP<uint32, ReputationOnKillEntry> RepOnKillMap;
@@ -500,7 +740,7 @@ class ObjectMgr
         void AddGroup(Group* group);
         void RemoveGroup(Group* group);
 
-        Guild* GetGuildByLeader(uint64 const&guid) const;
+        Guild* GetGuildByLeader(ObjectGuid guid) const;
         Guild* GetGuildById(uint32 GuildId) const;
         Guild* GetGuildByName(const std::string& guildname) const;
         std::string GetGuildNameById(uint32 GuildId) const;
@@ -509,7 +749,7 @@ class ObjectMgr
 
         ArenaTeam* GetArenaTeamById(uint32 arenateamid) const;
         ArenaTeam* GetArenaTeamByName(const std::string& arenateamname) const;
-        ArenaTeam* GetArenaTeamByCaptain(uint64 const& guid) const;
+        ArenaTeam* GetArenaTeamByCaptain(ObjectGuid guid) const;
         void AddArenaTeam(ArenaTeam* arenaTeam);
         void RemoveArenaTeam(uint32 Id);
         ArenaTeamMap::iterator GetArenaTeamMapBegin() { return mArenaTeamMap.begin(); }
@@ -518,7 +758,8 @@ class ObjectMgr
         static CreatureInfo const *GetCreatureTemplate( uint32 id );
         CreatureModelInfo const *GetCreatureModelInfo( uint32 modelid );
         CreatureModelInfo const* GetCreatureModelRandomGender(uint32 display_id);
-        uint32 ChooseDisplayId(uint32 team, const CreatureInfo *cinfo, const CreatureData *data = NULL);
+        uint32 GetCreatureModelAlternativeModel(uint32 modelId);
+
         EquipmentInfo const *GetEquipmentInfo( uint32 entry );
         static CreatureDataAddon const *GetCreatureAddon( uint32 lowguid )
         {
@@ -557,14 +798,14 @@ class ObjectMgr
         void GetPlayerLevelInfo(uint32 race, uint32 class_,uint32 level, PlayerLevelInfo* info) const;
 
         uint64 GetPlayerGUIDByName(std::string name) const;
-        bool GetPlayerNameByGUID(const uint64 &guid, std::string &name) const;
-        uint32 GetPlayerTeamByGUID(const uint64 &guid) const;
-        uint32 GetPlayerAccountIdByGUID(const uint64 &guid) const;
+        bool GetPlayerNameByGUID(ObjectGuid guid, std::string &name) const;
+        Team GetPlayerTeamByGUID(ObjectGuid guid) const;
+        uint32 GetPlayerAccountIdByGUID(ObjectGuid guid) const;
         uint32 GetPlayerAccountIdByPlayerName(const std::string& name) const;
 
-        uint32 GetNearestTaxiNode( float x, float y, float z, uint32 mapid, uint32 team );
+        uint32 GetNearestTaxiNode( float x, float y, float z, uint32 mapid, Team team );
         void GetTaxiPath( uint32 source, uint32 destination, uint32 &path, uint32 &cost);
-        uint32 GetTaxiMountDisplayId( uint32 id, uint32 team, bool allowed_alt_team = false);
+        uint32 GetTaxiMountDisplayId( uint32 id, Team team, bool allowed_alt_team = false);
 
         Quest const* GetQuestTemplate(uint32 quest_id) const
         {
@@ -592,10 +833,10 @@ class ObjectMgr
 
         GossipText const* GetGossipText(uint32 Text_ID) const;
 
-        WorldSafeLocsEntry const *GetClosestGraveYard(float x, float y, float z, uint32 MapId, uint32 team);
-        bool AddGraveYardLink(uint32 id, uint32 zone, uint32 team, bool inDB = true);
+        WorldSafeLocsEntry const *GetClosestGraveYard(float x, float y, float z, uint32 MapId, Team team);
+        bool AddGraveYardLink(uint32 id, uint32 zone, Team team, bool inDB = true);
         void LoadGraveyardZones();
-        GraveYardData const* FindGraveYardData(uint32 id, uint32 zone);
+        GraveYardData const* FindGraveYardData(uint32 id, uint32 zone) const;
 
         AreaTrigger const* GetAreaTrigger(uint32 trigger) const
         {
@@ -609,6 +850,7 @@ class ObjectMgr
         AreaTrigger const* GetMapEntranceTrigger(uint32 Map) const;
 
         uint32 GetAreaTriggerScriptId(uint32 trigger_id);
+        uint32 GetEventIdScriptId(uint32 eventId);
 
         RepRewardRate const* GetRepRewardRate(uint32 factionId) const
         {
@@ -668,11 +910,6 @@ class ObjectMgr
         void LoadCreatureQuestRelations();
         void LoadCreatureInvolvedRelations();
 
-        QuestRelations mGOQuestRelations;
-        QuestRelations mGOQuestInvolvedRelations;
-        QuestRelations mCreatureQuestRelations;
-        QuestRelations mCreatureQuestInvolvedRelations;
-
         void LoadGameObjectScripts();
         void LoadQuestEndScripts();
         void LoadQuestStartScripts();
@@ -690,10 +927,12 @@ class ObjectMgr
         void LoadCreatureRespawnTimes();
         void LoadCreatureAddons();
         void LoadCreatureModelInfo();
+        void LoadCreatureModelRace();
         void LoadEquipmentTemplates();
         void LoadGameObjectLocales();
         void LoadGameobjects();
         void LoadGameobjectRespawnTimes();
+        void LoadItemConverts();
         void LoadItemPrototypes();
         void LoadItemRequiredTarget();
         void LoadItemLocales();
@@ -710,6 +949,7 @@ class ObjectMgr
         void LoadAreaTriggerTeleports();
         void LoadQuestAreaTriggers();
         void LoadAreaTriggerScripts();
+        void LoadEventIdScripts();
         void LoadTavernAreaTriggers();
         void LoadGameObjectForQuests();
 
@@ -740,7 +980,8 @@ class ObjectMgr
         void LoadGossipMenu();
         void LoadGossipMenuItems();
 
-        void LoadVendors();
+        void LoadVendorTemplates();
+        void LoadVendors() { LoadVendors("npc_vendor", false); }
         void LoadTrainerSpell();
 
         std::string GeneratePetName(uint32 entry);
@@ -766,9 +1007,6 @@ class ObjectMgr
         //uint32 GenerateItemTextID() { return m_ItemGuids.Generate(); }
         uint32 GenerateMailID() { return m_MailIds.Generate(); }
         uint32 GeneratePetNumber() { return m_PetNumbers.Generate(); }
-
-        typedef std::multimap<int32, uint32> ExclusiveQuestGroups;
-        ExclusiveQuestGroups mExclusiveQuestGroups;
 
         MailLevelReward const* GetMailLevelReward(uint32 level,uint32 raceMask)
         {
@@ -827,42 +1065,49 @@ class ObjectMgr
             if(itr==mCreatureLocaleMap.end()) return NULL;
             return &itr->second;
         }
+
         GameObjectLocale const* GetGameObjectLocale(uint32 entry) const
         {
             GameObjectLocaleMap::const_iterator itr = mGameObjectLocaleMap.find(entry);
             if(itr==mGameObjectLocaleMap.end()) return NULL;
             return &itr->second;
         }
+
         ItemLocale const* GetItemLocale(uint32 entry) const
         {
             ItemLocaleMap::const_iterator itr = mItemLocaleMap.find(entry);
             if(itr==mItemLocaleMap.end()) return NULL;
             return &itr->second;
         }
+
         QuestLocale const* GetQuestLocale(uint32 entry) const
         {
             QuestLocaleMap::const_iterator itr = mQuestLocaleMap.find(entry);
             if(itr==mQuestLocaleMap.end()) return NULL;
             return &itr->second;
         }
+
         NpcTextLocale const* GetNpcTextLocale(uint32 entry) const
         {
             NpcTextLocaleMap::const_iterator itr = mNpcTextLocaleMap.find(entry);
             if(itr==mNpcTextLocaleMap.end()) return NULL;
             return &itr->second;
         }
+
         PageTextLocale const* GetPageTextLocale(uint32 entry) const
         {
             PageTextLocaleMap::const_iterator itr = mPageTextLocaleMap.find(entry);
             if(itr==mPageTextLocaleMap.end()) return NULL;
             return &itr->second;
         }
+
         GossipMenuItemsLocale const* GetGossipMenuItemsLocale(uint32 entry) const
         {
             GossipMenuItemsLocaleMap::const_iterator itr = mGossipMenuItemsLocaleMap.find(entry);
             if(itr==mGossipMenuItemsLocaleMap.end()) return NULL;
             return &itr->second;
         }
+
         PointOfInterestLocale const* GetPointOfInterestLocale(uint32 poi_id) const
         {
             PointOfInterestLocaleMap::const_iterator itr = mPointOfInterestLocaleMap.find(poi_id);
@@ -900,6 +1145,7 @@ class ObjectMgr
             if(itr==mMangosStringLocaleMap.end()) return NULL;
             return &itr->second;
         }
+
         const char *GetMangosString(int32 entry, int locale_idx) const;
         const char *GetMangosStringForDBCLocale(int32 entry) const { return GetMangosString(entry,DBCLocaleIndex); }
         int32 GetDBCLocaleIndex() const { return DBCLocaleIndex; }
@@ -949,6 +1195,7 @@ class ObjectMgr
             if(itr==m_GameTeleMap.end()) return NULL;
             return &itr->second;
         }
+
         GameTele const* GetGameTele(const std::string& name) const;
         GameTeleMap const& GetGameTeleMap() const { return m_GameTeleMap; }
         bool AddGameTele(GameTele& data);
@@ -980,9 +1227,19 @@ class ObjectMgr
 
             return &iter->second;
         }
+
+        VendorItemData const* GetNpcVendorTemplateItemList(uint32 entry) const
+        {
+            CacheVendorItemMap::const_iterator  iter = m_mCacheVendorTemplateItemMap.find(entry);
+            if(iter == m_mCacheVendorTemplateItemMap.end())
+                return NULL;
+
+            return &iter->second;
+        }
+
         void AddVendorItem(uint32 entry,uint32 item, uint32 maxcount, uint32 incrtime, uint32 ExtendedCost);
         bool RemoveVendorItem(uint32 entry,uint32 item);
-        bool IsVendorItemValid( uint32 vendor_entry, uint32 item, uint32 maxcount, uint32 ptime, uint32 ExtendedCost, Player* pl = NULL, std::set<uint32>* skip_vendors = NULL ) const;
+        bool IsVendorItemValid(bool isTemplate, char const* tableName, uint32 vendor_entry, uint32 item, uint32 maxcount, uint32 ptime, uint32 ExtendedCost, Player* pl = NULL, std::set<uint32>* skip_vendors = NULL) const;
 
         void LoadScriptNames();
         ScriptNameMap &GetScriptNames() { return m_scriptNames; }
@@ -993,24 +1250,62 @@ class ObjectMgr
 
         SpellClickInfoMapBounds GetSpellClickInfoMapBounds(uint32 creature_id) const
         {
-            return SpellClickInfoMapBounds(mSpellClickInfoMap.lower_bound(creature_id),mSpellClickInfoMap.upper_bound(creature_id));
+            return mSpellClickInfoMap.equal_range(creature_id);
+        }
+
+        uint32 GetItemConvert(uint32 itemEntry, uint32 raceMask) const
+        {
+            ItemConvertMap::const_iterator iter = m_ItemConvert.find(itemEntry);
+            if (iter == m_ItemConvert.end())
+                return itemEntry;
+
+            ItemPrototype const* proto = GetItemPrototype(iter->second);
+            return (proto && proto->AllowableRace & raceMask) ? iter->second : itemEntry;
         }
 
         ItemRequiredTargetMapBounds GetItemRequiredTargetMapBounds(uint32 uiItemEntry) const
         {
-            return ItemRequiredTargetMapBounds(m_ItemRequiredTarget.lower_bound(uiItemEntry),m_ItemRequiredTarget.upper_bound(uiItemEntry));
+            return m_ItemRequiredTarget.equal_range(uiItemEntry);
         }
 
         GossipMenusMapBounds GetGossipMenusMapBounds(uint32 uiMenuId) const
         {
-            return GossipMenusMapBounds(m_mGossipMenusMap.lower_bound(uiMenuId),m_mGossipMenusMap.upper_bound(uiMenuId));
+            return m_mGossipMenusMap.equal_range(uiMenuId);
         }
 
         GossipMenuItemsMapBounds GetGossipMenuItemsMapBounds(uint32 uiMenuId) const
         {
-            return GossipMenuItemsMapBounds(m_mGossipMenuItemsMap.lower_bound(uiMenuId),m_mGossipMenuItemsMap.upper_bound(uiMenuId));
+            return m_mGossipMenuItemsMap.equal_range(uiMenuId);
         }
 
+        ExclusiveQuestGroupsMapBounds GetExclusiveQuestGroupsMapBounds(int32 groupId) const
+        {
+            return m_ExclusiveQuestGroups.equal_range(groupId);
+        }
+
+        QuestRelationsMapBounds GetCreatureQuestRelationsMapBounds(uint32 entry) const
+        {
+            return m_CreatureQuestRelations.equal_range(entry);
+        }
+
+        QuestRelationsMapBounds GetCreatureQuestInvolvedRelationsMapBounds(uint32 entry) const
+        {
+            return m_CreatureQuestInvolvedRelations.equal_range(entry);
+        }
+
+        QuestRelationsMapBounds GetGOQuestRelationsMapBounds(uint32 entry) const
+        {
+            return m_GOQuestRelations.equal_range(entry);
+        }
+
+        QuestRelationsMapBounds GetGOQuestInvolvedRelationsMapBounds(uint32 entry) const
+        {
+            return m_GOQuestInvolvedRelations.equal_range(entry);
+        }
+
+        QuestRelationsMap& GetCreatureQuestRelationsMap() { return m_CreatureQuestRelations; }
+
+        uint32 GetModelForRace(uint32 sourceModelId, uint32 racemask);
     protected:
 
         // first free id for selected id type
@@ -1028,6 +1323,7 @@ class ObjectMgr
         ObjectGuidGenerator<HIGHGUID_ITEM>       m_ItemGuids;
         ObjectGuidGenerator<HIGHGUID_GAMEOBJECT> m_GameobjectGuids;
         ObjectGuidGenerator<HIGHGUID_CORPSE>     m_CorpseGuids;
+        ObjectGuidGenerator<HIGHGUID_INSTANCE>   m_InstanceGuids;
 
         QuestMap            mQuestTemplates;
 
@@ -1035,6 +1331,9 @@ class ObjectMgr
         typedef UNORDERED_MAP<uint32, uint32> QuestAreaTriggerMap;
         typedef std::set<uint32> TavernAreaTriggerSet;
         typedef std::set<uint32> GameObjectForQuestSet;
+
+        typedef std::multimap<uint32, CreatureModelRace> CreatureModelRaceMap;
+        typedef std::pair<CreatureModelRaceMap::const_iterator, CreatureModelRaceMap::const_iterator> CreatureModelRaceMapBounds;
 
         GroupMap            mGroupMap;
         GuildMap            mGuildMap;
@@ -1045,7 +1344,9 @@ class ObjectMgr
         GameObjectForQuestSet mGameObjectForQuestSet;
         GossipTextMap       mGossipText;
         AreaTriggerMap      mAreaTriggers;
-        AreaTriggerScriptMap  mAreaTriggerScripts;
+
+        AreaTriggerScriptMap    mAreaTriggerScripts;
+        EventIdScriptMap        mEventIdScripts;
 
         RepRewardRateMap    m_RepRewardRateMap;
         RepOnKillMap        mRepOnKill;
@@ -1071,10 +1372,18 @@ class ObjectMgr
 
         SpellClickInfoMap   mSpellClickInfoMap;
 
+        ItemConvertMap        m_ItemConvert;
         ItemRequiredTargetMap m_ItemRequiredTarget;
 
         typedef             std::vector<LocaleConstant> LocalForIndex;
         LocalForIndex        m_LocalForIndex;
+
+        ExclusiveQuestGroupsMap m_ExclusiveQuestGroups;
+
+        QuestRelationsMap       m_CreatureQuestRelations;
+        QuestRelationsMap       m_CreatureQuestInvolvedRelations;
+        QuestRelationsMap       m_GOQuestRelations;
+        QuestRelationsMap       m_GOQuestInvolvedRelations;
 
         int DBCLocaleIndex;
 
@@ -1083,7 +1392,8 @@ class ObjectMgr
         void CheckScriptTexts(ScriptMapMap const& scripts,std::set<int32>& ids);
         void LoadCreatureAddons(SQLStorage& creatureaddons, char const* entryName, char const* comment);
         void ConvertCreatureAddonAuras(CreatureDataAddon* addon, char const* table, char const* guidEntryStr);
-        void LoadQuestRelationsHelper(QuestRelations& map,char const* table);
+        void LoadQuestRelationsHelper(QuestRelationsMap& map, char const* table);
+        void LoadVendors(char const* tableName, bool isTemplates);
 
         MailLevelRewardMap m_mailLevelRewardMap;
 
@@ -1128,7 +1438,10 @@ class ObjectMgr
         typedef std::vector<PlayerCondition> ConditionStore;
         ConditionStore mConditions;
 
+        CreatureModelRaceMap    m_mCreatureModelRaceMap;
+
         CacheNpcTextIdMap m_mCacheNpcTextIdMap;
+        CacheVendorItemMap m_mCacheVendorTemplateItemMap;
         CacheVendorItemMap m_mCacheVendorItemMap;
         CacheTrainerSpellMap m_mCacheTrainerSpellMap;
 };
@@ -1138,6 +1451,7 @@ class ObjectMgr
 // scripting access functions
 MANGOS_DLL_SPEC bool LoadMangosStrings(DatabaseType& db, char const* table,int32 start_value = MAX_CREATURE_AI_TEXT_STRING_ID, int32 end_value = std::numeric_limits<int32>::min());
 MANGOS_DLL_SPEC uint32 GetAreaTriggerScriptId(uint32 trigger_id);
+MANGOS_DLL_SPEC uint32 GetEventIdScriptId(uint32 event_id);
 MANGOS_DLL_SPEC uint32 GetScriptId(const char *name);
 MANGOS_DLL_SPEC ObjectMgr::ScriptNameMap& GetScriptNames();
 MANGOS_DLL_SPEC CreatureInfo const* GetCreatureTemplateStore(uint32 entry);

@@ -73,7 +73,7 @@ bool DynamicObject::Create( uint32 guidlow, Unit *caster, uint32 spellId, SpellE
     SetEntry(spellId);
     SetObjectScale(DEFAULT_OBJECT_SCALE);
 
-    SetUInt64Value(DYNAMICOBJECT_CASTER, caster->GetGUID());
+    SetGuidValue(DYNAMICOBJECT_CASTER, caster->GetObjectGuid());
 
     /* Bytes field, so it's really 4 bit fields. These flags are unknown, but we do know that 0x00000001 is set for most.
        Farsight for example, does not have this flag, instead it has 0x80000002.
@@ -103,7 +103,7 @@ bool DynamicObject::Create( uint32 guidlow, Unit *caster, uint32 spellId, SpellE
 Unit* DynamicObject::GetCaster() const
 {
     // can be not found in some cases
-    return ObjectAccessor::GetUnit(*this, GetCasterGUID());
+    return ObjectAccessor::GetUnit(*this, GetCasterGuid());
 }
 
 void DynamicObject::Update(uint32 p_time)
@@ -147,18 +147,49 @@ void DynamicObject::Delete()
 void DynamicObject::Delay(int32 delaytime)
 {
     m_aliveDuration -= delaytime;
-    for(AffectedSet::iterator iunit= m_affected.begin(); iunit != m_affected.end(); ++iunit)
-        if (*iunit)
-            (*iunit)->DelaySpellAuraHolder(m_spellId, delaytime);
+    for(AffectedSet::iterator iter = m_affected.begin(); iter != m_affected.end(); )
+    {
+        Unit *target = GetMap()->GetUnit((*iter));
+        if (target)
+        {
+            SpellAuraHolder *holder = target->GetSpellAuraHolder(m_spellId, GetCasterGuid().GetRawValue());
+            if (!holder)
+            {
+                ++iter;
+                continue;
+            }
+
+            bool foundAura = false;
+            for (int32 i = m_effIndex + 1; i < MAX_EFFECT_INDEX; ++i)
+            {
+                if ((holder->GetSpellProto()->Effect[i] == SPELL_EFFECT_PERSISTENT_AREA_AURA || holder->GetSpellProto()->Effect[i] == SPELL_EFFECT_ADD_FARSIGHT) && holder->m_auras[i])
+                {
+                    foundAura = true;
+                    break;
+                }
+            }
+
+            if (foundAura)
+            {
+                ++iter;
+                continue;
+            }
+
+            target->DelaySpellAuraHolder(m_spellId, delaytime, GetCasterGuid().GetRawValue());
+            ++iter;
+        }
+        else
+            m_affected.erase(iter++);
+    }
 }
 
 bool DynamicObject::isVisibleForInState(Player const* u, WorldObject const* viewPoint, bool inVisibleList) const
 {
-    if(!IsInWorld() || !u->IsInWorld())
+    if (!IsInWorld() || !u->IsInWorld())
         return false;
 
     // always seen by owner
-    if(GetCasterGUID()==u->GetGUID())
+    if (GetCasterGuid() == u->GetObjectGuid())
         return true;
 
     // normal case

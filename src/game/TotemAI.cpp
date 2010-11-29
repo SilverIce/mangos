@@ -30,7 +30,7 @@
 int
 TotemAI::Permissible(const Creature *creature)
 {
-    if( creature->isTotem() )
+    if( creature->IsTotem() )
         return PERMIT_BASE_PROACTIVE;
 
     return PERMIT_BASE_NO;
@@ -68,10 +68,10 @@ TotemAI::UpdateAI(const uint32 /*diff*/)
     SpellRangeEntry const* srange = sSpellRangeStore.LookupEntry(spellInfo->rangeIndex);
     float max_range = GetSpellMaxRange(srange);
 
-    // SPELLMOD_RANGE not applied in this place just because not existence range mods for attacking totems
+    // SPELLMOD_RANGE not applied in this place just because nonexistent range mods for attacking totems
 
     // pointer to appropriate target if found any
-    Unit* victim = i_victimGuid ? ObjectAccessor::GetUnit(*m_creature, i_victimGuid) : NULL;
+    Unit* victim = i_victimGuid ? m_creature->GetMap()->GetUnit(i_victimGuid) : NULL;
 
     // Search victim if no, not attackable, or out of range, or friendly (possible in case duel end)
     if( !victim ||
@@ -81,7 +81,7 @@ TotemAI::UpdateAI(const uint32 /*diff*/)
         victim = NULL;
 
         MaNGOS::NearestAttackableUnitInObjectRangeCheck u_check(m_creature, m_creature, max_range);
-        MaNGOS::UnitLastSearcher<MaNGOS::NearestAttackableUnitInObjectRangeCheck> checker(m_creature,victim, u_check);
+        MaNGOS::UnitLastSearcher<MaNGOS::NearestAttackableUnitInObjectRangeCheck> checker(victim, u_check);
         Cell::VisitAllObjects(m_creature, checker, max_range);
     }
 

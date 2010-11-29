@@ -215,9 +215,7 @@ void WorldSession::HandleMessagechatOpcode( WorldPacket & recv_data )
 
             if (!sWorld.getConfig(CONFIG_BOOL_ALLOW_TWO_SIDE_INTERACTION_CHAT) && tSecurity == SEC_PLAYER && pSecurity == SEC_PLAYER )
             {
-                uint32 sidea = GetPlayer()->GetTeam();
-                uint32 sideb = player->GetTeam();
-                if( sidea != sideb )
+                if (GetPlayer()->GetTeam() != player->GetTeam())
                 {
                     SendWrongFactionNotice();
                     return;
@@ -254,12 +252,12 @@ void WorldSession::HandleMessagechatOpcode( WorldPacket & recv_data )
                     return;
             }
 
-            if((type == CHAT_MSG_PARTY_LEADER) && !group->IsLeader(_player->GetGUID()))
+            if ((type == CHAT_MSG_PARTY_LEADER) && !group->IsLeader(_player->GetObjectGuid()))
                 return;
 
             WorldPacket data;
             ChatHandler::FillMessageData(&data, this, type, lang, NULL, 0, msg.c_str(), NULL);
-            group->BroadcastPacket(&data, false, group->GetMemberGroup(GetPlayer()->GetGUID()));
+            group->BroadcastPacket(&data, false, group->GetMemberGroup(GetPlayer()->GetObjectGuid()));
         } break;
 
         case CHAT_MSG_GUILD:
@@ -355,10 +353,10 @@ void WorldSession::HandleMessagechatOpcode( WorldPacket & recv_data )
 
             // if player is in battleground, he cannot say to battleground members by /ra
             Group *group = GetPlayer()->GetOriginalGroup();
-            if(!group)
+            if (!group)
             {
                 group = GetPlayer()->GetGroup();
-                if(!group || group->isBGGroup() || !group->isRaidGroup() || !group->IsLeader(_player->GetGUID()))
+                if (!group || group->isBGGroup() || !group->isRaidGroup() || !group->IsLeader(_player->GetObjectGuid()))
                     return;
             }
 
@@ -379,7 +377,8 @@ void WorldSession::HandleMessagechatOpcode( WorldPacket & recv_data )
                 break;
 
             Group *group = GetPlayer()->GetGroup();
-            if(!group || !group->isRaidGroup() || !(group->IsLeader(GetPlayer()->GetGUID()) || group->IsAssistant(GetPlayer()->GetGUID())))
+            if (!group || !group->isRaidGroup() ||
+                !(group->IsLeader(GetPlayer()->GetObjectGuid()) || group->IsAssistant(GetPlayer()->GetObjectGuid())))
                 return;
 
             WorldPacket data;
@@ -422,7 +421,7 @@ void WorldSession::HandleMessagechatOpcode( WorldPacket & recv_data )
 
             // battleground raid is always in Player->GetGroup(), never in GetOriginalGroup()
             Group *group = GetPlayer()->GetGroup();
-            if(!group || !group->isBGGroup() || !group->IsLeader(GetPlayer()->GetGUID()))
+            if (!group || !group->isBGGroup() || !group->IsLeader(GetPlayer()->GetObjectGuid()))
                 return;
 
             WorldPacket data;
@@ -452,17 +451,21 @@ void WorldSession::HandleMessagechatOpcode( WorldPacket & recv_data )
             std::string msg;
             recv_data >> msg;
 
-            if((msg.empty() || !_player->isAFK()) && !_player->isInCombat() )
+            if (!_player->isInCombat())
             {
-                if(!_player->isAFK())
+                if (!msg.empty() || !_player->isAFK())
                 {
-                    if(msg.empty())
-                        msg  = GetMangosString(LANG_PLAYER_AFK_DEFAULT);
-                    _player->afkMsg = msg;
+                    if (msg.empty())
+                        _player->afkMsg = GetMangosString(LANG_PLAYER_AFK_DEFAULT);
+                    else
+                        _player->afkMsg = msg;
                 }
-                _player->ToggleAFK();
-                if(_player->isAFK() && _player->isDND())
-                    _player->ToggleDND();
+                if (msg.empty() || !_player->isAFK())
+                {
+                    _player->ToggleAFK();
+                    if (_player->isAFK() && _player->isDND())
+                        _player->ToggleDND();
+                }
             }
         } break;
 
@@ -471,16 +474,17 @@ void WorldSession::HandleMessagechatOpcode( WorldPacket & recv_data )
             std::string msg;
             recv_data >> msg;
 
-            if(msg.empty() || !_player->isDND())
+            if (!msg.empty() || !_player->isDND())
             {
-                if(!_player->isDND())
-                {
-                    if(msg.empty())
-                        msg  = GetMangosString(LANG_PLAYER_DND_DEFAULT);
+                if (msg.empty())
+                    _player->dndMsg = GetMangosString(LANG_PLAYER_DND_DEFAULT);
+                else
                     _player->dndMsg = msg;
-                }
+            }
+            if (msg.empty() || !_player->isDND())
+            {
                 _player->ToggleDND();
-                if(_player->isDND() && _player->isAFK())
+                if (_player->isDND() && _player->isAFK())
                     _player->ToggleAFK();
             }
         } break;
@@ -493,7 +497,7 @@ void WorldSession::HandleMessagechatOpcode( WorldPacket & recv_data )
 
 void WorldSession::HandleEmoteOpcode( WorldPacket & recv_data )
 {
-    if(!GetPlayer()->isAlive())
+    if(!GetPlayer()->isAlive() || GetPlayer()->hasUnitState(UNIT_STAT_DIED))
         return;
 
     uint32 emote;
@@ -546,7 +550,7 @@ void WorldSession::HandleTextEmoteOpcode( WorldPacket & recv_data )
     }
 
     uint32 text_emote, emoteNum;
-    uint64 guid;
+    ObjectGuid guid;
 
     recv_data >> text_emote;
     recv_data >> emoteNum;
@@ -556,9 +560,9 @@ void WorldSession::HandleTextEmoteOpcode( WorldPacket & recv_data )
     if (!em)
         return;
 
-    uint32 emote_anim = em->textid;
+    uint32 emote_id = em->textid;
 
-    switch(emote_anim)
+    switch(emote_id)
     {
         case EMOTE_STATE_SLEEP:
         case EMOTE_STATE_SIT:
@@ -566,11 +570,17 @@ void WorldSession::HandleTextEmoteOpcode( WorldPacket & recv_data )
         case EMOTE_ONESHOT_NONE:
             break;
         default:
-            GetPlayer()->HandleEmoteCommand(emote_anim);
+        {
+            // in feign death state allowed only text emotes.
+            if (GetPlayer()->hasUnitState(UNIT_STAT_DIED))
+                break;
+
+            GetPlayer()->HandleEmoteCommand(emote_id);
             break;
+        }
     }
 
-    Unit* unit = ObjectAccessor::GetUnit(*_player, guid);
+    Unit* unit = GetPlayer()->GetMap()->GetUnit(guid);
 
     MaNGOS::EmoteChatBuilder emote_builder(*GetPlayer(), text_emote, emoteNum, unit);
     MaNGOS::LocalizedPacketDo<MaNGOS::EmoteChatBuilder > emote_do(emote_builder);

@@ -19,9 +19,11 @@
 #ifndef MANGOSSERVER_VEHICLE_H
 #define MANGOSSERVER_VEHICLE_H
 
+#include "Common.h"
 #include "ObjectGuid.h"
 #include "Creature.h"
 #include "Unit.h"
+#include "SharedDefines.h"
 
 class Vehicle : public Creature
 {
@@ -32,9 +34,9 @@ class Vehicle : public Creature
         void AddToWorld();
         void RemoveFromWorld();
 
-        bool Create (uint32 guidlow, Map *map, uint32 Entry, uint32 vehicleId, uint32 team);
+        bool Create (uint32 guidlow, Map *map, uint32 Entry, uint32 vehicleId, Team team);
 
-        void setDeathState(DeathState s);                   // overwrite virtual Creature::setDeathState and Unit::setDeathState
+        void SetDeathState(DeathState s);                   // overwrite virtual Creature::SetDeathState and Unit::SetDeathState
         void Update(uint32 diff);                           // overwrite virtual Creature::Update and Unit::Update
 
         uint32 GetVehicleId() { return m_vehicleId; }
@@ -48,11 +50,11 @@ class Vehicle : public Creature
     private:
         void SaveToDB(uint32, uint8)                        // overwrited of Creature::SaveToDB     - don't must be called
         {
-            ASSERT(false);
+            MANGOS_ASSERT(false);
         }
         void DeleteFromDB()                                 // overwrited of Creature::DeleteFromDB - don't must be called
         {
-            ASSERT(false);
+            MANGOS_ASSERT(false);
         }
 };
 #endif
