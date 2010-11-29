@@ -16,8 +16,12 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#if !defined(QUERYRESULT_H)
+#ifndef QUERYRESULT_H
 #define QUERYRESULT_H
+
+#include "Common.h"
+#include "Errors.h"
+#include "Field.h"
 
 class MANGOS_DLL_SPEC QueryResult
 {
@@ -68,7 +72,7 @@ class MANGOS_DLL_SPEC QueryNamedResult
                 if(mFieldNames[idx] == name)
                     return idx;
             }
-            ASSERT(false && "unknown field name");
+            MANGOS_ASSERT(false && "unknown field name");
             return uint32(-1);
         }
 

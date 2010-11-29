@@ -339,8 +339,8 @@ void PoolGroup<T>::SpawnObject(SpawnedPoolData& spawns, uint32 limit, uint32 tri
 
         if (obj->guid == triggerFrom)
         {
-            ASSERT(spawns.IsSpawnedObject<T>(obj->guid));
-            ASSERT(spawns.GetSpawnedObjects(poolId) > 0);
+            MANGOS_ASSERT(spawns.IsSpawnedObject<T>(obj->guid));
+            MANGOS_ASSERT(spawns.GetSpawnedObjects(poolId) > 0);
             ReSpawn1Object(obj);
             triggerFrom = 0;
             continue;
@@ -368,7 +368,10 @@ void PoolGroup<Creature>::Spawn1Object(PoolObject* obj, bool instantly)
         sObjectMgr.AddCreatureToGrid(obj->guid, data);
 
         // Spawn if necessary (loaded grids only)
-        Map* map = const_cast<Map*>(sMapMgr.CreateBaseMap(data->mapid));
+        Map* map = const_cast<Map*>(sMapMgr.FindMap(data->mapid));
+        if(!map)
+            return;
+
         // We use spawn coords to spawn (avoid work for instances until implemented support)
         if (!map->Instanceable() && map->IsLoaded(data->posX, data->posY))
         {
@@ -385,7 +388,7 @@ void PoolGroup<Creature>::Spawn1Object(PoolObject* obj, bool instantly)
                 if(!instantly)
                 {
                     pCreature->SetRespawnTime( pCreature->GetRespawnDelay() );
-                    if (sWorld.getConfig(CONFIG_BOOL_SAVE_RESPAWN_TIME_IMMEDIATLY) || pCreature->isWorldBoss())
+                    if (sWorld.getConfig(CONFIG_BOOL_SAVE_RESPAWN_TIME_IMMEDIATLY) || pCreature->IsWorldBoss())
                         pCreature->SaveRespawnTime();
                 }
                 map->Add(pCreature);
@@ -407,8 +410,11 @@ void PoolGroup<GameObject>::Spawn1Object(PoolObject* obj, bool instantly)
     {
         sObjectMgr.AddGameobjectToGrid(obj->guid, data);
         // Spawn if necessary (loaded grids only)
-        // this base map checked as non-instanced and then only existed
-        Map* map = const_cast<Map*>(sMapMgr.CreateBaseMap(data->mapid));
+        // this base map checked as non-instanced and then only existing
+        Map* map = const_cast<Map*>(sMapMgr.FindMap(data->mapid));
+        if(!map)
+            return;
+
         // We use current coords to unspawn, not spawn coords since creature can have changed grid
         // (avoid work for instances until implemented support)
         if (!map->Instanceable() && map->IsLoaded(data->posX, data->posY))
@@ -457,7 +463,7 @@ template <>
 void PoolGroup<Creature>::ReSpawn1Object(PoolObject* obj)
 {
     if (CreatureData const* data = sObjectMgr.GetCreatureData(obj->guid))
-        if (Creature* pCreature = ObjectAccessor::GetCreatureInWorld(MAKE_NEW_GUID(obj->guid, data->id, HIGHGUID_UNIT)))
+        if (Creature* pCreature = ObjectAccessor::GetCreatureInWorld(ObjectGuid(HIGHGUID_UNIT, data->id, obj->guid)))
             pCreature->GetMap()->Add(pCreature);
 }
 

@@ -21,14 +21,14 @@
 
 #include "Object.h"
 #include "DBCEnums.h"
+#include "Unit.h"
 
-class Unit;
 struct SpellEntry;
 
 class DynamicObject : public WorldObject
 {
     public:
-        typedef std::set<Unit*> AffectedSet;
+        typedef std::set<ObjectGuid> AffectedSet;
         explicit DynamicObject();
 
         void AddToWorld();
@@ -40,12 +40,12 @@ class DynamicObject : public WorldObject
         uint32 GetSpellId() const { return m_spellId; }
         SpellEffectIndex GetEffIndex() const { return m_effIndex; }
         uint32 GetDuration() const { return m_aliveDuration; }
-        uint64 GetCasterGUID() const { return GetUInt64Value(DYNAMICOBJECT_CASTER); }
+        ObjectGuid const& GetCasterGuid() const { return GetGuidValue(DYNAMICOBJECT_CASTER); }
         Unit* GetCaster() const;
         float GetRadius() const { return m_radius; }
-        bool IsAffecting(Unit *unit) const { return m_affected.find(unit) != m_affected.end(); }
-        void AddAffected(Unit *unit) { m_affected.insert(unit); }
-        void RemoveAffected(Unit *unit) { m_affected.erase(unit); }
+        bool IsAffecting(Unit *unit) const { return m_affected.find(unit->GetObjectGuid()) != m_affected.end(); }
+        void AddAffected(Unit *unit) { m_affected.insert(unit->GetObjectGuid()); }
+        void RemoveAffected(Unit *unit) { m_affected.erase(unit->GetObjectGuid()); }
         void Delay(int32 delaytime);
 
         bool IsHostileTo(Unit const* unit) const;
@@ -57,12 +57,6 @@ class DynamicObject : public WorldObject
         }
 
         bool isVisibleForInState(Player const* u, WorldObject const* viewPoint, bool inVisibleList) const;
-
-        void Say(int32 textId, uint32 language, uint64 TargetGuid) { MonsterSay(textId,language,TargetGuid); }
-        void Yell(int32 textId, uint32 language, uint64 TargetGuid) { MonsterYell(textId,language,TargetGuid); }
-        void TextEmote(int32 textId, uint64 TargetGuid) { MonsterTextEmote(textId,TargetGuid); }
-        void Whisper(int32 textId,uint64 receiver) { MonsterWhisper(textId,receiver); }
-        void YellToZone(int32 textId, uint32 language, uint64 TargetGuid) { MonsterYellToZone(textId,language,TargetGuid); }
 
         GridReference<DynamicObject> &GetGridRef() { return m_gridRef; }
 

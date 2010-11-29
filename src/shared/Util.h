@@ -49,6 +49,9 @@ MANGOS_DLL_SPEC int32 irand(int32 min, int32 max);
 * between max and min should be less than RAND32_MAX. */
 MANGOS_DLL_SPEC uint32 urand(uint32 min, uint32 max);
 
+/* Return a random number in the range min..max (inclusive). */
+MANGOS_DLL_SPEC float frand(float min, float max);
+
 /* Return a random number in the range 0 .. RAND32_MAX. */
 MANGOS_DLL_SPEC int32 rand32();
 
@@ -174,6 +177,11 @@ inline bool isEastAsianCharacter(wchar_t wchar)
     if(wchar >= 0xFF01 && wchar <= 0xFFEE)                  // Halfwidth forms
         return true;
     return false;
+}
+
+inline bool isWhiteSpace(char c)
+{
+    return ::isspace(int(c)) != 0;
 }
 
 inline bool isNumeric(wchar_t wchar)

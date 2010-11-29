@@ -26,6 +26,8 @@
 #include "GameSystem/GridReference.h"
 #include "Timer.h"
 
+#include <cassert>
+
 #define DEFAULT_VISIBILITY_NOTIFY_PERIOD      1000
 
 class GridInfo
@@ -34,13 +36,13 @@ class GridInfo
 
         GridInfo()
             : i_timer(0), i_unloadActiveLockCount(0), i_unloadExplicitLock(false),
-            i_unloadReferenceLock(false), vis_Update(rand()%DEFAULT_VISIBILITY_NOTIFY_PERIOD)
+            vis_Update(rand()%DEFAULT_VISIBILITY_NOTIFY_PERIOD)
         {
         }
 
         GridInfo(time_t expiry, bool unload = true )
             : i_timer(expiry), i_unloadActiveLockCount(0), i_unloadExplicitLock(!unload),
-            i_unloadReferenceLock(false), vis_Update(rand()%DEFAULT_VISIBILITY_NOTIFY_PERIOD)
+            vis_Update(rand()%DEFAULT_VISIBILITY_NOTIFY_PERIOD)
         {
         }
 
@@ -48,11 +50,10 @@ class GridInfo
 
         bool getUnloadLock() const
         {
-            return i_unloadActiveLockCount || i_unloadExplicitLock || i_unloadReferenceLock;
+            return i_unloadActiveLockCount || i_unloadExplicitLock;
         }
 
         void setUnloadExplicitLock( bool on ) { i_unloadExplicitLock = on; }
-        void setUnloadReferenceLock( bool on ) { i_unloadReferenceLock = on; }
         void incUnloadActiveLock() { ++i_unloadActiveLockCount; }
         void decUnloadActiveLock() { if (i_unloadActiveLockCount) --i_unloadActiveLockCount; }
 
@@ -67,7 +68,6 @@ class GridInfo
 
         uint16 i_unloadActiveLockCount : 16;                    // lock from active object spawn points (prevent clone loading)
         bool i_unloadExplicitLock      : 1;                     // explicit manual lock or config setting
-        bool i_unloadReferenceLock     : 1;                     // lock from instance map copy
 };
 
 typedef enum
@@ -100,15 +100,15 @@ class MANGOS_DLL_DECL NGrid
 
         const GridType& operator()(uint32 x, uint32 y) const
         {
-            ASSERT(x < N);
-            ASSERT(y < N);
+            assert(x < N);
+            assert(y < N);
             return i_cells[x][y];
         }
 
         GridType& operator()(uint32 x, uint32 y)
         {
-            ASSERT(x < N);
-            ASSERT(y < N);
+            assert(x < N);
+            assert(y < N);
             return i_cells[x][y];
         }
 
@@ -131,7 +131,6 @@ class MANGOS_DLL_DECL NGrid
         const TimeTracker& getTimeTracker() const { return i_GridInfo.getTimeTracker(); }
         bool getUnloadLock() const { return i_GridInfo.getUnloadLock(); }
         void setUnloadExplicitLock(bool on) { i_GridInfo.setUnloadExplicitLock(on); }
-        void setUnloadReferenceLock(bool on) { i_GridInfo.setUnloadReferenceLock(on); }
         void incUnloadActiveLock() { i_GridInfo.incUnloadActiveLock(); }
         void decUnloadActiveLock() { i_GridInfo.decUnloadActiveLock(); }
         void ResetTimeTracker(time_t interval) { i_GridInfo.ResetTimeTracker(interval); }
@@ -189,8 +188,8 @@ class MANGOS_DLL_DECL NGrid
 
         GridType& getGridType(const uint32& x, const uint32& y)
         {
-            ASSERT(x < N);
-            ASSERT(y < N);
+            assert(x < N);
+            assert(y < N);
             return i_cells[x][y];
         }
 

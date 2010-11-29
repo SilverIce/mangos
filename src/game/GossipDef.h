@@ -22,6 +22,7 @@
 #include "Common.h"
 #include "QuestDef.h"
 #include "NPCHandler.h"
+#include "ObjectGuid.h"
 
 class WorldSession;
 
@@ -138,7 +139,7 @@ typedef std::vector<GossipMenuItem> GossipMenuItemList;
 
 struct GossipMenuItemData
 {
-    uint32 m_gAction_menu;
+    int32  m_gAction_menu;                                  // negative for close gossip
     uint32 m_gAction_poi;
     uint32 m_gAction_script;
 };
@@ -156,7 +157,7 @@ typedef std::vector<QuestMenuItem> QuestMenuItemList;
 class MANGOS_DLL_SPEC GossipMenu
 {
     public:
-        GossipMenu();
+        explicit GossipMenu(WorldSession* session);
         ~GossipMenu();
 
         void AddMenuItem(uint8 Icon, const std::string& Message, bool Coded = false);
@@ -166,10 +167,12 @@ class MANGOS_DLL_SPEC GossipMenu
         void AddMenuItem(uint8 Icon, char const* Message, bool Coded = false);
         void AddMenuItem(uint8 Icon, char const* Message, uint32 dtSender, uint32 dtAction, char const* BoxMessage, uint32 BoxMoney, bool Coded = false);
 
+        void AddMenuItem(uint8 Icon, int32 itemText, uint32 dtSender, uint32 dtAction, int32 boxText, uint32 BoxMoney, bool Coded = false);
+
         void SetMenuId(uint32 menu_id) { m_gMenuId = menu_id; }
         uint32 GetMenuId() { return m_gMenuId; }
 
-        void AddGossipMenuItemData(uint32 action_menu, uint32 action_poi, uint32 action_script);
+        void AddGossipMenuItemData(int32 action_menu, uint32 action_poi, uint32 action_script);
 
         unsigned int MenuItemCount() const
         {
@@ -197,11 +200,16 @@ class MANGOS_DLL_SPEC GossipMenu
 
         void ClearMenu();
 
+        WorldSession* GetMenuSession() const { return m_session; }
+
     protected:
         GossipMenuItemList      m_gItems;
         GossipMenuItemDataList  m_gItemsData;
 
         uint32 m_gMenuId;
+
+    private:
+        WorldSession* m_session;
 };
 
 class QuestMenu
@@ -239,14 +247,15 @@ class MANGOS_DLL_SPEC PlayerMenu
     private:
         GossipMenu mGossipMenu;
         QuestMenu  mQuestMenu;
-        WorldSession* pSession;
 
     public:
-        PlayerMenu( WorldSession *Session );
+        explicit PlayerMenu(WorldSession *Session);
         ~PlayerMenu();
 
         GossipMenu& GetGossipMenu() { return mGossipMenu; }
         QuestMenu& GetQuestMenu() { return mQuestMenu; }
+
+        WorldSession* GetMenuSession() const { return mGossipMenu.GetMenuSession(); }
 
         bool Empty() const { return mGossipMenu.Empty() && mQuestMenu.Empty(); }
 
@@ -265,14 +274,14 @@ class MANGOS_DLL_SPEC PlayerMenu
         /*********************************************************/
         /***                    QUEST SYSTEM                   ***/
         /*********************************************************/
-        void SendQuestGiverStatus( uint8 questStatus, uint64 npcGUID );
+        void SendQuestGiverStatus(uint8 questStatus, ObjectGuid npcGUID);
 
-        void SendQuestGiverQuestList( QEmote eEmote, const std::string& Title, uint64 npcGUID );
+        void SendQuestGiverQuestList(QEmote eEmote, const std::string& Title, ObjectGuid npcGUID);
 
-        void SendQuestQueryResponse ( Quest const *pQuest );
-        void SendQuestGiverQuestDetails( Quest const *pQuest, uint64 npcGUID, bool ActivateAccept);
+        void SendQuestQueryResponse(Quest const *pQuest);
+        void SendQuestGiverQuestDetails(Quest const *pQuest, ObjectGuid npcGUID, bool ActivateAccept);
 
-        void SendQuestGiverOfferReward( Quest const* pQuest, uint64 npcGUID, bool EnbleNext );
-        void SendQuestGiverRequestItems( Quest const *pQuest, uint64 npcGUID, bool Completable, bool CloseOnCancel );
+        void SendQuestGiverOfferReward(Quest const* pQuest, ObjectGuid npcGUID, bool EnbleNext);
+        void SendQuestGiverRequestItems(Quest const *pQuest, ObjectGuid npcGUID, bool Completable, bool CloseOnCancel);
 };
 #endif

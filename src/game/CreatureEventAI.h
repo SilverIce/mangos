@@ -56,10 +56,12 @@ enum EventAI_Type
     EVENT_T_QUEST_COMPLETE          = 20,                   //
     EVENT_T_REACHED_HOME            = 21,                   // NONE
     EVENT_T_RECEIVE_EMOTE           = 22,                   // EmoteId, Condition, CondValue1, CondValue2
-    EVENT_T_BUFFED                  = 23,                   // Param1 = SpellID, Param2 = Number of Time STacked, Param3/4 Repeat Min/Max
-    EVENT_T_TARGET_BUFFED           = 24,                   // Param1 = SpellID, Param2 = Number of Time STacked, Param3/4 Repeat Min/Max
+    EVENT_T_AURA                    = 23,                   // Param1 = SpellID, Param2 = Number of time stacked, Param3/4 Repeat Min/Max
+    EVENT_T_TARGET_AURA             = 24,                   // Param1 = SpellID, Param2 = Number of time stacked, Param3/4 Repeat Min/Max
     EVENT_T_SUMMONED_JUST_DIED      = 25,                   // CreatureId, RepeatMin, RepeatMax
     EVENT_T_SUMMONED_JUST_DESPAWN   = 26,                   // CreatureId, RepeatMin, RepeatMax
+    EVENT_T_MISSING_AURA            = 27,                   // Param1 = SpellID, Param2 = Number of time stacked expected, Param3/4 Repeat Min/Max
+    EVENT_T_TARGET_MISSING_AURA     = 28,                   // Param1 = SpellID, Param2 = Number of time stacked expected, Param3/4 Repeat Min/Max
 
     EVENT_T_END,
 };
@@ -107,8 +109,9 @@ enum EventAI_ActionType
     ACTION_T_ZONE_COMBAT_PULSE          = 38,               // No Params
     ACTION_T_CALL_FOR_HELP              = 39,               // Radius
     ACTION_T_SET_SHEATH                 = 40,               // Sheath (0-passive,1-melee,2-ranged)
-    ACTION_T_FORCE_DESPAWN              = 41,               // No Params
+    ACTION_T_FORCE_DESPAWN              = 41,               // Delay (0-instant despawn)
     ACTION_T_SET_INVINCIBILITY_HP_LEVEL = 42,               // MinHpValue, format(0-flat,1-percent from max health)
+    ACTION_T_MOUNT_TO_ENTRY_OR_MODEL    = 43,               // Creature_template entry(param1) OR ModelId (param2) (or 0 for both to unmount)
     ACTION_T_END,
 };
 
@@ -146,10 +149,10 @@ enum EventFlags
     EFLAG_DIFFICULTY_1          = 0x04,                     //Event only occurs in instance difficulty 1
     EFLAG_DIFFICULTY_2          = 0x08,                     //Event only occurs in instance difficulty 2
     EFLAG_DIFFICULTY_3          = 0x10,                     //Event only occurs in instance difficulty 3
-    EFLAG_RESERVED_5            = 0x20,
+    EFLAG_RANDOM_ACTION         = 0x20,                     //Event only execute one from existed actions instead each action.
     EFLAG_RESERVED_6            = 0x40,
     EFLAG_DEBUG_ONLY            = 0x80,                     //Event only occurs in debug build
-
+    // no free bits, uint8 field
     EFLAG_DIFFICULTY_ALL        = (EFLAG_DIFFICULTY_0|EFLAG_DIFFICULTY_1|EFLAG_DIFFICULTY_2|EFLAG_DIFFICULTY_3)
 };
 
@@ -377,6 +380,12 @@ struct CreatureEventAI_Action
             uint32 hp_level;
             uint32 is_percent;
         } invincibility_hp_level;
+        // ACTION_T_MOUNT_TO_ENTRY_OR_MODEL                 = 43
+        struct
+        {
+            uint32 creatureId;                              // set one from fields (or 0 for both to dismount)
+            uint32 modelId;
+        } mount;
         // RAW
         struct
         {
@@ -510,8 +519,10 @@ struct CreatureEventAI_Event
             uint32 conditionValue1;
             uint32 conditionValue2;
         } receive_emote;
-        // EVENT_T_BUFFED                                   = 23
-        // EVENT_T_TARGET_BUFFED                            = 24
+        // EVENT_T_AURA                                     = 23
+        // EVENT_T_TARGET_AURA                              = 24
+        // EVENT_T_MISSING_AURA                             = 27
+        // EVENT_T_TARGET_MISSING_AURA                      = 28
         struct
         {
             uint32 spellId;
@@ -519,7 +530,6 @@ struct CreatureEventAI_Event
             uint32 repeatMin;
             uint32 repeatMax;
         } buffed;
-
         // RAW
         struct
         {

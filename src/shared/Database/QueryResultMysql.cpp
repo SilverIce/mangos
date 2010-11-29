@@ -19,13 +19,14 @@
 #ifndef DO_POSTGRESQL
 
 #include "DatabaseEnv.h"
+#include "Errors.h"
 
 QueryResultMysql::QueryResultMysql(MYSQL_RES *result, MYSQL_FIELD *fields, uint64 rowCount, uint32 fieldCount) :
     QueryResult(rowCount, fieldCount), mResult(result)
 {
 
     mCurrentRow = new Field[mFieldCount];
-    ASSERT(mCurrentRow);
+    MANGOS_ASSERT(mCurrentRow);
 
     for (uint32 i = 0; i < mFieldCount; i++)
         mCurrentRow[i].SetType(ConvertNativeType(fields[i].type));
@@ -87,7 +88,6 @@ enum Field::DataTypes QueryResultMysql::ConvertNativeType(enum_field_types mysql
         case FIELD_TYPE_NULL:
             return Field::DB_TYPE_STRING;
         case FIELD_TYPE_TINY:
-
         case FIELD_TYPE_SHORT:
         case FIELD_TYPE_LONG:
         case FIELD_TYPE_INT24:

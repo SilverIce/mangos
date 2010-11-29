@@ -43,7 +43,7 @@ ThreadPriority::ThreadPriority()
         pr_iter.next();
     }
 
-    ASSERT (!_tmp.empty());
+    MANGOS_ASSERT (!_tmp.empty());
 
     if(_tmp.size() >= MAXPRIORITYNUM)
     {
@@ -101,19 +101,19 @@ int ThreadPriority::getPriority(Priority p) const
 # define THREADFLAG (THR_NEW_LWP | THR_JOINABLE)
 #endif
 
-Thread::Thread() : m_task(0), m_iThreadId(0), m_hThreadHandle(0)
+Thread::Thread() : m_iThreadId(0), m_hThreadHandle(0), m_task(0)
 {
 
 }
 
-Thread::Thread(Runnable* instance) : m_task(instance), m_iThreadId(0), m_hThreadHandle(0)
+Thread::Thread(Runnable* instance) : m_iThreadId(0), m_hThreadHandle(0), m_task(instance)
 {
     // register reference to m_task to prevent it deeltion until destructor
     if (m_task)
         m_task->incReference();
 
     bool _start = start();
-    ASSERT (_start);
+    MANGOS_ASSERT (_start);
 }
 
 Thread::~Thread()
@@ -228,7 +228,7 @@ void Thread::setPriority(Priority type)
     int _priority = m_TpEnum.getPriority(type);
     int _ok = ACE_Thread::setprio(m_hThreadHandle, _priority);
     //remove this ASSERT in case you don't want to know is thread priority change was successful or not
-    ASSERT (_ok == 0);
+    MANGOS_ASSERT (_ok == 0);
 #endif
 }
 
