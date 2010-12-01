@@ -220,7 +220,7 @@ Unit::Unit()
 
     m_Visibility = VISIBILITY_ON;
 
-    m_notify_sheduled = false;
+    m_notify_sheduled = 0;
     m_last_notified_position.x = 0;
     m_last_notified_position.y = 0;
     m_last_notified_position.z = 0;
