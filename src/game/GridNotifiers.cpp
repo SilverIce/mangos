@@ -106,6 +106,8 @@ inline void CreatureUnitRelocationWorker(Creature* c, Unit* u)
     }
 }
 
+namespace MaNGOS{
+
 template<> void AI_RelocationNotifier<Player>::Visit(CreatureMapType &m)
 {
     for(CreatureMapType::iterator iter=m.begin(); iter != m.end(); ++iter)
@@ -135,6 +137,7 @@ template<> void AI_RelocationNotifier<Creature>::Visit(CreatureMapType &m)
             CreatureUnitRelocationWorker(c, &i_unit);
     }
 }
+}
 
 template<class U> inline void handleUnitRelocation(U & unit)
 {
@@ -162,7 +165,7 @@ struct MANGOS_DLL_DECL opt_VisibleNotifier : public VisibleNotifier
 
     template<class T> void Visit(GridRefManager<T> &m)
     {
-        for (GridRefManager<T>::iterator it = m.begin();it!= m.end(); ++it)
+        for (typename GridRefManager<T>::iterator it = m.begin();it!= m.end(); ++it)
         {
             T * obj = it->getSource();
             i_clientGUIDs.erase(obj->GetObjectGuid());
