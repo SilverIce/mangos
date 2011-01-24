@@ -660,28 +660,6 @@ Map::Remove(T *obj, bool remove)
     }
 }
 
-float  Map::relocation_lower_limit_sq   = 10.f * 10.f;
-uint32 Map::relocation_ai_notify_delay  = 1000u;
-
-inline void _F_optimized(Unit & u)
-{
-    float dx = u.m_last_notified_position.x - u.GetPositionX();
-    float dy = u.m_last_notified_position.y - u.GetPositionY();
-    float dz = u.m_last_notified_position.z - u.GetPositionZ();
-    float distsq = dx*dx+dy*dy+dz*dz;
-
-    if (distsq > Map::relocation_lower_limit_sq)
-    {
-        u.m_last_notified_position.x = u.GetPositionX();
-        u.m_last_notified_position.y = u.GetPositionY();
-        u.m_last_notified_position.z = u.GetPositionZ();
-
-        u.SheduleVisibilityUpdate();
-    }
-
-    u.SheduleAINotify(Map::relocation_ai_notify_delay);
-}
-
 void
 Map::PlayerRelocation(Player *player, float x, float y, float z, float orientation)
 {
@@ -711,7 +689,7 @@ Map::PlayerRelocation(Player *player, float x, float y, float z, float orientati
         player->GetViewPoint().Event_GridChanged(&(*newGrid)(new_cell.CellX(),new_cell.CellY()));
     }
 
-    _F_optimized(*player);
+    player->OnRelocated();
 
     NGridType* newGrid = getNGrid(new_cell.GridX(), new_cell.GridY());
     if( !same_cell && newGrid->GetGridState()!= GRID_STATE_ACTIVE )
@@ -747,7 +725,7 @@ Map::CreatureRelocation(Creature *creature, float x, float y, float z, float ang
     if (!moved_to_resp)
         creature->Relocate(x, y, z, ang);
 
-    _F_optimized(*creature);
+    creature->OnRelocated();
     MANGOS_ASSERT(CheckGridIntegrity(creature,true));
 }
 

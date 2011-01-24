@@ -836,11 +836,12 @@ inline ByteBuffer& operator>> (ByteBuffer& buf, MovementInfo& mi)
     return buf;
 }
 
-enum RelocationOperations
+enum VisibilityUpdateFlags
 {
-    AI_Notify_Sheduled          = 0x01,         // AI relocation notification sheduled
-    AI_Notify_Execution         = 0x02,         // AI relocation notification will be executed in next update tick
-    Visibility_Update_Execution = 0x04,         // Visibility will be updated in next update tick
+    VisibilityUpdateFlag_None        = 0x00,
+    VisibilityUpdateFlag_AI_Sheduled = 0x01,         // AI relocation notification sheduled
+    VisibilityUpdateFlag_AI_Now      = 0x02,         // AI relocation notification will be executed in next update tick
+    VisibilityUpdateFlag_Client      = 0x04,         // Visibility will be updated in next update tick
 };
 
 enum DiminishingLevels
@@ -1965,12 +1966,11 @@ class MANGOS_DLL_SPEC Unit : public WorldObject
         void SheduleAINotify(uint32 delay);
         void SheduleVisibilityUpdate();
 
-        uint8 m_notify_sheduled;
-        bool isNotifySheduled(uint8 f) const { return m_notify_sheduled & f;}
-        struct 
-        {
-            float x, y, z;
-        } m_last_notified_position;
+        bool isVisibilityUpdatePending(uint8 f) const { return m_sheduled_visibility_updates & f;}
+        void _AddVisibilityUpdateFlag(uint8 f) { m_sheduled_visibility_updates |= f;}
+        void _RemoveVisibilityUpdateFlag(uint8 f) { m_sheduled_visibility_updates &= ~f;}
+
+        void OnRelocated();
 
     protected:
         explicit Unit ();
@@ -2038,6 +2038,8 @@ class MANGOS_DLL_SPEC Unit : public WorldObject
         uint32 m_castCounter;                               // count casts chain of triggered spells for prevent infinity cast crashes
 
         UnitVisibility m_Visibility;
+        Position m_last_notified_position;
+        uint8 m_sheduled_visibility_updates;
 
         Diminishing m_Diminishing;
         // Manage all Units threatening us
