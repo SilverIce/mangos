@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005-2010 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2005-2011 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -65,9 +65,8 @@ VisibleNotifier::Notify()
         if (!itr->IsPlayer())
             continue;
 
-        if(Player *plr = ObjectAccessor::FindPlayer(*itr))
-            if(plr->IsInWorld() && !plr->isNeedNotify(NOTIFY_VISIBILITY_CHANGED))
-                plr->GetCamera().UpdateVisibilityOf(&player);
+        DEBUG_FILTER_LOG(LOG_FILTER_VISIBILITY_CHANGES, "%s is out of range (no in active cells set) now for %s",
+            itr->GetString().c_str(), player.GetObjectGuid().GetString().c_str());
     }
 
     // generate outOfRange for not iterate objects
@@ -77,6 +76,17 @@ VisibleNotifier::Notify()
         WorldPacket packet;
         i_data.BuildPacket(&packet);
         player.GetSession()->SendPacket(&packet);
+
+        // send out of range to other players if need
+        ObjectGuidSet const& oor = i_data.GetOutOfRangeGUIDs();
+        for(ObjectGuidSet::const_iterator iter = oor.begin(); iter != oor.end(); ++iter)
+        {
+            if (!iter->IsPlayer())
+                continue;
+
+            if (Player* plr = ObjectAccessor::FindPlayer(*iter))
+                plr->UpdateVisibilityOf(plr->GetCamera().GetBody(), &player);
+        }
     }
 
     // Now do operations that required done at object visibility change to visible
@@ -291,7 +301,8 @@ ObjectUpdater::Visit(GridRefManager<T> &m)
 {
     for(typename GridRefManager<T>::iterator iter = m.begin(); iter != m.end(); ++iter)
     {
-        iter->getSource()->Update(i_timeDiff);
+        WorldObject::UpdateHelper helper(iter->getSource());
+        helper.Update(i_timeDiff);
     }
 }
 
@@ -301,7 +312,7 @@ bool CannibalizeObjectCheck::operator()(Corpse* u)
     if(u->GetType()==CORPSE_BONES)
         return false;
 
-    Player* owner = ObjectAccessor::FindPlayer(u->GetOwnerGUID());
+    Player* owner = ObjectAccessor::FindPlayer(u->GetOwnerGuid());
 
     if( !owner || i_fobj->IsFriendlyTo(owner))
         return false;

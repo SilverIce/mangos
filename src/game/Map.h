@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005-2010 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2005-2011 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -35,6 +35,7 @@
 #include "GameSystem/GridRefManager.h"
 #include "MapRefManager.h"
 #include "Utilities/TypeList.h"
+#include "ScriptMgr.h"
 
 #include <bitset>
 #include <list>
@@ -46,7 +47,6 @@ class InstanceData;
 class Group;
 class InstanceSave;
 struct ScriptInfo;
-struct ScriptAction;
 class BattleGround;
 class GridMap;
 
@@ -80,7 +80,7 @@ enum LevelRequirementVsMode
 
 #define MIN_UNLOAD_DELAY      1                             // immediate unload
 
-class MANGOS_DLL_SPEC Map : public GridRefManager<NGridType>, public MaNGOS::ObjectLevelLockable<Map, ACE_Thread_Mutex>
+class MANGOS_DLL_SPEC Map : public GridRefManager<NGridType>
 {
     friend class MapReference;
     friend class ObjectGridLoader;
@@ -102,6 +102,8 @@ class MANGOS_DLL_SPEC Map : public GridRefManager<NGridType>, public MaNGOS::Obj
         virtual void Remove(Player *, bool);
         template<class T> void Add(T *);
         template<class T> void Remove(T *, bool);
+
+        static void DeleteFromWorld(Player* player);        // player object will deleted at call
 
         virtual void Update(const uint32&);
 
@@ -283,7 +285,6 @@ class MANGOS_DLL_SPEC Map : public GridRefManager<NGridType>, public MaNGOS::Obj
         void SendObjectUpdates();
         std::set<Object *> i_objectsToClientUpdate;
     protected:
-        typedef MaNGOS::ObjectLevelLockable<Map, ACE_Thread_Mutex>::Lock Guard;
 
         MapEntry const* i_mapEntry;
         uint8 i_spawnMode;
@@ -325,9 +326,6 @@ class MANGOS_DLL_SPEC Map : public GridRefManager<NGridType>, public MaNGOS::Obj
 
         template<class T>
             void RemoveFromGrid(T*, NGridType *, Cell const&);
-
-        template<class T>
-            void DeleteFromWorld(T*);
 };
 
 class MANGOS_DLL_SPEC InstanceMap : public Map
@@ -340,7 +338,7 @@ class MANGOS_DLL_SPEC InstanceMap : public Map
         void Update(const uint32&);
         void CreateInstanceData(bool load);
         bool Reset(InstanceResetMethod method);
-        uint32 GetScriptId() { return i_script_id; }
+        uint32 GetScriptId() const { return i_script_id; }
         InstanceData* GetInstanceData() { return i_data; }
         void PermBindAllPlayers(Player *player);
         void UnloadAll(bool pForce);
