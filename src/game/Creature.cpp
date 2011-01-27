@@ -2342,8 +2342,6 @@ void Creature::SendAreaSpiritHealerQueryOpcode(Player *pl)
     pl->SendDirectMessage(&data);
 }
 
-}
-
 void Creature::ApplyGameEventSpells(GameEventCreatureData const* eventData, bool activated)
 {
     uint32 cast_spell = activated ? eventData->spell_id_start : eventData->spell_id_end;
@@ -2356,3 +2354,4 @@ void Creature::ApplyGameEventSpells(GameEventCreatureData const* eventData, bool
 
     if (cast_spell)
         CastSpell(this, cast_spell, true);
+}

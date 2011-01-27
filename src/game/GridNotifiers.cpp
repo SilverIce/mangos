@@ -62,11 +62,8 @@ VisibleNotifier::Notify()
     for(ObjectGuidSet::iterator itr = i_clientGUIDs.begin();itr!=i_clientGUIDs.end();++itr)
     {
         player.m_clientGUIDs.erase(*itr);
-        if (!itr->IsPlayer())
-            continue;
-
         DEBUG_FILTER_LOG(LOG_FILTER_VISIBILITY_CHANGES, "%s is out of range (no in active cells set) now for %s",
-            itr->GetString().c_str(), player.GetObjectGuid().GetString().c_str());
+            itr->GetString().c_str(), player.GetGuidStr().c_str());
     }
 
     // generate outOfRange for not iterate objects
@@ -84,8 +81,8 @@ VisibleNotifier::Notify()
             if (!iter->IsPlayer())
                 continue;
 
-            if (Player* plr = ObjectAccessor::FindPlayer(*iter))
-                plr->UpdateVisibilityOf(plr->GetCamera().GetBody(), &player);
+            if (Player* plr = player.GetMap()->GetPlayer(*iter))
+                plr->GetCamera().UpdateVisibilityOf(&player);
         }
     }
 
