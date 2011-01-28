@@ -36,6 +36,7 @@
 #include "BattleGroundAV.h"
 #include "Util.h"
 #include "ScriptCalls.h"
+#include "GameobjKDTree.h"
 
 GameObject::GameObject() : WorldObject()
 {
@@ -66,7 +67,10 @@ void GameObject::AddToWorld()
 {
     ///- Register the gameobject for guid lookup
     if(!IsInWorld())
+    {
         GetMap()->GetObjectsStore().insert<GameObject>(GetGUID(), (GameObject*)this);
+        ((KDTreeTest*)GetMap()->extraData[0])->insert(this);
+    }
 
     Object::AddToWorld();
 }
@@ -89,6 +93,7 @@ void GameObject::RemoveFromWorld()
             }
         }
 
+        ((KDTreeTest*)GetMap()->extraData[0])->remove(this);
         GetMap()->GetObjectsStore().erase<GameObject>(GetGUID(), (GameObject*)NULL);
     }
 

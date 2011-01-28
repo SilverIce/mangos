@@ -1691,6 +1691,14 @@
 				>
 			</File>
 		</Filter>
+		<Filter
+			Name="dynamic"
+			>
+			<File
+				RelativePath="..\..\src\game\GameobjKDTree.h"
+				>
+			</File>
+		</Filter>
 		<File
 			RelativePath="..\..\src\game\pchdef.cpp"
 			>

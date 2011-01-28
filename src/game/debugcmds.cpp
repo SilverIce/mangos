@@ -719,11 +719,11 @@ bool ChatHandler::HandleDebugSendSetPhaseShiftCommand(char* args)
 //show animation
 bool ChatHandler::HandleDebugAnimCommand(char* args)
 {
-    uint32 emote_id;
-    if (!ExtractUInt32(&args, emote_id))
-        return false;
-
-    m_session->GetPlayer()->HandleEmoteCommand(emote_id);
+    if (Unit * u = getSelectedUnit())
+    {
+        PSendSysMessage("Unit is %s in LoS with me", m_session->GetPlayer()->IsWithinLOSInMap(u) ? "" : "not");
+    }
+    
     return true;
 }
 

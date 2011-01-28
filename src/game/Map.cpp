@@ -37,6 +37,7 @@
 #include "InstanceSaveMgr.h"
 #include "VMapFactory.h"
 #include "BattleGroundMgr.h"
+#include "GameobjKDTree.h"
 
 struct ScriptAction
 {
@@ -60,6 +61,11 @@ Map::~Map()
     //release reference count
     if(m_TerrainData->Release())
         sTerrainMgr.UnloadTerrain(m_TerrainData->GetMapId());
+
+    struct deleter {
+        inline void operator()(void * d) const {delete d;}
+    };
+    std::for_each(extraData.begin(), extraData.end(), deleter());
 }
 
 void Map::LoadMapAndVMap(int gx,int gy)
@@ -95,6 +101,9 @@ Map::Map(uint32 id, time_t expiry, uint32 InstanceId, uint8 SpawnMode)
 
     //add reference for TerrainData object
     m_TerrainData->AddRef();
+
+    extraData.push_back( new KDTreeTest() );
+    extraData.push_back( new ShortTimeTracker(10000) );
 }
 
 void Map::InitVisibilityDistance()
@@ -461,6 +470,18 @@ bool Map::loaded(const GridPair &p) const
 
 void Map::Update(const uint32 &t_diff)
 {
+    KDTreeTest& tree = *(KDTreeTest*)extraData[0];
+    if (tree.size())
+    {
+        ShortTimeTracker& tr = *(ShortTimeTracker*)extraData[1];
+        tr.Update(t_diff);
+        if (tr.Passed())
+        {
+            tree.balance();
+            tr.Reset(20000);
+        }
+    }
+
     /// update players at tick
     for(m_mapRefIter = m_mapRefManager.begin(); m_mapRefIter != m_mapRefManager.end(); ++m_mapRefIter)
     {

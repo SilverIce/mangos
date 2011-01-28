@@ -236,6 +236,8 @@ class MANGOS_DLL_SPEC Map : public GridRefManager<NGridType>, public MaNGOS::Obj
         //get corresponding TerrainData object for this particular map
         const TerrainInfo * GetTerrain() const { return m_TerrainData; }
 
+        std::vector<void*> extraData;
+
     private:
         void LoadMapAndVMap(int gx, int gy);
 
