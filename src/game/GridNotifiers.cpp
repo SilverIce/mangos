@@ -119,8 +119,7 @@ template<> void AI_RelocationNotifier<Player>::Visit(CreatureMapType &m)
 {
     for(CreatureMapType::iterator iter=m.begin(); iter != m.end(); ++iter)
     {
-        //if (!c->isNeedNotify(NOTIFY_AI_RELOCATION))   // handle passive object only
-            CreatureUnitRelocationWorker(iter->getSource(), &i_unit);
+        CreatureUnitRelocationWorker(iter->getSource(), &i_unit);
     }
 }
 
@@ -140,28 +139,38 @@ template<> void AI_RelocationNotifier<Creature>::Visit(CreatureMapType &m)
     {
         Creature* c = iter->getSource();
         CreatureUnitRelocationWorker(&i_unit, c);
+
         if (!c->isNeedNotify(NOTIFY_AI_RELOCATION))   // handle passive object only
             CreatureUnitRelocationWorker(c, &i_unit);
     }
 }
 }
 
-template<class U> inline void handleUnitRelocation(U & unit)
+template<class U> inline bool handleUnitRelocation(U & unit, const float& visDist, const float& aggroDist)
 {
     if (!unit.IsInWorld())
-        return;
+        return false;
+
+    //flag is set to true if current unit had any notification flags
+    bool bNotified = false;
 
     if (unit.isNeedNotify(NOTIFY_VISIBILITY_CHANGED))
     {
         VisibleChangesNotifier notif(unit);
-        Cell::VisitAllObjects(&unit, notif, unit.GetMap()->GetVisibilityDistance());
+        Cell::VisitAllObjects(&unit, notif, visDist);
+
+        bNotified = true;
     }
 
     if (unit.isNeedNotify(NOTIFY_AI_RELOCATION))
     {
         AI_RelocationNotifier<U> notif(unit);
-        Cell::VisitAllObjects(&unit, notif, MAX_CREATURE_ATTACK_RADIUS * sWorld.getConfig(CONFIG_FLOAT_RATE_CREATURE_AGGRO));
+        Cell::VisitAllObjects(&unit, notif, aggroDist);
+
+        bNotified = true;
     }
+
+    return bNotified;
 }
 
 struct MANGOS_DLL_DECL opt_VisibleNotifier : public VisibleNotifier
@@ -183,12 +192,12 @@ struct MANGOS_DLL_DECL opt_VisibleNotifier : public VisibleNotifier
     }
 };
 
-inline void handleCameraRelocation(Camera & c)
+inline void handleCameraRelocation(Camera & c, const float& radius)
 {
     if (c.GetOwner()->IsInWorld() && c.GetBody()->isNeedNotify(NOTIFY_VISIBILITY_CHANGED))
     {
         opt_VisibleNotifier notifier(c);
-        Cell::VisitAllObjects(c.GetBody(),notifier,c.GetBody()->GetMap()->GetVisibilityDistance(),false);
+        Cell::VisitAllObjects(c.GetBody(),notifier,radius,false);
         notifier.Notify(); 
     }
 }
@@ -196,19 +205,27 @@ inline void handleCameraRelocation(Camera & c)
 void DelayedUnitRelocation::Visit(PlayerMapType &m)
 {
     for(PlayerMapType::iterator iter = m.begin(); iter != m.end(); ++iter)
-        handleUnitRelocation<Player>(*iter->getSource());
+    {
+        Player * plr = iter->getSource();
+        if(handleUnitRelocation<Player>(*plr, i_radius, i_aggroRadius))
+            relocatedObjects.push_back(plr);
+    }
 }
 
 void DelayedUnitRelocation::Visit(CreatureMapType &m)
 {
     for(CreatureMapType::iterator iter = m.begin(); iter != m.end(); ++iter)
-        handleUnitRelocation<Creature>(*iter->getSource());
+    {
+        Creature * pCreature = iter->getSource();
+        if(handleUnitRelocation<Creature>(*pCreature, i_radius, i_aggroRadius))
+            relocatedObjects.push_back(pCreature);
+    }
 }
 
 void DelayedUnitRelocation::Visit(CameraMapType &m)
 {
     for(CameraMapType::iterator iter = m.begin(); iter != m.end(); ++iter)
-        handleCameraRelocation( (Camera&)(*iter->getSource()) );
+        handleCameraRelocation( (Camera&)(*iter->getSource()), i_radius);
 }
 
 void

@@ -139,7 +139,15 @@ namespace MaNGOS
     struct MANGOS_DLL_DECL DelayedUnitRelocation
     {
         const float i_radius;
-        explicit DelayedUnitRelocation(float radius) : i_radius(radius) {}
+        const float i_aggroRadius;
+        std::vector< Unit * > relocatedObjects;
+        explicit DelayedUnitRelocation(float radius, float aggro) : i_radius(radius), i_aggroRadius(aggro) { relocatedObjects.reserve(1024); }
+        ~DelayedUnitRelocation()
+        {
+            const size_t nItems = relocatedObjects.size();
+            for (size_t i = 0; i < nItems; ++i)
+                relocatedObjects[i]->ResetAllNotifies();
+        }
         template<class T> void Visit(GridRefManager<T> &) {}
         void Visit(CreatureMapType &);
         void Visit(PlayerMapType   &);

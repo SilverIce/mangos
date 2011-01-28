@@ -235,8 +235,7 @@ class MANGOS_DLL_SPEC Map : public GridRefManager<NGridType>
             i_objectsToClientUpdate.erase( obj );
         }
 
-        static int32 m_VisibilityNotifyPeriod;
-
+        static void SetRelocationNotifyPeriod(int32 period) { m_VisibilityNotifyPeriod = period; }
         // DynObjects currently
         uint32 GenerateLocalLowGuid(HighGuid guidhigh);
 
@@ -284,6 +283,14 @@ class MANGOS_DLL_SPEC Map : public GridRefManager<NGridType>
 
         void SendObjectUpdates();
         std::set<Object *> i_objectsToClientUpdate;
+
+        //timer to deal with relocation notifies
+        PeriodicTimer m_relocationTimer;
+        //visibility notification period
+        static int32 m_VisibilityNotifyPeriod;
+        //specific varibale to help with randomizing relocation updates
+        static uint32 m_iTimerHelper;
+
     protected:
 
         MapEntry const* i_mapEntry;

@@ -766,7 +766,8 @@ void World::LoadConfigSettings(bool reload)
     setConfig(CONFIG_UINT32_TIMERBAR_FIRE_MAX,        "TimerBar.Fire.Max", 1);
 
     setConfig(CONFIG_BOOL_PET_UNSUMMON_AT_MOUNT,      "PetUnsummonAtMount", true);
-    Map::m_VisibilityNotifyPeriod = sConfig.GetIntDefault("Visibility.NotifyPeriod", DEFAULT_VISIBILITY_NOTIFY_PERIOD);
+    int32 period = sConfig.GetIntDefault("Visibility.NotifyPeriod", DEFAULT_VISIBILITY_NOTIFY_PERIOD);
+    Map::SetRelocationNotifyPeriod(period);
 
     m_VisibleUnitGreyDistance = sConfig.GetFloatDefault("Visibility.Distance.Grey.Unit", 1);
     if(m_VisibleUnitGreyDistance >  MAX_VISIBILITY_DISTANCE)

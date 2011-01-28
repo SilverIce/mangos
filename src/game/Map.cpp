@@ -40,6 +40,8 @@
 
 int32 Map::m_VisibilityNotifyPeriod = DEFAULT_VISIBILITY_NOTIFY_PERIOD;
 
+uint32 Map::m_iTimerHelper = 0;
+
 Map::~Map()
 {
     ObjectAccessor::DelinkMap(this);
@@ -71,7 +73,7 @@ Map::Map(uint32 id, time_t expiry, uint32 InstanceId, uint8 SpawnMode)
   i_id(id), i_InstanceId(InstanceId), m_unloadTimer(0),
   m_VisibleDistance(DEFAULT_VISIBILITY_DISTANCE), m_instanceSave(NULL),
   m_activeNonPlayersIter(m_activeNonPlayers.end()),
-  i_gridExpiry(expiry), m_TerrainData(sTerrainMgr.LoadTerrain(id))
+  i_gridExpiry(expiry), m_TerrainData(sTerrainMgr.LoadTerrain(id)), m_relocationTimer(m_VisibilityNotifyPeriod, (m_iTimerHelper += 200) % 2000)
 {
     for(unsigned int j=0; j < MAX_NUMBER_OF_GRIDS; ++j)
     {
@@ -553,8 +555,8 @@ void Map::Update(const uint32 &t_diff)
         }
     }
 
-    if(!m_mapRefManager.isEmpty() || !m_activeNonPlayers.empty())
-        ProcessRelocationNotifies(t_diff);
+    //process relocation notifications
+    ProcessRelocationNotifies(t_diff);
 
     // Send world objects and item update field changes
     SendObjectUpdates();
@@ -578,29 +580,27 @@ void Map::Update(const uint32 &t_diff)
         ScriptsProcess();
 }
 
-struct ResetNotifier
-{
-    template<class T>inline void resetNotify(GridRefManager<T> &m)
-    {
-        for(typename GridRefManager<T>::iterator iter=m.begin(); iter != m.end(); ++iter)
-            iter->getSource()->ResetAllNotifies();
-    }
-    template<class T> void Visit(GridRefManager<T> &) {}
-    void Visit(CreatureMapType &m) { resetNotify<Creature>(m);}
-    void Visit(PlayerMapType &m) { resetNotify<Player>(m);}
-};
-
 void Map::ProcessRelocationNotifies(uint32 diff)
 {
+    m_relocationTimer.TUpdate(diff);
+    if(!m_relocationTimer.TPassed())
+        return;
+
+    //reset visibility notification timer
+    m_relocationTimer.TReset(diff, m_VisibilityNotifyPeriod);
+
+    //if no active objects - return
+    if(m_mapRefManager.isEmpty() && m_activeNonPlayers.empty())
+        return;
+
+    //create relocation helper object which will keep track of all units we've relocated
+    MaNGOS::DelayedUnitRelocation cell_relocation(GetVisibilityDistance(), MAX_CREATURE_ATTACK_RADIUS * sWorld.getConfig(CONFIG_FLOAT_RATE_CREATURE_AGGRO));
+
     for(GridRefManager<NGridType>::iterator i = GridRefManager<NGridType>::begin(); i != GridRefManager<NGridType>::end(); ++i)
     {
         NGridType *grid = i->getSource();
 
         if (grid->GetGridState() != GRID_STATE_ACTIVE)
-            continue;
-
-        grid->getGridInfoRef()->getRelocationTimer().TUpdate(diff);
-        if (!grid->getGridInfoRef()->getRelocationTimer().TPassed())
             continue;
 
         uint32 gx = grid->getX(), gy = grid->getY();
@@ -619,47 +619,10 @@ void Map::ProcessRelocationNotifies(uint32 diff)
                 Cell cell(pair);
                 cell.SetNoCreate();
 
-                MaNGOS::DelayedUnitRelocation cell_relocation(GetVisibilityDistance());
                 TypeContainerVisitor<MaNGOS::DelayedUnitRelocation, GridTypeMapContainer  > grid_object_relocation(cell_relocation);
                 TypeContainerVisitor<MaNGOS::DelayedUnitRelocation, WorldTypeMapContainer > world_object_relocation(cell_relocation);
                 Visit(cell, grid_object_relocation);
                 Visit(cell, world_object_relocation);
-            }
-        }
-    }
-
-    ResetNotifier reset;
-    TypeContainerVisitor<ResetNotifier, GridTypeMapContainer >  grid_notifier(reset);
-    TypeContainerVisitor<ResetNotifier, WorldTypeMapContainer > world_notifier(reset);
-    for(GridRefManager<NGridType>::iterator i = GridRefManager<NGridType>::begin(); i != GridRefManager<NGridType>::end(); ++i)
-    {
-        NGridType *grid = i->getSource();
-
-        if (grid->GetGridState() != GRID_STATE_ACTIVE)
-            continue;
-
-        if (!grid->getGridInfoRef()->getRelocationTimer().TPassed())
-            continue;
-
-        grid->getGridInfoRef()->getRelocationTimer().TReset(diff, m_VisibilityNotifyPeriod);
-
-        uint32 gx = grid->getX(), gy = grid->getY();
-        CellPair cell_min(gx*MAX_NUMBER_OF_CELLS, gy*MAX_NUMBER_OF_CELLS);
-        CellPair cell_max(cell_min.x_coord + MAX_NUMBER_OF_CELLS, cell_min.y_coord+MAX_NUMBER_OF_CELLS);
-
-        for(uint32 x = cell_min.x_coord; x < cell_max.x_coord; ++x)
-        {
-            for(uint32 y = cell_min.y_coord; y < cell_max.y_coord; ++y)
-            {
-                uint32 cell_id = (y * TOTAL_NUMBER_OF_CELLS_PER_MAP) + x;
-                if(!isCellMarked(cell_id))
-                    continue;
-
-                CellPair pair(x,y);
-                Cell cell(pair);
-                cell.SetNoCreate();
-                Visit(cell, grid_notifier);
-                Visit(cell, world_notifier);
             }
         }
     }
