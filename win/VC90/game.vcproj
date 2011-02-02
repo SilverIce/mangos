@@ -1695,6 +1695,10 @@
 			Name="dynamic"
 			>
 			<File
+				RelativePath="..\..\src\game\GameobjKDTree.cpp"
+				>
+			</File>
+			<File
 				RelativePath="..\..\src\game\GameobjKDTree.h"
 				>
 			</File>

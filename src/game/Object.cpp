@@ -1160,7 +1160,7 @@ void WorldObject::Relocate(float x, float y, float z)
 }
 
 void WorldObject::SetOrientation(float orientation)
-{ 
+{
     m_orientation = orientation;
 
     if(isType(TYPEMASK_UNIT))
@@ -1295,14 +1295,16 @@ bool WorldObject::IsWithinLOS(float ox, float oy, float oz) const
     if (IsInWorld())
     {
         using namespace G3D;
-        struct AlwaysHit 
+        struct AlwaysHit
         {
             bool did_hit;
             AlwaysHit() : did_hit(false) {}
-            bool operator()(const Ray&, const KDtreeObject*, float& distance)
+            bool operator()(const Ray& r, const KDtreeObject* obj, float& distance)
             {
-                did_hit = true;
-                return true;
+                bool hit = obj->intersectRay(r, distance, true);
+                if (hit)
+                    did_hit = true;
+                return hit;
             }
         };
 
@@ -1319,7 +1321,7 @@ bool WorldObject::IsWithinLOS(float ox, float oy, float oz) const
             dyn_los = !callback.did_hit;
         }
     }
-    
+
     return static_los && dyn_los;
 }
 

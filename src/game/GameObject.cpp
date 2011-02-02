@@ -36,10 +36,49 @@
 #include "BattleGroundAV.h"
 #include "Util.h"
 #include "ScriptCalls.h"
+
 #include "GameobjKDTree.h"
+
+struct GOextraData
+{
+    ModelInstance_Overriden* model;
+
+public:
+
+    GOextraData() : model(0) {}
+
+    ~GOextraData()
+    {
+        delete model;
+    }
+
+    bool initCollision(const GameObject & go)
+    {
+        MANGOS_ASSERT(model == NULL);
+
+        GameObjectDisplayInfoEntry const* info = sGameObjectDisplayInfoStore.LookupEntry(go.GetGOInfo()->displayId);
+        if (!info)
+            return false;
+
+        ModelInstance_Overriden* mdl = new ModelInstance_Overriden();
+        if (!mdl->initialize(go, *info))
+        {
+            delete mdl;
+            return false;
+        }
+
+        model = mdl;
+        return true;
+    }
+
+    bool collisionEnabled() const{ return model;}
+};
+
 
 GameObject::GameObject() : WorldObject()
 {
+    extra = new GOextraData();
+
     m_objectType |= TYPEMASK_GAMEOBJECT;
     m_objectTypeId = TYPEID_GAMEOBJECT;
 
@@ -61,6 +100,7 @@ GameObject::GameObject() : WorldObject()
 
 GameObject::~GameObject()
 {
+    delete extra;
 }
 
 void GameObject::AddToWorld()
@@ -69,7 +109,11 @@ void GameObject::AddToWorld()
     if(!IsInWorld())
     {
         GetMap()->GetObjectsStore().insert<GameObject>(GetGUID(), (GameObject*)this);
-        ((KDTreeTest*)GetMap()->extraData[0])->insert(this);
+
+        if (extra->initCollision(*this))
+        {
+            ((KDTreeTest*)GetMap()->extraData[0])->insert(extra->model);
+        }
     }
 
     Object::AddToWorld();
@@ -93,7 +137,11 @@ void GameObject::RemoveFromWorld()
             }
         }
 
-        ((KDTreeTest*)GetMap()->extraData[0])->remove(this);
+        if (extra->collisionEnabled())
+        {
+            ((KDTreeTest*)GetMap()->extraData[0])->remove(extra->model);
+        }
+
         GetMap()->GetObjectsStore().erase<GameObject>(GetGUID(), (GameObject*)NULL);
     }
 
