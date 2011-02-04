@@ -37,7 +37,7 @@
 #include "InstanceSaveMgr.h"
 #include "VMapFactory.h"
 #include "BattleGroundMgr.h"
-#include "GameobjKDTree.h"
+#include "DynamicTree.h"
 
 struct ScriptAction
 {
@@ -102,7 +102,7 @@ Map::Map(uint32 id, time_t expiry, uint32 InstanceId, uint8 SpawnMode)
     //add reference for TerrainData object
     m_TerrainData->AddRef();
 
-    extraData.push_back( new KDTreeTest() );
+    extraData.push_back( new DynamicMapTree() );
     extraData.push_back( new ShortTimeTracker(10000) );
 }
 
@@ -468,17 +468,22 @@ bool Map::loaded(const GridPair &p) const
     return ( getNGrid(p.x_coord, p.y_coord) && isGridObjectDataLoaded(p.x_coord, p.y_coord) );
 }
 
+static int unbalanced_times_limit = 30;
+
 void Map::Update(const uint32 &t_diff)
 {
-    KDTreeTest& tree = *(KDTreeTest*)extraData[0];
+    DynamicMapTree& tree = *(DynamicMapTree*)extraData[0];
     if (tree.size())
     {
         ShortTimeTracker& tr = *(ShortTimeTracker*)extraData[1];
         tr.Update(t_diff);
+
         if (tr.Passed())
         {
-            tree.balance();
-            tr.Reset(20000);
+           tr.Reset(20000);
+
+           if (tree.unbalanced_times > unbalanced_times_limit)
+               tree.balance();
         }
     }
 

@@ -37,7 +37,8 @@
 #include "Util.h"
 #include "ScriptCalls.h"
 
-#include "GameobjKDTree.h"
+#include "GameobjectModel.h"
+#include "DynamicTree.h"
 
 struct GOextraData
 {
@@ -60,15 +61,8 @@ public:
         if (!info)
             return false;
 
-        ModelInstance_Overriden* mdl = new ModelInstance_Overriden();
-        if (!mdl->initialize(go, *info))
-        {
-            delete mdl;
-            return false;
-        }
-
-        model = mdl;
-        return true;
+        model = ModelInstance_Overriden::construct(go, *info);
+        return model != NULL;
     }
 
     bool collisionEnabled() const{ return model;}
@@ -112,7 +106,7 @@ void GameObject::AddToWorld()
 
         if (extra->initCollision(*this))
         {
-            ((KDTreeTest*)GetMap()->extraData[0])->insert(extra->model);
+            ((DynamicMapTree*)GetMap()->extraData[0])->insert(*extra->model);
         }
     }
 
@@ -139,7 +133,7 @@ void GameObject::RemoveFromWorld()
 
         if (extra->collisionEnabled())
         {
-            ((KDTreeTest*)GetMap()->extraData[0])->remove(extra->model);
+            ((DynamicMapTree*)GetMap()->extraData[0])->remove(*extra->model);
         }
 
         GetMap()->GetObjectsStore().erase<GameObject>(GetGUID(), (GameObject*)NULL);

@@ -1,13 +1,17 @@
 
 
-#include "VMapFactory.h"
-#include "VMapManager2.h"
-#include "G3D/stringutils.h"
+#include "vmap/VMapFactory.h"
+#include "vmap/VMapManager2.h"
 
-#include "GameobjKDTree.h"
 #include "GameObject.h"
 #include "World.h"
-#include "WorldModel.h"
+#include "GameobjectModel.h"
+
+ModelInstance_Overriden::~ModelInstance_Overriden()
+{
+    if (iModel)
+        ((VMAP::VMapManager2*)VMAP::VMapFactory::createOrGetVMapManager())->releaseModelInstance(name);
+}
 
 const char * GetPlainName(const char * FileName)
 {
@@ -25,12 +29,6 @@ void strToLower(char* str)
         *str=tolower(*str);
         ++str;
     }
-}
-
-ModelInstance_Overriden::~ModelInstance_Overriden()
-{
-    if (iModel)
-        ((VMAP::VMapManager2*)VMAP::VMapFactory::createOrGetVMapManager())->releaseModelInstance(name);
 }
 
 bool ModelInstance_Overriden::initialize(const GameObject & go, const GameObjectDisplayInfoEntry& info)
@@ -80,7 +78,14 @@ bool ModelInstance_Overriden::initialize(const GameObject & go, const GameObject
     return iModel != NULL;
 }
 
-ModelInstance_Overriden::ModelInstance_Overriden()
+ModelInstance_Overriden* ModelInstance_Overriden::construct(const class GameObject & go, const struct GameObjectDisplayInfoEntry& info)
 {
+    ModelInstance_Overriden* mdl = new ModelInstance_Overriden();
+    if (!mdl->initialize(go, info))
+    {
+        delete mdl;
+        return NULL;
+    }
 
+    return mdl;
 }
