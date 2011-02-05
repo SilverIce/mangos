@@ -1,6 +1,8 @@
 #ifndef VMAPEXPORT_H
 #define VMAPEXPORT_H
 
+#include <string>
+
 enum ModelFlags
 {
 	MOD_M2 = 1,
@@ -9,5 +11,7 @@ enum ModelFlags
 };
 
 extern const char * szWorkDirWmo;
+
+bool ExtractSingleWmo(std::string& fname);
 
 #endif
