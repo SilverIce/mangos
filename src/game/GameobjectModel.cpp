@@ -78,6 +78,7 @@ bool ModelInstance_Overriden::initialize(const GameObject & go, const GameObject
     iRot = Vector3(0, go.GetOrientation()*180.f/G3D::pi(), 0);
     iScale = go.GetObjectScale();
     iInvScale = 1.f/iScale;
+    name = it->second;
 
     G3D::Matrix3 iRotation = G3D::Matrix3::fromEulerAnglesZYX(G3D::pi()*iRot.y/180.f, G3D::pi()*iRot.x/180.f, G3D::pi()*iRot.z/180.f);
     iInvRot = iRotation.inverse();
@@ -91,7 +92,7 @@ bool ModelInstance_Overriden::initialize(const GameObject & go, const GameObject
 
     this->iBound = rotated_bounds + iPos;
 
-    return iModel != NULL;
+    return true;
 }
 
 ModelInstance_Overriden* ModelInstance_Overriden::construct(const class GameObject & go, const struct GameObjectDisplayInfoEntry& info)
