@@ -125,7 +125,7 @@ int ExtractWmo()
 
             int p = 0;
             //Select root wmo files
-            const char * rchr = strrchr(GetPlainName(fname->c_str()),0x5f);     // x05f is '_'
+            const char * rchr = strrchr(GetPlainName(fname->c_str()), '_');     // x05f is '_'
             if(rchr != NULL)
             {
                 char cpy[4];
@@ -143,11 +143,10 @@ int ExtractWmo()
 
             bool file_ok = true;
             std::cout << "Extracting " << *fname << std::endl;
-            WMORoot * froot = new WMORoot(*fname);
-            if(!froot->open())
+            WMORoot froot(*fname);
+            if(!froot.open())
             {
                 printf("Couldn't open RootWmo!!!\n");
-                delete froot;
                 continue;
             }
             FILE *output = fopen(szLocalFile,"wb");
@@ -156,12 +155,12 @@ int ExtractWmo()
                 printf("couldn't open %s for writing!\n", szLocalFile);
                 success = false;
             }
-            froot->ConvertToVMAPRootWmo(output);
+            froot.ConvertToVMAPRootWmo(output);
             int Wmo_nVertices = 0;
             //printf("root has %d groups\n", froot->nGroups);
-            if(froot->nGroups !=0)
+            if(froot.nGroups !=0)
             {
-                for (uint32 i=0; i<froot->nGroups; ++i)
+                for (uint32 i=0; i < froot.nGroups; ++i)
                 {
                     char temp[1024];
                     strcpy(temp, fname->c_str());
@@ -170,23 +169,22 @@ int ExtractWmo()
                     sprintf(groupFileName,"%s_%03d.wmo",temp, i);
                     //printf("Trying to open groupfile %s\n",groupFileName);
                     string s = groupFileName;
-                    WMOGroup * fgroup = new WMOGroup(s);
-                    if(!fgroup->open())
+
+                    WMOGroup fgroup(s);
+                    if(!fgroup.open())
                     {
                         printf("Could not open all Group file for: %s\n",GetPlainName(fname->c_str()));
                         file_ok = false;
                         break;
                     }
 
-                    Wmo_nVertices += fgroup->ConvertToVMAPGroupWmo(output, froot, preciseVectorData);
-                    delete fgroup;
+                    Wmo_nVertices += fgroup.ConvertToVMAPGroupWmo(output, &froot, preciseVectorData);
                 }
             }
 
             fseek(output, 8, SEEK_SET); // store the correct no of vertices
             fwrite(&Wmo_nVertices,sizeof(int),1,output);
             fclose(output);
-            delete froot;
 
             // Delete the extracted file in the case of an error
             if (!file_ok)
