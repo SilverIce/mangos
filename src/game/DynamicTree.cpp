@@ -44,7 +44,7 @@ struct KDTreeTest : public KDTree2<const ModelInstance*, BoundsTrait_>
 {
     KDTreeTest()
     {
-        assert(root);
+        MANGOS_ASSERT(!root && "root shouln't be created");
         root = new Node();
     }
 };
