@@ -84,7 +84,9 @@ void ExtractGameobjectModels()
 
         if (result)
         {
+            uint32 displayId = it->getUInt(0);
             uint32 path_length = strlen(name);
+            fwrite(&displayId, sizeof(uint32), 1, model_list);
             fwrite(&path_length, sizeof(uint32), 1, model_list);
             fwrite(name, sizeof(char), path_length, model_list);
         }
