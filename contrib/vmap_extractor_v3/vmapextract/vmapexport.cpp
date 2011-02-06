@@ -434,7 +434,6 @@ bool processArgv(int argc, char ** argv, const char *versionString)
     return result;
 }
 
-extern void ExtractGameobjectModels();
 
 //xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 // Main
