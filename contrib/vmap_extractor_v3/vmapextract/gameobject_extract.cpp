@@ -5,6 +5,35 @@
 
 #include <algorithm>
 
+bool ExtractSingleModel(std::string& fname)
+{
+    char * name = GetPlainName((char*)fname.c_str());
+    char * ext = GetExtension(name);
+
+    // < 3.1.0 ADT MMDX section store filename.mdx filenames for corresponded .m2 file
+    if (!strcmp(ext, ".mdx"))
+    {
+        // replace .mdx -> .m2
+        fname.erase(fname.length()-2,2);
+        fname.append("2");
+    }
+    // >= 3.1.0 ADT MMDX section store filename.m2 filenames for corresponded .m2 file
+    // nothing do
+
+    std::string output(szWorkDirWmo);
+    output += "/";
+    output += name;
+
+    if (FileExists(output.c_str()))
+        return true;
+
+    Model mdl(fname);
+    if (!mdl.open())
+        return false;
+
+    return mdl.ConvertToVMAPModel(output.c_str());
+}
+
 void ExtractGameobjectModels()
 {
     printf("Extracting GameObject models...");
