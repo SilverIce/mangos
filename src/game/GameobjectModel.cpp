@@ -18,33 +18,48 @@
 
 #include "vmap/VMapFactory.h"
 #include "vmap/VMapManager2.h"
+#include "vmap/VMapDefinitions.h"
 
 #include "GameObject.h"
 #include "World.h"
 #include "GameobjectModel.h"
 
+typedef UNORDERED_MAP<uint32, std::string> ModelList;
+ModelList model_list;
+
+void LoadGameObjectModelList()
+{
+    FILE * model_list_file = fopen((sWorld.GetDataPath() + "vmaps/" + VMAP::GAMEOBJECT_MODELS).c_str(), "rb");
+    if (!model_list_file)
+        return;
+
+    uint32 name_length, displayId;
+    char buff[500];
+    while (!feof(model_list_file))
+    {
+        fread(&displayId,sizeof(uint32),1,model_list_file);
+        fread(&name_length,sizeof(uint32),1,model_list_file);
+
+        if (name_length >= sizeof(buff))
+        {
+            std::cout << "\nFile '" << VMAP::GAMEOBJECT_MODELS << "' seems to be corrupted" << std::endl;
+            break;
+        }
+
+        fread(&buff,sizeof(char),name_length,model_list_file);
+
+        model_list.insert
+        (
+            ModelList::value_type(displayId, std::string(buff,name_length))
+        );
+    }
+    fclose(model_list_file);
+}
+
 ModelInstance_Overriden::~ModelInstance_Overriden()
 {
     if (iModel)
         ((VMAP::VMapManager2*)VMAP::VMapFactory::createOrGetVMapManager())->releaseModelInstance(name);
-}
-
-const char * GetPlainName(const char * FileName)
-{
-    const char * szTemp;
-
-    if((szTemp = strrchr(FileName, '\\')) != NULL)
-        FileName = szTemp + 1;
-    return FileName;
-}
-
-void strToLower(char* str)
-{
-    while(*str)
-    {
-        *str=tolower(*str);
-        ++str;
-    }
 }
 
 bool ModelInstance_Overriden::initialize(const GameObject & go, const GameObjectDisplayInfoEntry& info)
@@ -54,19 +69,11 @@ bool ModelInstance_Overriden::initialize(const GameObject & go, const GameObject
     if (mdl_box == G3D::AABox::zero())
         return false;
 
-    // 'World/Generic/Tree.mdx' for example
-    name = GetPlainName(info.filename);
-    strToLower((char*)name.c_str());
+    ModelList::const_iterator it = model_list.find(info.Displayid);
+    if (it == model_list.end())
+        return false;
 
-    std::string ext3 = name.size() >= 4 ? name.substr(name.size()-4,4) : "";
-    if(ext3 == ".mdx")
-    {
-        // replace .mdx -> .m2
-        name.erase(name.length()-2,2);
-        name.append("2");
-    }
-
-    iModel = ((VMAP::VMapManager2*)VMAP::VMapFactory::createOrGetVMapManager())->acquireModelInstance( sWorld.GetDataPath() + "vmaps/", name);
+    iModel = ((VMAP::VMapManager2*)VMAP::VMapFactory::createOrGetVMapManager())->acquireModelInstance(sWorld.GetDataPath() + "vmaps/", it->second);
 
     if (!iModel)
         return false;
