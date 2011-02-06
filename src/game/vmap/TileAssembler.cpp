@@ -179,18 +179,33 @@ namespace VMAP
         }
 
         // add an object models, listed in temp_gameobject_models file
-        if (FILE * model_list = fopen((iSrcDir + "/temp_gameobject_models").c_str(), "rb"))
+        if (FILE * model_list = fopen((iSrcDir + "/" + GAMEOBJECT_MODELS).c_str(), "rb"))
         {
-            uint32 name_length;
+            FILE * model_list_copy = fopen((iDestDir + "/" + GAMEOBJECT_MODELS).c_str(), "wb");
+
+            uint32 name_length, displayId;
             char buff[500];
             while (!feof(model_list))
             {
+                fread(&displayId,sizeof(uint32),1,model_list);
                 fread(&name_length,sizeof(uint32),1,model_list);
+
+                if (name_length >= sizeof(buff))
+                {
+                    std::cout << "\nFile 'temp_gameobject_models' seems to be corrupted" << std::endl;
+                    break;
+                }
+
                 fread(&buff,sizeof(char),name_length,model_list);
 
                 spawnedModelFiles.insert(std::string(buff, name_length));
+
+                fwrite(&displayId,sizeof(uint32),1,model_list_copy);
+                fwrite(&name_length,sizeof(uint32),1,model_list_copy);
+                fwrite(&buff,sizeof(char),name_length,model_list_copy);
             }
             fclose(model_list);
+            fclose(model_list_copy);
         }
 
         // export objects
