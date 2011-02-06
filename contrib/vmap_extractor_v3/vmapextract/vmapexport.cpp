@@ -75,6 +75,16 @@ void strToLower(char* str)
     }
 }
 
+bool FileExists(const char * file)
+{
+    if (FILE * n = fopen(file, "rb"))
+    {
+        fclose(n);
+        return true;
+    }
+    return false;
+}
+
 // copied from contrib/extractor/System.cpp
 void ReadLiquidTypeTableDBC()
 {

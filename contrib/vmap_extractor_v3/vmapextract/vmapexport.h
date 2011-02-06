@@ -12,6 +12,9 @@ enum ModelFlags
 
 extern const char * szWorkDirWmo;
 
+bool FileExists(const char * file);
+void strToLower(char* str);
+
 bool ExtractSingleWmo(std::string& fname);
 
 #endif
