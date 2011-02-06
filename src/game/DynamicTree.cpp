@@ -42,6 +42,11 @@ struct BoundsTrait_
 
 struct KDTreeTest : public KDTree2<const ModelInstance*, BoundsTrait_>
 {
+    KDTreeTest()
+    {
+        assert(root);
+        root = new Node();
+    }
 };
 
 DynamicMapTree::DynamicMapTree() : impl(*new KDTreeTest())
