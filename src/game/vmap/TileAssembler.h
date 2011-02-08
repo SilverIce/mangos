@@ -105,6 +105,7 @@ namespace VMAP
             bool readMapSpawns();
             bool calculateTransformedBound(ModelSpawn &spawn);
 
+            void exportGameobjectModels();
             bool convertRawFile(const std::string& pModelFilename);
             void setModelNameFilterMethod(bool (*pFilterMethod)(char *pName)) { iFilterMethod = pFilterMethod; }
             std::string getDirEntryNameFromModName(unsigned int pMapId, const std::string& pModPosName);
