@@ -19,12 +19,23 @@
 #include "vmap/VMapFactory.h"
 #include "vmap/VMapManager2.h"
 #include "vmap/VMapDefinitions.h"
+#include "vmap/WorldModel.h"
 
 #include "GameObject.h"
 #include "World.h"
 #include "GameobjectModel.h"
+#include "DBCStores.h"
 
-typedef UNORDERED_MAP<uint32, std::string> ModelList;
+struct GameobjectModelData
+{
+    GameobjectModelData(const std::string& name_, const G3D::AABox& box) :
+        name(name_), bound(box) {}
+
+    std::string name;
+    G3D::AABox bound;
+};
+
+typedef UNORDERED_MAP<uint32, GameobjectModelData> ModelList;
 ModelList model_list;
 
 void LoadGameObjectModelList()
@@ -47,10 +58,13 @@ void LoadGameObjectModelList()
         }
 
         fread(&buff,sizeof(char),name_length,model_list_file);
+        Vector3 v1, v2;
+        fread(&v1,sizeof(Vector3),1,model_list_file);
+        fread(&v2,sizeof(Vector3),1,model_list_file);
 
         model_list.insert
         (
-            ModelList::value_type(displayId, std::string(buff,name_length))
+            ModelList::value_type( displayId, GameobjectModelData(std::string(buff,name_length),G3D::AABox(v1,v2)) )
         );
     }
     fclose(model_list_file);
@@ -64,16 +78,19 @@ ModelInstance_Overriden::~ModelInstance_Overriden()
 
 bool ModelInstance_Overriden::initialize(const GameObject & go, const GameObjectDisplayInfoEntry& info)
 {
-    G3D::AABox mdl_box((Vector3&)info.bound[0], (Vector3&)info.bound[3]);
-    // ignore models with no bounds
-    if (mdl_box == G3D::AABox::zero())
-        return false;
-
     ModelList::const_iterator it = model_list.find(info.Displayid);
     if (it == model_list.end())
         return false;
 
-    iModel = ((VMAP::VMapManager2*)VMAP::VMapFactory::createOrGetVMapManager())->acquireModelInstance(sWorld.GetDataPath() + "vmaps/", it->second);
+    G3D::AABox mdl_box(it->second.bound);
+    // ignore models with no bounds
+    if (mdl_box == G3D::AABox::zero())
+    {
+        std::cout << "Model " << it->second.name << " has zero bounds, loading skipped" << std::endl;
+        return false;
+    }
+
+    iModel = ((VMAP::VMapManager2*)VMAP::VMapFactory::createOrGetVMapManager())->acquireModelInstance(sWorld.GetDataPath() + "vmaps/", it->second.name);
 
     if (!iModel)
         return false;
@@ -85,7 +102,7 @@ bool ModelInstance_Overriden::initialize(const GameObject & go, const GameObject
     iRot = Vector3(0, go.GetOrientation()*180.f/G3D::pi(), 0);
     iScale = go.GetObjectScale();
     iInvScale = 1.f/iScale;
-    name = it->second;
+    name = it->second.name;
 
     G3D::Matrix3 iRotation = G3D::Matrix3::fromEulerAnglesZYX(G3D::pi()*iRot.y/180.f, G3D::pi()*iRot.x/180.f, G3D::pi()*iRot.z/180.f);
     iInvRot = iRotation.inverse();
