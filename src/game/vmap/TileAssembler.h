@@ -96,6 +96,7 @@ namespace VMAP
             G3D::Table<std::string, unsigned int > iUniqueNameIds;
             unsigned int iCurrentUniqueNameId;
             MapData mapData;
+            std::set<std::string> spawnedModelFiles;
 
         public:
             TileAssembler(const std::string& pSrcDirName, const std::string& pDestDirName);

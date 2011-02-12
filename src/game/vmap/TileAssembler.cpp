@@ -70,7 +70,6 @@ namespace VMAP
 
     bool TileAssembler::convertWorld2()
     {
-        std::set<std::string> spawnedModelFiles;
         bool success = readMapSpawns();
         if (!success)
             return false;
@@ -334,10 +333,9 @@ namespace VMAP
     void TileAssembler::exportGameobjectModels()
     {
         FILE * model_list = fopen((iSrcDir + "/" + GAMEOBJECT_MODELS).c_str(), "rb");
-        if (!model_list)
+        FILE * model_list_copy = fopen((iDestDir + "/" + GAMEOBJECT_MODELS).c_str(), "wb");
+        if (!model_list || !model_list_copy)
             return;
-
-        FILE * model_list_copy = 0;
 
         uint32 name_length, displayId;
         char buff[500];
@@ -353,12 +351,36 @@ namespace VMAP
             }
 
             fread(&buff,sizeof(char),name_length,model_list);
+            std::string model_name(buff, name_length);
 
-            //spawnedModelFiles.insert(std::string(buff, name_length));
+            WorldModel_Raw raw_model;
+            if ( !raw_model.Read((iSrcDir + "/" + model_name).c_str()) )
+                continue;
+
+            spawnedModelFiles.insert(model_name);
+
+            AABox bounds;
+            bool boundEmpty = true;
+            for (uint32 g = 0; g < raw_model.groupsArray.size(); ++g)
+            {
+                std::vector<Vector3>& vertices = raw_model.groupsArray[g].vertexArray;
+
+                uint32 nvectors = vertices.size();
+                for (uint32 i = 0; i < nvectors; ++i)
+                {
+                    Vector3& v = vertices[i];
+                    if (boundEmpty)
+                        bounds = AABox(v, v), boundEmpty = false;
+                    else
+                        bounds.merge(v);
+                }
+            }
 
             fwrite(&displayId,sizeof(uint32),1,model_list_copy);
             fwrite(&name_length,sizeof(uint32),1,model_list_copy);
             fwrite(&buff,sizeof(char),name_length,model_list_copy);
+            fwrite(&bounds.low(),sizeof(Vector3),1,model_list_copy);
+            fwrite(&bounds.high(),sizeof(Vector3),1,model_list_copy);
         }
         fclose(model_list);
         fclose(model_list_copy);
