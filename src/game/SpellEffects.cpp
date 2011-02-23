@@ -57,6 +57,7 @@
 #include "GridNotifiers.h"
 #include "GridNotifiersImpl.h"
 #include "CellImpl.h"
+#include "Movement/MovementBase.h"
 
 pEffect SpellEffects[TOTAL_SPELL_EFFECTS]=
 {
@@ -4355,7 +4356,7 @@ void Spell::DoSummon(SpellEffectIndex eff_idx)
             x = m_targets.m_destX;
             y = m_targets.m_destY;
             z = m_targets.m_destZ;
-            spawnCreature->Relocate(m_targets.m_destX, m_targets.m_destY, m_targets.m_destZ, -m_caster->GetOrientation());
+            InitMovement(spawnCreature,Location(m_targets.m_destX, m_targets.m_destY, m_targets.m_destZ, -m_caster->GetOrientation()));
         }
 
         // set timer for unsummon
@@ -4386,7 +4387,7 @@ void Spell::DoSummon(SpellEffectIndex eff_idx)
     else
         m_caster->GetClosePoint(x, y, z, spawnCreature->GetObjectBoundingRadius());
 
-    spawnCreature->Relocate(x, y, z, -m_caster->GetOrientation());
+    InitMovement(spawnCreature,Location(x, y, z, -m_caster->GetOrientation()));
     spawnCreature->SetSummonPoint(x, y, z, -m_caster->GetOrientation());
 
     if (!spawnCreature->IsPositionValid())
@@ -4855,7 +4856,7 @@ void Spell::DoSummonGuardian(SpellEffectIndex eff_idx, uint32 forceFaction)
         else
             m_caster->GetClosePoint(px, py, pz,spawnCreature->GetObjectBoundingRadius());
 
-        spawnCreature->Relocate(px, py, pz, m_caster->GetOrientation());
+        InitMovement(spawnCreature,Location(px, py, pz, m_caster->GetOrientation()));
         spawnCreature->SetSummonPoint(px, py, pz, m_caster->GetOrientation());
 
         if (!spawnCreature->IsPositionValid())
@@ -5229,7 +5230,7 @@ void Spell::EffectSummonPet(SpellEffectIndex eff_idx)
             float px, py, pz;
             m_caster->GetClosePoint(px, py, pz, OldSummon->GetObjectBoundingRadius());
 
-            OldSummon->Relocate(px, py, pz, OldSummon->GetOrientation());
+            InitMovement(OldSummon,Location(px, py, pz, OldSummon->GetOrientation()));
             m_caster->GetMap()->Add((Creature*)OldSummon);
 
             if(m_caster->GetTypeId() == TYPEID_PLAYER && OldSummon->isControlled() )
@@ -5269,6 +5270,10 @@ void Spell::EffectSummonPet(SpellEffectIndex eff_idx)
 
     Map *map = m_caster->GetMap();
     uint32 pet_number = sObjectMgr.GeneratePetNumber();
+
+    // temporay way, need implement creature factory or something
+    InitMovement(NewSummon, (Location&)m_caster->GetLocation());
+
     if(!NewSummon->Create(map->GenerateLocalLowGuid(HIGHGUID_PET), map, m_caster->GetPhaseMask(),
         petentry, pet_number))
     {
@@ -5279,7 +5284,7 @@ void Spell::EffectSummonPet(SpellEffectIndex eff_idx)
     float px, py, pz;
     m_caster->GetClosePoint(px, py, pz, NewSummon->GetObjectBoundingRadius());
 
-    NewSummon->Relocate(px, py, pz, m_caster->GetOrientation());
+    InitMovement(NewSummon,Location(px, py, pz, m_caster->GetOrientation()));
 
     if(!NewSummon->IsPositionValid())
     {
@@ -7416,7 +7421,7 @@ void Spell::DoSummonTotem(SpellEffectIndex eff_idx, uint8 slot_dbc)
     if (fabs( z - m_caster->GetPositionZ() ) > 5)
         z = m_caster->GetPositionZ();
 
-    pTotem->Relocate(x, y, z, m_caster->GetOrientation());
+    InitMovement(pTotem, Location(x, y, z, m_caster->GetOrientation()));
     pTotem->SetSummonPoint(x, y, z, m_caster->GetOrientation());
 
     if (slot < MAX_TOTEM_SLOT)
@@ -7918,7 +7923,7 @@ void Spell::DoSummonCritter(SpellEffectIndex eff_idx, uint32 forceFaction)
      else
         m_caster->GetClosePoint(x, y, z, critter->GetObjectBoundingRadius());
 
-    critter->Relocate(x, y, z, m_caster->GetOrientation());
+    InitMovement(critter,Location(x, y, z, m_caster->GetOrientation()));
     critter->SetSummonPoint(x, y, z, m_caster->GetOrientation());
 
     if(!critter->IsPositionValid())

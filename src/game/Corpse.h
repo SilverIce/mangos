@@ -53,6 +53,8 @@ class Corpse : public WorldObject
         explicit Corpse( CorpseType type = CORPSE_BONES );
         ~Corpse( );
 
+        Movement::MovementBase * movement;
+
         void AddToWorld();
         void RemoveFromWorld();
 

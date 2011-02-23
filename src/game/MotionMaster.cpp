@@ -31,6 +31,7 @@
 #include "RandomMovementGenerator.h"
 
 #include <cassert>
+#include "Movement/UnitMovement.h"
 
 inline bool isStatic(MovementGenerator *mv)
 {
@@ -39,6 +40,8 @@ inline bool isStatic(MovementGenerator *mv)
 
 void MotionMaster::Initialize()
 {
+    m_owner->movement->SetListener(this);
+
     // stop current move
     if (!m_owner->IsStopped())
         m_owner->StopMoving();
@@ -455,4 +458,16 @@ void MotionMaster::UpdateFinalDistanceToTarget(float fDistance)
 {
     if (!empty())
         top()->UpdateFinalDistance(fDistance);
+}
+
+void MotionMaster::OnSplineDone()
+{
+    if (!empty())
+        top()->OnSplineDone(*m_owner);
+}
+
+void MotionMaster::OnEvent(int eventId, int data)
+{
+    if (!empty())
+        top()->OnEvent(*m_owner,eventId,data);
 }

@@ -17,7 +17,6 @@ EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "mangosd", "VC90\mangosd.vcproj", "{A3A04E47-43A2-4C08-90B3-029CEF558594}"
 	ProjectSection(ProjectDependencies) = postProject
 		{563E9905-3657-460C-AE63-0AC39D162E23} = {563E9905-3657-460C-AE63-0AC39D162E23}
-		{90297C34-F231-4DF4-848E-A74BCC0E40ED} = {90297C34-F231-4DF4-848E-A74BCC0E40ED}
 		{1DC6C4DA-A028-41F3-877D-D5400C594F88} = {1DC6C4DA-A028-41F3-877D-D5400C594F88}
 	EndProjectSection
 EndProject
@@ -47,6 +46,9 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "tbbmalloc", "VC90\tbbmalloc
 	EndProjectSection
 EndProject
 Global
+	GlobalSection(TestCaseManagementSettings) = postSolution
+		CategoryFile = Movement.vsmdi
+	EndGlobalSection
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug_NoPCH|Win32 = Debug_NoPCH|Win32
 		Debug_NoPCH|x64 = Debug_NoPCH|x64

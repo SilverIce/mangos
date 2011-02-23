@@ -31,6 +31,7 @@
 #include "WaypointMovementGenerator.h"
 #include "MapPersistentStateMgr.h"
 #include "ObjectMgr.h"
+#include "Movement/UnitMovement.h"
 
 void WorldSession::HandleMoveWorldportAckOpcode( WorldPacket & /*recv_data*/ )
 {
@@ -107,7 +108,7 @@ void WorldSession::HandleMoveWorldportAckOpcode()
         map = sMapMgr.CreateMap(loc.mapid, GetPlayer());
 
     GetPlayer()->SetMap(map);
-    GetPlayer()->Relocate(loc.coord_x, loc.coord_y, loc.coord_z, loc.orientation);
+    InitMovement(GetPlayer(), Location(loc.coord_x, loc.coord_y, loc.coord_z, loc.orientation));
 
     GetPlayer()->SendInitialPacketsBeforeAddToMap();
     // the CanEnter checks are done in TeleporTo but conditions may change
@@ -294,17 +295,30 @@ void WorldSession::HandleMovementOpcodes( WorldPacket & recv_data )
     /* process position-change */
     HandleMoverRelocation(movementInfo);
 
+    uint32 now = getMSTime();
+    {
+        using namespace Movement;
+        MovementState& mov = *mover->movement;
+        // Movement packets from server-side controlled units should be ignored
+        // or these packets shouldn't change movement state, at least
+        if (!mov.SplineEnabled())
+        {
+            recv_data.rpos(0);
+            recv_data >> ObjectGuid().ReadAsPacked();
+            ClientMoveEvent ev(recv_data.GetOpcode());
+            PacketBuilder::ReadClientStatus(ev.state,recv_data);
+            mov.ApplyEvent(ev);
+        }
+    }
+
+    movementInfo.UpdateTime(now);
+
     if (plMover)
         plMover->UpdateFallInformationIfNeed(movementInfo, opcode);
 
     // after move info set
     if (opcode == MSG_MOVE_SET_WALK_MODE || opcode == MSG_MOVE_SET_RUN_MODE)
         mover->UpdateWalkMode(mover, false);
-
-    WorldPacket data(opcode, recv_data.size());
-    data << mover->GetPackGUID();             // write guid
-    movementInfo.Write(data);                               // write data
-    mover->SendMessageToSetExcept(&data, _player);
 }
 
 void WorldSession::HandleForceSpeedChangeAckOpcodes(WorldPacket &recv_data)
@@ -392,6 +406,9 @@ void WorldSession::HandleSetActiveMoverOpcode(WorldPacket &recv_data)
             _player->GetMover()->GetGuidStr().c_str(), guid.GetString().c_str());
         return;
     }
+
+    using namespace Movement; 
+    _player->GetMover()->movement->SetControl(MovControlClient);
 }
 
 void WorldSession::HandleMoveNotActiveMoverOpcode(WorldPacket &recv_data)
@@ -416,6 +433,11 @@ void WorldSession::HandleMoveNotActiveMoverOpcode(WorldPacket &recv_data)
     }
 
     _player->m_movementInfo = mi;
+
+    using namespace Movement; 
+    if (Unit* old_mover = _player->GetMap()->GetUnit(old_mover_guid))
+        old_mover->movement->SetControl(MovControlServer);
+    _player->GetMover()->movement->SetControl(MovControlClient);
 }
 
 void WorldSession::HandleDismissControlledVehicle(WorldPacket &recv_data)
@@ -592,7 +614,7 @@ void WorldSession::HandleMoverRelocation(MovementInfo& movementInfo)
             plMover->SetInWater( !plMover->IsInWater() || plMover->GetTerrain()->IsUnderWater(movementInfo.GetPos()->x, movementInfo.GetPos()->y, movementInfo.GetPos()->z) );
         }
 
-        plMover->SetPosition(movementInfo.GetPos()->x, movementInfo.GetPos()->y, movementInfo.GetPos()->z, movementInfo.GetPos()->o);
+        //plMover->SetPosition(movementInfo.GetPos()->x, movementInfo.GetPos()->y, movementInfo.GetPos()->z, movementInfo.GetPos()->o);
         plMover->m_movementInfo = movementInfo;
 
         if(movementInfo.GetPos()->z < -500.0f)
@@ -628,7 +650,7 @@ void WorldSession::HandleMoverRelocation(MovementInfo& movementInfo)
     }
     else                                                    // creature charmed
     {
-        if (mover->IsInWorld())
-            mover->GetMap()->CreatureRelocation((Creature*)mover, movementInfo.GetPos()->x, movementInfo.GetPos()->y, movementInfo.GetPos()->z, movementInfo.GetPos()->o);
+        //if (mover->IsInWorld())
+            //mover->GetMap()->CreatureRelocation((Creature*)mover, movementInfo.GetPos()->x, movementInfo.GetPos()->y, movementInfo.GetPos()->z, movementInfo.GetPos()->o);
     }
 }

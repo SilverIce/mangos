@@ -442,12 +442,12 @@ enum UnitMoveType
 {
     MOVE_WALK           = 0,
     MOVE_RUN            = 1,
-    MOVE_RUN_BACK       = 2,
+    MOVE_SWIM_BACK      = 2,
     MOVE_SWIM           = 3,
-    MOVE_SWIM_BACK      = 4,
-    MOVE_TURN_RATE      = 5,
-    MOVE_FLIGHT         = 6,
-    MOVE_FLIGHT_BACK    = 7,
+    MOVE_RUN_BACK       = 4,
+    MOVE_FLIGHT         = 5,
+    MOVE_FLIGHT_BACK    = 6,
+    MOVE_TURN_RATE      = 7,
     MOVE_PITCH_RATE     = 8
 };
 
@@ -1497,8 +1497,10 @@ class MANGOS_DLL_SPEC Unit : public WorldObject
         void SetCharmerGuid(ObjectGuid owner) { SetGuidValue(UNIT_FIELD_CHARMEDBY, owner); }
         ObjectGuid const& GetCharmGuid() const { return GetGuidValue(UNIT_FIELD_CHARM); }
         void SetCharmGuid(ObjectGuid charm) { SetGuidValue(UNIT_FIELD_CHARM, charm); }
-        ObjectGuid const& GetTargetGuid() const { return GetGuidValue(UNIT_FIELD_TARGET); }
-        void SetTargetGuid(ObjectGuid targetGuid) { SetGuidValue(UNIT_FIELD_TARGET, targetGuid); }
+        ObjectGuid const& GetTargetGuid() const;
+        void SetTargetGuid(ObjectGuid targetGuid);
+        void SetTarget(Unit *target);
+        void ResetTarget();
         ObjectGuid const& GetChannelObjectGuid() const { return GetGuidValue(UNIT_FIELD_CHANNEL_OBJECT); }
         void SetChannelObjectGuid(ObjectGuid targetGuid) { SetGuidValue(UNIT_FIELD_CHANNEL_OBJECT, targetGuid); }
 
@@ -1896,6 +1898,8 @@ class MANGOS_DLL_SPEC Unit : public WorldObject
         float GetSpeed( UnitMoveType mtype ) const;
         float GetSpeedRate( UnitMoveType mtype ) const { return m_speed_rate[mtype]; }
         void SetSpeedRate(UnitMoveType mtype, float rate, bool forced = false);
+
+        Movement::MovementState * movement;
 
         void SetHover(bool on);
         bool isHover() const { return HasAuraType(SPELL_AURA_HOVER); }

@@ -30,6 +30,7 @@
 #include "revision.h"
 #include "revision_nr.h"
 #include "Util.h"
+#include "Movement\UnitMovement.h"
 
 bool ChatHandler::HandleHelpCommand(char* args)
 {
@@ -287,5 +288,49 @@ bool ChatHandler::HandleAccountLockCommand(char* args)
 bool ChatHandler::HandleServerMotdCommand(char* /*args*/)
 {
     PSendSysMessage(LANG_MOTD_CURRENT, sWorld.GetMotd());
+    return true;
+}
+
+extern void print_movement(const Movement::MovementState& st, std::string& str );
+
+bool ChatHandler::HandlePrintMovementState(char* args)
+{
+    Unit* u = getSelectedUnit();
+    if (!u)
+        return false;
+
+    char * p = ExtractArg(&args);
+    if (!p)
+        return false;
+
+    Movement::MovementState& st = *u->movement;
+
+    if (!strcmp(p, "print"))
+    {
+        std::string str;
+        print_movement(st, str);
+        PSendSysMessage("Movement state of unit: %s", u->GetName());
+        PSendSysMessage(str.c_str());
+    }
+
+    else if (!strcmp(p, "toggle_points"))
+    {
+        if (st.dbg_flags & 0x1)
+            st.dbg_flags &= ~0x1;
+        else
+            st.dbg_flags |= 0x1;
+        PSendSysMessage("Position visualization for %s turned %s", u->GetName(), (u->movement->dbg_flags & 0x1 ? "on":"off"));
+    }
+
+    else if (!strcmp(p, "test"))
+    {
+        uint32 anim = 0;
+        using namespace Movement;
+        ExtractUInt32(&args, anim);        
+        MoveSplineInit(*u->movement).MoveTo(m_session->GetPlayer()->GetVector3()).SetFly().SetAnimation((AnimType)anim,0).Launch();
+    }
+    else
+        return false;
+
     return true;
 }

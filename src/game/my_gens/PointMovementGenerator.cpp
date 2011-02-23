@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005-2011 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2005-2010 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,21 +23,34 @@
 #include "TemporarySummon.h"
 #include "DestinationHolderImp.h"
 #include "World.h"
+#include "Movement/UnitMovement.h"
+
+extern void GeneratePath(const Map*, G3D::Vector3, const G3D::Vector3&, std::vector<G3D::Vector3>&);
 
 //----- Point Movement Generator
 template<class T>
 void PointMovementGenerator<T>::Initialize(T &unit)
 {
-    if (!unit.IsStopped())
-        unit.StopMoving();
-
     unit.addUnitState(UNIT_STAT_ROAMING|UNIT_STAT_ROAMING_MOVE);
 
-    Traveller<T> traveller(unit);
-    i_destinationHolder.SetDestination(traveller, i_x, i_y, i_z);
+    arrived = false;
+    using namespace Movement;
 
-    if (unit.GetTypeId() == TYPEID_UNIT && ((Creature*)&unit)->CanFly())
-        ((Creature&)unit).AddSplineFlag(SPLINEFLAG_UNKNOWN7);
+    MovementState& state = *unit.movement;
+
+    MoveSplineInit init(state);
+    if (state.HasMode(MoveModeLevitation) || state.HasMode(MoveModeFly))
+    {
+        init.SetFly().MoveTo( Vector3(i_x,i_y,i_z) );
+    }
+    else
+    {
+        PointsArray path;
+        GeneratePath(unit.GetMap(),state.GetPosition3(),Vector3(i_x,i_y,i_z), path);
+        init.MovebyPath(path);
+    }
+
+    init.Launch();
 }
 
 template<class T>
@@ -75,21 +88,25 @@ bool PointMovementGenerator<T>::Update(T &unit, const uint32 &diff)
 
     unit.addUnitState(UNIT_STAT_ROAMING_MOVE);
 
-    Traveller<T> traveller(unit);
-    if (i_destinationHolder.UpdateTraveller(traveller, diff, false))
-    {
-        if (!IsActive(unit))                                // force stop processing (movement can move out active zone with cleanup movegens list)
-            return true;                                    // not expire now, but already lost
-    }
+    if (!IsActive(unit))                                // force stop processing (movement can move out active zone with cleanup movegens list)
+        return true;                                    // not expire now, but already lost
 
-    if(i_destinationHolder.HasArrived())
-    {
-        unit.clearUnitState(UNIT_STAT_ROAMING_MOVE);
-        MovementInform(unit);
-        return false;
-    }
+    return !arrived;
+}
 
-    return true;
+template<>
+void PointMovementGenerator<Player>::OnSplineDone( Unit& unit )
+{
+    unit.clearUnitState(UNIT_STAT_MOVING);
+    arrived = true;
+}
+
+template<>
+void PointMovementGenerator<Creature>::OnSplineDone( Unit& unit )
+{
+    unit.clearUnitState(UNIT_STAT_MOVING);
+    MovementInform((Creature&)unit);
+    arrived = true;
 }
 
 template<>

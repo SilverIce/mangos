@@ -45,6 +45,7 @@
 #include "GridNotifiers.h"
 #include "GridNotifiersImpl.h"
 #include "CellImpl.h"
+#include "Movement/UnitMovement.h"
 
 // apply implementation of the singletons
 #include "Policies/SingletonImp.h"
@@ -1253,16 +1254,18 @@ bool Creature::LoadFromDB(uint32 guidlow, Map *map)
     else
         guidlow = sObjectMgr.GenerateLowGuid(HIGHGUID_UNIT);
 
-    if (!Create(guidlow, map, data->phaseMask, data->id, TEAM_NONE, data, eventData))
-        return false;
-
-    Relocate(data->posX, data->posY, data->posZ, data->orientation);
+    InitMovement(this, Location(data->posX, data->posY, data->posZ, data->orientation));
 
     if(!IsPositionValid())
     {
         sLog.outError("Creature (guidlow %d, entry %d) not loaded. Suggested coordinates isn't valid (X: %f Y: %f)", GetGUIDLow(), GetEntry(), GetPositionX(), GetPositionY());
         return false;
     }
+
+    if (!Create(guidlow, map, data->phaseMask, data->id, TEAM_NONE, data, eventData))
+        return false;
+
+    movement->Fly(CanFly());
 
     m_respawnradius = data->spawndist;
 
@@ -1279,7 +1282,7 @@ bool Creature::LoadFromDB(uint32 guidlow, Map *map)
         {
             float tz = GetTerrain()->GetHeight(data->posX, data->posY, data->posZ, false);
             if(data->posZ - tz > 0.1)
-                Relocate(data->posX, data->posY, tz);
+                InitMovement(this, Location(data->posX, data->posY, tz, data->orientation));
         }
     }
     else if(m_respawnTime)                                  // respawn time set but expired
@@ -1431,7 +1434,7 @@ void Creature::SetDeathState(DeathState s)
 
     if (s == JUST_DIED)
     {
-        SetTargetGuid(ObjectGuid());                        // remove target selection in any cases (can be set at aura remove in Unit::SetDeathState)
+        ResetTarget();                        // remove target selection in any cases (can be set at aura remove in Unit::SetDeathState)
         SetUInt32Value(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_NONE);
 
         if (HasSearchedAssistance())
@@ -1486,25 +1489,10 @@ bool Creature::FallGround()
 
     Unit::SetDeathState(CORPSE_FALLING);
 
-    float dz = tz - GetPositionZ();
-    float distance = sqrt(dz*dz);
-
-    // default run speed * 2 explicit, not verified though but result looks proper
-    double speed = baseMoveSpeed[MOVE_RUN] * 2;
-
-    speed *= 0.001;                                         // to milliseconds
-
-    uint32 travelTime = uint32(distance/speed);
-
-    DEBUG_LOG("FallGround: traveltime: %u, distance: %f, speed: %f, from %f to %f", travelTime, distance, speed, GetPositionZ(), tz);
-
-    // For creatures that are moving towards target and dies, the visual effect is not nice.
-    // It is possibly caused by a xyz mismatch in DestinationHolder's GetLocationNow and the location
-    // of the mob in client. For mob that are already reached target or dies while not moving
-    // the visual appear to be fairly close to the expected.
-
-    GetMap()->CreatureRelocation(this, GetPositionX(), GetPositionY(), tz, GetOrientation());
-    SendMonsterMove(GetPositionX(), GetPositionY(), tz, SPLINETYPE_NORMAL, SPLINEFLAG_FALLING, travelTime);
+    {
+        using namespace Movement;
+        MoveSplineInit(*movement).MoveTo(Vector3(GetPositionX(),GetPositionY(),tz)).SetFall().Launch();
+    }
     return true;
 }
 

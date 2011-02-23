@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2005-2011 MaNGOS <http://getmangos.com/>
+* Copyright (C) 2005-2010 MaNGOS <http://getmangos.com/>
 *
 * This program is free software; you can redistribute it and/or modify
 * it under the terms of the GNU General Public License as published by
@@ -28,13 +28,15 @@ class MANGOS_DLL_SPEC FleeingMovementGenerator
 : public MovementGeneratorMedium< T, FleeingMovementGenerator<T> >
 {
     public:
-        FleeingMovementGenerator(uint64 fright) : i_frightGUID(fright), i_nextCheckTime(0) {}
+        FleeingMovementGenerator(uint64 fright) : i_frightGUID(fright), i_nextCheckTime(0), arrived(false) {}
 
         void Initialize(T &);
         void Finalize(T &);
         void Interrupt(T &);
         void Reset(T &);
         bool Update(T &, const uint32 &);
+
+        void OnSplineDone(Unit&);
 
         MovementGeneratorType GetMovementGeneratorType() const { return FLEEING_MOTION_TYPE; }
 
@@ -57,7 +59,7 @@ class MANGOS_DLL_SPEC FleeingMovementGenerator
         uint64 i_frightGUID;
         TimeTracker i_nextCheckTime;
 
-        DestinationHolder< Traveller<T> > i_destinationHolder;
+        bool arrived;
 };
 
 class MANGOS_DLL_SPEC TimedFleeingMovementGenerator

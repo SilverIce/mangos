@@ -43,6 +43,7 @@
 #include <map>
 
 #include "TargetedMovementGenerator.h"                      // for HandleNpcUnFollowCommand
+#include "Movement/MovementBase.h"
 
 static uint32 ReputationRankStrIndex[MAX_REPUTATION_RANK] =
 {
@@ -1004,7 +1005,7 @@ bool ChatHandler::HandleGameObjectMoveCommand(char* args)
         Map* map = obj->GetMap();
         map->Remove(obj,false);
 
-        obj->Relocate(chr->GetPositionX(), chr->GetPositionY(), chr->GetPositionZ(), obj->GetOrientation());
+        InitMovement(obj,Location(chr->GetPositionX(), chr->GetPositionY(), chr->GetPositionZ(), obj->GetOrientation()));
 
         map->Add(obj);
     }
@@ -1032,7 +1033,7 @@ bool ChatHandler::HandleGameObjectMoveCommand(char* args)
         Map* map = obj->GetMap();
         map->Remove(obj,false);
 
-        obj->Relocate(x, y, z, obj->GetOrientation());
+        InitMovement(obj,Location(x, y, z, obj->GetOrientation()));
 
         map->Add(obj);
     }
@@ -1565,7 +1566,7 @@ bool ChatHandler::HandleNpcAddCommand(char* args)
         return false;
     }
 
-    pCreature->Relocate(x,y,z,o);
+    InitMovement(pCreature, Location(x,y,z,o));
 
     if (!pCreature->IsPositionValid())
     {
@@ -3190,7 +3191,7 @@ bool ChatHandler::HandleWpModifyCommand(char* args)
         }
         else
         {
-            wpCreature->Relocate(chr->GetPositionX(), chr->GetPositionY(), chr->GetPositionZ(), chr->GetOrientation());
+            InitMovement(wpCreature,Location(chr->GetPositionX(), chr->GetPositionY(), chr->GetPositionZ(), chr->GetOrientation()));
 
             if (!wpCreature->IsPositionValid())
             {
@@ -3310,7 +3311,7 @@ bool ChatHandler::HandleWpModifyCommand(char* args)
                     return false;
                 }
 
-                wpCreature2->Relocate(chr->GetPositionX(), chr->GetPositionY(), chr->GetPositionZ(), chr->GetOrientation());
+                InitMovement(wpCreature2,Location(chr->GetPositionX(), chr->GetPositionY(), chr->GetPositionZ(), chr->GetOrientation()));
 
                 if (!wpCreature2->IsPositionValid())
                 {
@@ -3615,7 +3616,7 @@ bool ChatHandler::HandleWpShowCommand(char* args)
                 return false;
             }
 
-            wpCreature->Relocate(x, y, z, o);
+            InitMovement(wpCreature,Location(x, y, z, o));
 
             if (!wpCreature->IsPositionValid())
             {
@@ -3673,7 +3674,7 @@ bool ChatHandler::HandleWpShowCommand(char* args)
             return false;
         }
 
-        pCreature->Relocate(x, y, z, o);
+        InitMovement(pCreature,Location(x, y, z, o));
 
         if (!pCreature->IsPositionValid())
         {
@@ -3733,7 +3734,7 @@ bool ChatHandler::HandleWpShowCommand(char* args)
             return false;
         }
 
-        pCreature->Relocate(x, y, z, o);
+        InitMovement(pCreature, Location(x, y, z, o));
 
         if (!pCreature->IsPositionValid())
         {

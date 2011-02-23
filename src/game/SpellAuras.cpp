@@ -4163,7 +4163,7 @@ void Aura::HandleAuraModStun(bool apply, bool Real)
             target->ModifyAuraState(AURA_STATE_FROZEN, apply);
 
         target->addUnitState(UNIT_STAT_STUNNED);
-        target->SetTargetGuid(ObjectGuid());
+        target->ResetTarget();
 
         target->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_STUNNED);
         target->CastStop(target->GetObjectGuid() == GetCasterGuid() ? GetId() : 0);
@@ -4233,7 +4233,7 @@ void Aura::HandleAuraModStun(bool apply, bool Real)
         if(!target->hasUnitState(UNIT_STAT_ROOT))         // prevent allow move if have also root effect
         {
             if(target->getVictim() && target->isAlive())
-                target->SetTargetGuid(target->getVictim()->GetObjectGuid());
+                target->SetTarget(target->getVictim());
 
             WorldPacket data(SMSG_FORCE_MOVE_UNROOT, 8+4);
             data << target->GetPackGUID();
@@ -4450,7 +4450,7 @@ void Aura::HandleAuraModRoot(bool apply, bool Real)
             target->ModifyAuraState(AURA_STATE_FROZEN, apply);
 
         target->addUnitState(UNIT_STAT_ROOT);
-        target->SetTargetGuid(ObjectGuid());
+        target->ResetTarget();
 
         //Save last orientation
         if( target->getVictim() )
@@ -4503,7 +4503,7 @@ void Aura::HandleAuraModRoot(bool apply, bool Real)
         if(!target->hasUnitState(UNIT_STAT_STUNNED))      // prevent allow move if have also stun effect
         {
             if(target->getVictim() && target->isAlive())
-                target->SetTargetGuid(target->getVictim()->GetObjectGuid());
+                target->SetTarget(target->getVictim());
 
             if(target->GetTypeId() == TYPEID_PLAYER)
             {

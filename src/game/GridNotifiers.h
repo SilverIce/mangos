@@ -72,9 +72,9 @@ namespace MaNGOS
     {
         uint32        i_phaseMask;
         WorldPacket*  i_message;
-        Player const* i_skipped_receiver;
+        WorldObject const* i_skipped_receiver;
 
-        MessageDelivererExcept(WorldObject const* obj, WorldPacket *msg, Player const* skipped)
+        MessageDelivererExcept(WorldObject const* obj, WorldPacket *msg, WorldObject const* skipped)
             : i_phaseMask(obj->GetPhaseMask()), i_message(msg), i_skipped_receiver(skipped) {}
 
         void Visit(CameraMapType &m);

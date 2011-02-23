@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="Windows-1252"?>
 <VisualStudioProject
 	ProjectType="Visual C++"
-	Version="9,00"
+	Version="9.00"
 	Name="game"
 	ProjectGUID="{1DC6C4DA-A028-41F3-877D-D5400C594F88}"
 	RootNamespace="game"
@@ -47,7 +47,7 @@
 				Name="VCCLCompilerTool"
 				AdditionalOptions="/MP /Zm200"
 				Optimization="0"
-				AdditionalIncludeDirectories="..\..\dep\include;..\..\src\framework;..\..\src\shared;..\..\src\game\vmap;..\..\dep\ACE_wrappers;..\..\dep\include\g3dlite"
+				AdditionalIncludeDirectories="..\..\dep\include;..\..\src\framework;..\..\src\shared;..\..\src\game\vmap;..\..\dep\ACE_wrappers;..\..\dep\include\g3dlite;e:\Development\Movement\;e:\Development\MovementMangos\src\game\;..\..\src\game\my_gens\"
 				PreprocessorDefinitions="WIN32;_DEBUG;MANGOS_DEBUG;_LIB;"
 				StringPooling="false"
 				MinimalRebuild="false"
@@ -64,10 +64,171 @@
 				WarningLevel="3"
 				SuppressStartupBanner="true"
 				Detect64BitPortabilityProblems="false"
-				DebugInformationFormat="3"
+				DebugInformationFormat="1"
 				CallingConvention="0"
 				CompileAs="0"
 				ForcedIncludeFiles="pchdef.h"
+			/>
+			<Tool
+				Name="VCManagedResourceCompilerTool"
+			/>
+			<Tool
+				Name="VCResourceCompilerTool"
+				PreprocessorDefinitions="_DEBUG"
+				Culture="1033"
+			/>
+			<Tool
+				Name="VCPreLinkEventTool"
+			/>
+			<Tool
+				Name="VCLibrarianTool"
+				OutputFile=".\game__$(PlatformName)_$(ConfigurationName)\game.lib"
+				SuppressStartupBanner="true"
+			/>
+			<Tool
+				Name="VCALinkTool"
+			/>
+			<Tool
+				Name="VCXDCMakeTool"
+			/>
+			<Tool
+				Name="VCBscMakeTool"
+			/>
+			<Tool
+				Name="VCFxCopTool"
+			/>
+			<Tool
+				Name="VCPostBuildEventTool"
+			/>
+		</Configuration>
+		<Configuration
+			Name="Release|Win32"
+			OutputDirectory=".\game__$(PlatformName)_$(ConfigurationName)"
+			IntermediateDirectory=".\game__$(PlatformName)_$(ConfigurationName)"
+			ConfigurationType="4"
+			UseOfMFC="0"
+			ATLMinimizesCRunTimeLibraryUsage="false"
+			CharacterSet="2"
+			>
+			<Tool
+				Name="VCPreBuildEventTool"
+			/>
+			<Tool
+				Name="VCCustomBuildTool"
+			/>
+			<Tool
+				Name="VCXMLDataGeneratorTool"
+			/>
+			<Tool
+				Name="VCWebServiceProxyGeneratorTool"
+			/>
+			<Tool
+				Name="VCMIDLTool"
+			/>
+			<Tool
+				Name="VCCLCompilerTool"
+				AdditionalOptions="/MP /Zm200"
+				InlineFunctionExpansion="1"
+				AdditionalIncludeDirectories="..\..\dep\include;..\..\src\framework;..\..\src\shared;..\..\src\game\vmap;..\..\dep\ACE_wrappers;..\..\dep\include\g3dlite;e:\Development\Movement\;e:\Development\MovementMangos\src\game\;..\..\src\game\my_gens\"
+				PreprocessorDefinitions="WIN32;NDEBUG;_LIB;_SECURE_SCL=0"
+				StringPooling="true"
+				RuntimeLibrary="2"
+				EnableFunctionLevelLinking="true"
+				EnableEnhancedInstructionSet="1"
+				RuntimeTypeInfo="true"
+				UsePrecompiledHeader="2"
+				PrecompiledHeaderThrough="pchdef.h"
+				PrecompiledHeaderFile=".\game__$(PlatformName)_$(ConfigurationName)\game.pch"
+				AssemblerListingLocation=".\game__$(PlatformName)_$(ConfigurationName)\"
+				ObjectFile=".\game__$(PlatformName)_$(ConfigurationName)\"
+				ProgramDataBaseFileName=".\game__$(PlatformName)_$(ConfigurationName)\"
+				WarningLevel="3"
+				SuppressStartupBanner="true"
+				Detect64BitPortabilityProblems="false"
+				DebugInformationFormat="1"
+				CallingConvention="0"
+				CompileAs="0"
+				ForcedIncludeFiles="pchdef.h"
+			/>
+			<Tool
+				Name="VCManagedResourceCompilerTool"
+			/>
+			<Tool
+				Name="VCResourceCompilerTool"
+				PreprocessorDefinitions="NDEBUG"
+				Culture="1033"
+			/>
+			<Tool
+				Name="VCPreLinkEventTool"
+			/>
+			<Tool
+				Name="VCLibrarianTool"
+				OutputFile=".\game__$(PlatformName)_$(ConfigurationName)\game.lib"
+				SuppressStartupBanner="true"
+			/>
+			<Tool
+				Name="VCALinkTool"
+			/>
+			<Tool
+				Name="VCXDCMakeTool"
+			/>
+			<Tool
+				Name="VCBscMakeTool"
+			/>
+			<Tool
+				Name="VCFxCopTool"
+			/>
+			<Tool
+				Name="VCPostBuildEventTool"
+			/>
+		</Configuration>
+		<Configuration
+			Name="Debug_NoPCH|Win32"
+			OutputDirectory=".\game__$(PlatformName)_$(ConfigurationName)"
+			IntermediateDirectory=".\game__$(PlatformName)_$(ConfigurationName)"
+			ConfigurationType="4"
+			UseOfMFC="0"
+			ATLMinimizesCRunTimeLibraryUsage="false"
+			CharacterSet="2"
+			>
+			<Tool
+				Name="VCPreBuildEventTool"
+			/>
+			<Tool
+				Name="VCCustomBuildTool"
+			/>
+			<Tool
+				Name="VCXMLDataGeneratorTool"
+			/>
+			<Tool
+				Name="VCWebServiceProxyGeneratorTool"
+			/>
+			<Tool
+				Name="VCMIDLTool"
+			/>
+			<Tool
+				Name="VCCLCompilerTool"
+				AdditionalOptions="/MP"
+				Optimization="0"
+				AdditionalIncludeDirectories="..\..\dep\include;..\..\src\framework;..\..\src\shared;..\..\src\game\vmap;..\..\dep\ACE_wrappers;..\..\dep\include\g3dlite;e:\Development\Movement\;e:\Development\MovementMangos\src\game\;..\..\src\game\my_gens\"
+				PreprocessorDefinitions="WIN32;_DEBUG;MANGOS_DEBUG;_LIB;"
+				StringPooling="false"
+				MinimalRebuild="false"
+				BasicRuntimeChecks="3"
+				RuntimeLibrary="3"
+				EnableFunctionLevelLinking="true"
+				RuntimeTypeInfo="true"
+				UsePrecompiledHeader="0"
+				PrecompiledHeaderFile=".\game__$(PlatformName)_$(ConfigurationName)\game.pch"
+				AssemblerListingLocation=".\game__$(PlatformName)_$(ConfigurationName)\"
+				ObjectFile=".\game__$(PlatformName)_$(ConfigurationName)\"
+				ProgramDataBaseFileName=".\game__$(PlatformName)_$(ConfigurationName)\"
+				WarningLevel="3"
+				SuppressStartupBanner="true"
+				Detect64BitPortabilityProblems="false"
+				DebugInformationFormat="1"
+				CallingConvention="0"
+				CompileAs="0"
 			/>
 			<Tool
 				Name="VCManagedResourceCompilerTool"
@@ -186,87 +347,6 @@
 			/>
 		</Configuration>
 		<Configuration
-			Name="Release|Win32"
-			OutputDirectory=".\game__$(PlatformName)_$(ConfigurationName)"
-			IntermediateDirectory=".\game__$(PlatformName)_$(ConfigurationName)"
-			ConfigurationType="4"
-			UseOfMFC="0"
-			ATLMinimizesCRunTimeLibraryUsage="false"
-			CharacterSet="2"
-			>
-			<Tool
-				Name="VCPreBuildEventTool"
-			/>
-			<Tool
-				Name="VCCustomBuildTool"
-			/>
-			<Tool
-				Name="VCXMLDataGeneratorTool"
-			/>
-			<Tool
-				Name="VCWebServiceProxyGeneratorTool"
-			/>
-			<Tool
-				Name="VCMIDLTool"
-			/>
-			<Tool
-				Name="VCCLCompilerTool"
-				AdditionalOptions="/MP /Zm200"
-				InlineFunctionExpansion="1"
-				AdditionalIncludeDirectories="..\..\dep\include;..\..\src\framework;..\..\src\shared;..\..\src\game\vmap;..\..\dep\ACE_wrappers;..\..\dep\include\g3dlite"
-				PreprocessorDefinitions="WIN32;NDEBUG;_LIB;_SECURE_SCL=0"
-				StringPooling="true"
-				RuntimeLibrary="2"
-				EnableFunctionLevelLinking="true"
-				EnableEnhancedInstructionSet="1"
-				RuntimeTypeInfo="true"
-				UsePrecompiledHeader="2"
-				PrecompiledHeaderThrough="pchdef.h"
-				PrecompiledHeaderFile=".\game__$(PlatformName)_$(ConfigurationName)\game.pch"
-				AssemblerListingLocation=".\game__$(PlatformName)_$(ConfigurationName)\"
-				ObjectFile=".\game__$(PlatformName)_$(ConfigurationName)\"
-				ProgramDataBaseFileName=".\game__$(PlatformName)_$(ConfigurationName)\"
-				WarningLevel="3"
-				SuppressStartupBanner="true"
-				Detect64BitPortabilityProblems="false"
-				DebugInformationFormat="3"
-				CallingConvention="0"
-				CompileAs="0"
-				ForcedIncludeFiles="pchdef.h"
-			/>
-			<Tool
-				Name="VCManagedResourceCompilerTool"
-			/>
-			<Tool
-				Name="VCResourceCompilerTool"
-				PreprocessorDefinitions="NDEBUG"
-				Culture="1033"
-			/>
-			<Tool
-				Name="VCPreLinkEventTool"
-			/>
-			<Tool
-				Name="VCLibrarianTool"
-				OutputFile=".\game__$(PlatformName)_$(ConfigurationName)\game.lib"
-				SuppressStartupBanner="true"
-			/>
-			<Tool
-				Name="VCALinkTool"
-			/>
-			<Tool
-				Name="VCXDCMakeTool"
-			/>
-			<Tool
-				Name="VCBscMakeTool"
-			/>
-			<Tool
-				Name="VCFxCopTool"
-			/>
-			<Tool
-				Name="VCPostBuildEventTool"
-			/>
-		</Configuration>
-		<Configuration
 			Name="Release|x64"
 			OutputDirectory=".\game__$(PlatformName)_$(ConfigurationName)"
 			IntermediateDirectory=".\game__$(PlatformName)_$(ConfigurationName)"
@@ -330,86 +410,6 @@
 			<Tool
 				Name="VCLibrarianTool"
 				AdditionalDependencies=".\shared__$(PlatformName)_$(ConfigurationName)\shared.lib .\g3dlite__$(PlatformName)_$(ConfigurationName)\g3dlite.lib"
-				OutputFile=".\game__$(PlatformName)_$(ConfigurationName)\game.lib"
-				SuppressStartupBanner="true"
-			/>
-			<Tool
-				Name="VCALinkTool"
-			/>
-			<Tool
-				Name="VCXDCMakeTool"
-			/>
-			<Tool
-				Name="VCBscMakeTool"
-			/>
-			<Tool
-				Name="VCFxCopTool"
-			/>
-			<Tool
-				Name="VCPostBuildEventTool"
-			/>
-		</Configuration>
-		<Configuration
-			Name="Debug_NoPCH|Win32"
-			OutputDirectory=".\game__$(PlatformName)_$(ConfigurationName)"
-			IntermediateDirectory=".\game__$(PlatformName)_$(ConfigurationName)"
-			ConfigurationType="4"
-			UseOfMFC="0"
-			ATLMinimizesCRunTimeLibraryUsage="false"
-			CharacterSet="2"
-			>
-			<Tool
-				Name="VCPreBuildEventTool"
-			/>
-			<Tool
-				Name="VCCustomBuildTool"
-			/>
-			<Tool
-				Name="VCXMLDataGeneratorTool"
-			/>
-			<Tool
-				Name="VCWebServiceProxyGeneratorTool"
-			/>
-			<Tool
-				Name="VCMIDLTool"
-			/>
-			<Tool
-				Name="VCCLCompilerTool"
-				AdditionalOptions="/MP"
-				Optimization="0"
-				AdditionalIncludeDirectories="..\..\dep\include;..\..\src\framework;..\..\src\shared;..\..\src\game\vmap;..\..\dep\ACE_wrappers;..\..\dep\include\g3dlite"
-				PreprocessorDefinitions="WIN32;_DEBUG;MANGOS_DEBUG;_LIB;"
-				StringPooling="false"
-				MinimalRebuild="false"
-				BasicRuntimeChecks="3"
-				RuntimeLibrary="3"
-				EnableFunctionLevelLinking="true"
-				RuntimeTypeInfo="true"
-				UsePrecompiledHeader="0"
-				PrecompiledHeaderFile=".\game__$(PlatformName)_$(ConfigurationName)\game.pch"
-				AssemblerListingLocation=".\game__$(PlatformName)_$(ConfigurationName)\"
-				ObjectFile=".\game__$(PlatformName)_$(ConfigurationName)\"
-				ProgramDataBaseFileName=".\game__$(PlatformName)_$(ConfigurationName)\"
-				WarningLevel="3"
-				SuppressStartupBanner="true"
-				Detect64BitPortabilityProblems="false"
-				DebugInformationFormat="3"
-				CallingConvention="0"
-				CompileAs="0"
-			/>
-			<Tool
-				Name="VCManagedResourceCompilerTool"
-			/>
-			<Tool
-				Name="VCResourceCompilerTool"
-				PreprocessorDefinitions="_DEBUG"
-				Culture="1033"
-			/>
-			<Tool
-				Name="VCPreLinkEventTool"
-			/>
-			<Tool
-				Name="VCLibrarianTool"
 				OutputFile=".\game__$(PlatformName)_$(ConfigurationName)\game.lib"
 				SuppressStartupBanner="true"
 			/>
@@ -1027,11 +1027,11 @@
 			Name="Motion generators"
 			>
 			<File
-				RelativePath="..\..\src\game\ConfusedMovementGenerator.cpp"
+				RelativePath="..\..\src\game\my_gens\ConfusedMovementGenerator.cpp"
 				>
 			</File>
 			<File
-				RelativePath="..\..\src\game\ConfusedMovementGenerator.h"
+				RelativePath="..\..\src\game\my_gens\ConfusedMovementGenerator.h"
 				>
 			</File>
 			<File
@@ -1047,27 +1047,27 @@
 				>
 			</File>
 			<File
-				RelativePath="..\..\src\game\FleeingMovementGenerator.cpp"
+				RelativePath="..\..\src\game\my_gens\FleeingMovementGenerator.cpp"
 				>
 			</File>
 			<File
-				RelativePath="..\..\src\game\FleeingMovementGenerator.h"
+				RelativePath="..\..\src\game\my_gens\FleeingMovementGenerator.h"
 				>
 			</File>
 			<File
-				RelativePath="..\..\src\game\HomeMovementGenerator.cpp"
+				RelativePath="..\..\src\game\my_gens\HomeMovementGenerator.cpp"
 				>
 			</File>
 			<File
-				RelativePath="..\..\src\game\HomeMovementGenerator.h"
+				RelativePath="..\..\src\game\my_gens\HomeMovementGenerator.h"
 				>
 			</File>
 			<File
-				RelativePath="..\..\src\game\IdleMovementGenerator.cpp"
+				RelativePath="..\..\src\game\my_gens\IdleMovementGenerator.cpp"
 				>
 			</File>
 			<File
-				RelativePath="..\..\src\game\IdleMovementGenerator.h"
+				RelativePath="..\..\src\game\my_gens\IdleMovementGenerator.h"
 				>
 			</File>
 			<File
@@ -1087,27 +1087,31 @@
 				>
 			</File>
 			<File
-				RelativePath="..\..\src\game\PointMovementGenerator.cpp"
+				RelativePath="..\..\src\game\MovementGeneratorImpl.h"
 				>
 			</File>
 			<File
-				RelativePath="..\..\src\game\PointMovementGenerator.h"
+				RelativePath="..\..\src\game\my_gens\PointMovementGenerator.cpp"
 				>
 			</File>
 			<File
-				RelativePath="..\..\src\game\RandomMovementGenerator.cpp"
+				RelativePath="..\..\src\game\my_gens\PointMovementGenerator.h"
 				>
 			</File>
 			<File
-				RelativePath="..\..\src\game\RandomMovementGenerator.h"
+				RelativePath="..\..\src\game\my_gens\RandomMovementGenerator.cpp"
 				>
 			</File>
 			<File
-				RelativePath="..\..\src\game\TargetedMovementGenerator.cpp"
+				RelativePath="..\..\src\game\my_gens\RandomMovementGenerator.h"
 				>
 			</File>
 			<File
-				RelativePath="..\..\src\game\TargetedMovementGenerator.h"
+				RelativePath="..\..\src\game\my_gens\TargetedMovementGenerator.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\src\game\my_gens\TargetedMovementGenerator.h"
 				>
 			</File>
 			<File
@@ -1115,11 +1119,11 @@
 				>
 			</File>
 			<File
-				RelativePath="..\..\src\game\WaypointMovementGenerator.cpp"
+				RelativePath="..\..\src\game\my_gens\WaypointMovementGenerator.cpp"
 				>
 			</File>
 			<File
-				RelativePath="..\..\src\game\WaypointMovementGenerator.h"
+				RelativePath="..\..\src\game\my_gens\WaypointMovementGenerator.h"
 				>
 			</File>
 		</Filter>
@@ -1707,6 +1711,170 @@
 				>
 			</File>
 		</Filter>
+		<Filter
+			Name="Movement"
+			>
+			<File
+				RelativePath="..\..\..\Movement\Movement\MoveListener.h"
+				>
+			</File>
+			<File
+				RelativePath="..\..\..\Movement\Movement\movement_lib.h"
+				>
+			</File>
+			<File
+				RelativePath="..\..\..\Movement\Movement\MovementBase.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\..\Movement\Movement\MovementBase.h"
+				>
+			</File>
+			<File
+				RelativePath="..\..\..\Movement\Movement\UnitMovement.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\..\Movement\Movement\UnitMovement.h"
+				>
+			</File>
+			<Filter
+				Name="util"
+				>
+				<File
+					RelativePath="..\..\..\Movement\Movement\outLog.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\..\..\Movement\Movement\util.cpp"
+					>
+				</File>
+			</Filter>
+			<Filter
+				Name="constants"
+				>
+				<File
+					RelativePath="..\..\..\Movement\Movement\globals.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\..\..\Movement\Movement\mov_constants.h"
+					>
+				</File>
+				<File
+					RelativePath="..\..\..\Movement\Movement\opcodes.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\..\..\Movement\Movement\opcodes.h"
+					>
+				</File>
+			</Filter>
+			<Filter
+				Name="sketches"
+				>
+				<File
+					RelativePath="..\..\..\Movement\Movement\ClientMoveStatus.h"
+					>
+				</File>
+				<File
+					RelativePath="..\..\..\Movement\Movement\MoveUpdater.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\..\..\Movement\Movement\MoveUpdater.h"
+					>
+				</File>
+				<File
+					RelativePath="..\..\..\Movement\Movement\Session.h"
+					>
+					<FileConfiguration
+						Name="Release|Win32"
+						ExcludedFromBuild="true"
+						>
+						<Tool
+							Name="VCCustomBuildTool"
+						/>
+					</FileConfiguration>
+				</File>
+				<File
+					RelativePath="..\..\..\Movement\Movement\UnitMoveFlags.h"
+					>
+				</File>
+			</Filter>
+			<Filter
+				Name="common"
+				>
+				<File
+					RelativePath="..\..\..\Movement\Movement\LinkedList.h"
+					>
+				</File>
+				<File
+					RelativePath="..\..\..\Movement\Movement\typedefs.h"
+					>
+				</File>
+			</Filter>
+			<Filter
+				Name="packet_builder"
+				>
+				<File
+					RelativePath="..\..\..\Movement\Movement\ByteBufferExtensions.h"
+					>
+				</File>
+				<File
+					RelativePath="..\..\..\Movement\Movement\packet_builder.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\..\..\Movement\Movement\packet_builder.h"
+					>
+				</File>
+			</Filter>
+			<Filter
+				Name="spline"
+				>
+				<File
+					RelativePath="..\..\..\Movement\Movement\spline.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\..\..\Movement\Movement\spline.h"
+					>
+				</File>
+				<File
+					RelativePath="..\..\..\Movement\Movement\spline.impl.h"
+					>
+				</File>
+			</Filter>
+			<Filter
+				Name="move_spline"
+				>
+				<File
+					RelativePath="..\..\..\Movement\Movement\MoveSpline.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\..\..\Movement\Movement\MoveSpline.h"
+					>
+				</File>
+				<File
+					RelativePath="..\..\..\Movement\Movement\MoveSplineFlag.h"
+					>
+				</File>
+				<File
+					RelativePath="..\..\..\Movement\Movement\MoveSplineInit.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\..\..\Movement\Movement\MoveSplineInit.h"
+					>
+				</File>
+				<File
+					RelativePath="..\..\..\Movement\Movement\MoveSplineInitArgs.h"
+					>
+				</File>
+			</Filter>
+		</Filter>
 		<File
 			RelativePath="..\..\src\game\pchdef.cpp"
 			>
@@ -1720,7 +1888,7 @@
 				/>
 			</FileConfiguration>
 			<FileConfiguration
-				Name="Debug|x64"
+				Name="Release|Win32"
 				>
 				<Tool
 					Name="VCCLCompilerTool"
@@ -1729,7 +1897,7 @@
 				/>
 			</FileConfiguration>
 			<FileConfiguration
-				Name="Release|Win32"
+				Name="Debug|x64"
 				>
 				<Tool
 					Name="VCCLCompilerTool"

@@ -574,7 +574,6 @@ void WorldSession::HandlePlayerLogin(LoginQueryHolder *holder)
     ObjectGuid playerGuid = holder->GetGuid();
 
     Player *pCurrChar = new Player(this);
-    pCurrChar->GetMotionMaster()->Initialize();
 
     // "GetAccountId()==db stored account id" checked in LoadFromDB (prevent login not own character using cheating tools)
     if(!pCurrChar->LoadFromDB(playerGuid, holder))
@@ -585,6 +584,8 @@ void WorldSession::HandlePlayerLogin(LoginQueryHolder *holder)
         m_playerLoading = false;
         return;
     }
+
+    pCurrChar->GetMotionMaster()->Initialize();
 
     SetPlayer(pCurrChar);
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005-2011 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2005-2010 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,10 +22,13 @@
 #include "DestinationHolderImp.h"
 #include "Map.h"
 #include "Util.h"
+#include "Movement/UnitMovement.h"
 
-template<>
-void
-RandomMovementGenerator<Creature>::_setRandomLocation(Creature &creature)
+extern void GeneratePath(const Map*, G3D::Vector3, const G3D::Vector3&, std::vector<G3D::Vector3>&);
+
+using G3D::Vector3;
+
+bool GenerateCoord(const Creature &creature, Vector3& v)
 {
     float respX, respY, respZ, respO, currZ, destX, destY, destZ, wander_distance, travelDistZ;
 
@@ -40,7 +43,7 @@ RandomMovementGenerator<Creature>::_setRandomLocation(Creature &creature)
     bool is_air_ok = creature.CanFly();
 
     const float angle = rand_norm_f() * (M_PI_F*2.0f);
-    const float range = rand_norm_f() * wander_distance;
+    const float range = rand_norm_f()*wander_distance*4.f;
     const float distanceX = range * cos(angle);
     const float distanceY = range * sin(angle);
 
@@ -62,7 +65,7 @@ RandomMovementGenerator<Creature>::_setRandomLocation(Creature &creature)
 
         // Problem here, we must fly above the ground and water, not under. Let's try on next tick
         if (levelZ >= destZ)
-            return;
+            return false;
     }
     //else if (is_water_ok)                                 // 3D system under water and above ground (swimming mode)
     else                                                    // 2D only
@@ -86,27 +89,72 @@ RandomMovementGenerator<Creature>::_setRandomLocation(Creature &creature)
 
                 // let's forget this bad coords where a z cannot be find and retry at next tick
                 if (fabs(destZ - respZ) > travelDistZ)
-                    return;
+                    return false;
             }
         }
     }
+    v = Vector3(destX,destY,destZ);
+    return true;
+}
 
-    Traveller<Creature> traveller(creature);
+enum{
+    RANDOM_POINTS_MIN = 1,
+    RANDOM_POINTS_MAX = 3,
+};
 
-    creature.SetOrientation(creature.GetAngle(destX, destY));
-    i_destinationHolder.SetDestination(traveller, destX, destY, destZ);
-    creature.addUnitState(UNIT_STAT_ROAMING_MOVE);
-
-    if (is_air_ok)
+template<>
+void
+RandomMovementGenerator<Creature>::_setRandomLocation(Creature &creature)
+{
+    Vector3 v;
+    Movement::PointsArray path;
+    uint32 points_count = urand(RANDOM_POINTS_MIN, RANDOM_POINTS_MAX);
+    for (uint32 i = 0; i < 2; ++i)
     {
-        i_nextMoveTime.Reset(i_destinationHolder.GetTotalTravelTime());
-        creature.AddSplineFlag(SPLINEFLAG_UNKNOWN7);
+        if (!GenerateCoord(creature, v))
+            return;
+        path.push_back(v);
+    }
+    
+    {
+        using namespace Movement;
+
+        MovementState& state = *creature.movement;
+
+        MoveSplineInit init(state);
+        if (state.HasMode(MoveModeLevitation) || state.HasMode(MoveModeFly))
+        {
+            init.SetFly();
+            init.MovebyPath(path);
+            // walk mode - 90% chance, hovever not offlike
+            state.Walk(urand(0,3));
+        }
+        else
+        {
+            //PointsArray path;
+            //GeneratePath(creature.GetMap(),state.GetPosition3(),Vector3(destX, destY, destZ), path);
+            // walk mode - 90% chance, hovever not offlike
+            state.Walk(urand(0,9));
+            init.MovebyPath(path);
+        }
+        init.Launch();
+    }
+
+    creature.addUnitState(UNIT_STAT_ROAMING_MOVE);
+}
+
+template<class T>
+void RandomMovementGenerator<T>::OnSplineDone( Unit& unit )
+{
+    using namespace Movement;
+    if (unit.movement->HasMode(MoveModeLevitation)||unit.movement->HasMode(MoveModeFly))
+    {
+        i_nextMoveTime.Reset(10000);
     }
     //else if (is_water_ok)                                 // Swimming mode to be done with more than this check
     else
     {
-        i_nextMoveTime.Reset(urand(500+i_destinationHolder.GetTotalTravelTime(), 10000+i_destinationHolder.GetTotalTravelTime()));
-        creature.AddSplineFlag(SPLINEFLAG_WALKMODE);
+        i_nextMoveTime.Reset(urand(500,10000));
     }
 }
 
@@ -115,11 +163,6 @@ void RandomMovementGenerator<Creature>::Initialize(Creature &creature)
 {
     if (!creature.isAlive())
         return;
-
-    if (creature.CanFly())
-        creature.AddSplineFlag(SPLINEFLAG_UNKNOWN7);
-    else
-        creature.AddSplineFlag(SPLINEFLAG_WALKMODE);
 
     creature.addUnitState(UNIT_STAT_ROAMING|UNIT_STAT_ROAMING_MOVE);
     _setRandomLocation(creature);
@@ -153,36 +196,17 @@ bool RandomMovementGenerator<Creature>::Update(Creature &creature, const uint32 
         return true;
     }
 
-    i_nextMoveTime.Update(diff);
+    if (!IsActive(creature))                        // force stop processing (movement can move out active zone with cleanup movegens list)
+        return true;                                // not expire now, but already lost
 
-    if (i_destinationHolder.HasArrived() && !creature.IsStopped() && !creature.CanFly())
-        creature.clearUnitState(UNIT_STAT_ROAMING_MOVE);
-
-    if (!i_destinationHolder.HasArrived() && creature.IsStopped())
-        creature.addUnitState(UNIT_STAT_ROAMING_MOVE);
-
-    CreatureTraveller traveller(creature);
-
-    if (i_destinationHolder.UpdateTraveller(traveller, diff, false, true))
+    if (!i_nextMoveTime.Passed())
     {
-        if (!IsActive(creature))                        // force stop processing (movement can move out active zone with cleanup movegens list)
-            return true;                                // not expire now, but already lost
+        i_nextMoveTime.Update(diff);
 
         if (i_nextMoveTime.Passed())
-        {
-            if (creature.CanFly())
-                creature.AddSplineFlag(SPLINEFLAG_UNKNOWN7);
-            else
-                creature.AddSplineFlag(SPLINEFLAG_WALKMODE);
-
             _setRandomLocation(creature);
-        }
-        else if (creature.IsPet() && creature.GetOwner() && !creature.IsWithinDist(creature.GetOwner(), PET_FOLLOW_DIST+2.5f))
-        {
-            creature.AddSplineFlag(SPLINEFLAG_WALKMODE);
-            _setRandomLocation(creature);
-        }
     }
+
     return true;
 }
 

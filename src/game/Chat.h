@@ -480,6 +480,7 @@ class ChatHandler
         bool HandleServerSetMotdCommand(char* args);
         bool HandleServerShutDownCommand(char* args);
         bool HandleServerShutDownCancelCommand(char* args);
+        bool HandlePrintMovementState(char* args);
 
         bool HandleTeleCommand(char* args);
         bool HandleTeleAddCommand(char* args);

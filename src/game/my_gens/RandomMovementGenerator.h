@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005-2011 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2005-2010 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,34 +16,34 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#ifndef MANGOS_CONFUSEDMOVEMENTGENERATOR_H
-#define MANGOS_CONFUSEDMOVEMENTGENERATOR_H
+#ifndef MANGOS_RANDOMMOTIONGENERATOR_H
+#define MANGOS_RANDOMMOTIONGENERATOR_H
 
 #include "MovementGenerator.h"
 #include "DestinationHolder.h"
 #include "Traveller.h"
 
-#define MAX_CONF_WAYPOINTS 24
-
 template<class T>
-class MANGOS_DLL_SPEC ConfusedMovementGenerator
-: public MovementGeneratorMedium< T, ConfusedMovementGenerator<T> >
+class MANGOS_DLL_SPEC RandomMovementGenerator
+: public MovementGeneratorMedium< T, RandomMovementGenerator<T> >
 {
     public:
-        explicit ConfusedMovementGenerator() : i_nextMoveTime(0) {}
+        explicit RandomMovementGenerator(const Unit &) : i_nextMoveTime(0) {}
 
+        void _setRandomLocation(T &);
         void Initialize(T &);
         void Finalize(T &);
         void Interrupt(T &);
         void Reset(T &);
         bool Update(T &, const uint32 &);
+        MovementGeneratorType GetMovementGeneratorType() const { return RANDOM_MOTION_TYPE; }
 
-        MovementGeneratorType GetMovementGeneratorType() const { return CONFUSED_MOTION_TYPE; }
+        void OnSplineDone(Unit&);
+        bool GetResetPosition(T&, float& x, float& y, float& z);
     private:
-        void _InitSpecific(T &, bool &, bool &);
-        TimeTracker i_nextMoveTime;
-        float i_waypoints[MAX_CONF_WAYPOINTS+1][3];
-        DestinationHolder< Traveller<T> > i_destinationHolder;
+        ShortTimeTracker i_nextMoveTime;
+
         uint32 i_nextMove;
 };
+
 #endif

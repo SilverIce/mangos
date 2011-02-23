@@ -26,6 +26,7 @@
 #include "GossipDef.h"
 #include "World.h"
 #include "ObjectMgr.h"
+#include "Movement/UnitMovement.h"
 
 Corpse::Corpse(CorpseType type) : WorldObject()
 {
@@ -41,10 +42,12 @@ Corpse::Corpse(CorpseType type) : WorldObject()
     m_time = time(NULL);
 
     lootForBody = false;
+    movement = NULL;
 }
 
 Corpse::~Corpse()
 {
+    delete movement;
 }
 
 void Corpse::AddToWorld()
@@ -60,7 +63,10 @@ void Corpse::RemoveFromWorld()
 {
     ///- Remove the corpse from the accessor
     if(IsInWorld())
+    {
         sObjectAccessor.RemoveObject(this);
+        movement->CleanReferences();
+    }
 
     Object::RemoveFromWorld();
 }
@@ -76,7 +82,7 @@ bool Corpse::Create( uint32 guidlow, Player *owner)
     MANGOS_ASSERT(owner);
 
     WorldObject::_Create(guidlow, HIGHGUID_CORPSE, owner->GetPhaseMask());
-    Relocate(owner->GetPositionX(), owner->GetPositionY(), owner->GetPositionZ(), owner->GetOrientation());
+    InitMovement(this, (Location&)owner->GetLocation());
 
     //we need to assign owner's map for corpse
     //in other way we will get a crash in Corpse::SaveToDB()
@@ -236,7 +242,7 @@ bool Corpse::LoadFromDB(uint32 lowguid, Field *fields)
     SetLocationInstanceId(instanceid);
     SetLocationMapId(mapid);
     SetPhaseMask(phaseMask, false);
-    Relocate(positionX, positionY, positionZ, orientation);
+    InitMovement(this, Location(positionX, positionY, positionZ, orientation));
 
     if(!IsPositionValid())
     {

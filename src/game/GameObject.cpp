@@ -37,6 +37,7 @@
 #include "BattleGroundAV.h"
 #include "Util.h"
 #include "ScriptMgr.h"
+#include "Movement/UnitMovement.h"
 
 GameObject::GameObject() : WorldObject()
 {
@@ -57,10 +58,12 @@ GameObject::GameObject() : WorldObject()
 
     m_DBTableGuid = 0;
     m_rotation = 0;
+    movement = NULL;
 }
 
 GameObject::~GameObject()
 {
+    delete movement;
 }
 
 void GameObject::AddToWorld()
@@ -91,6 +94,7 @@ void GameObject::RemoveFromWorld()
         }
 
         GetMap()->GetObjectsStore().erase<GameObject>(GetGUID(), (GameObject*)NULL);
+        movement->CleanReferences();
     }
 
     Object::RemoveFromWorld();
@@ -99,7 +103,7 @@ void GameObject::RemoveFromWorld()
 bool GameObject::Create(uint32 guidlow, uint32 name_id, Map *map, uint32 phaseMask, float x, float y, float z, float ang, float rotation0, float rotation1, float rotation2, float rotation3, uint8 animprogress, GOState go_state)
 {
     MANGOS_ASSERT(map);
-    Relocate(x,y,z,ang);
+    InitMovement(this, Location(x,y,z,ang));
     SetMap(map);
     SetPhaseMask(phaseMask,false);
 

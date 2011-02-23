@@ -32,6 +32,7 @@
 #include "ObjectMgr.h"
 #include "ObjectGuid.h"
 #include "SpellMgr.h"
+#include "Movement/UnitMovement.h"
 
 bool ChatHandler::HandleDebugSendSpellFailCommand(char* args)
 {
@@ -674,7 +675,7 @@ bool ChatHandler::HandleDebugSpawnVehicleCommand(char* args)
     float px, py, pz;
     m_session->GetPlayer()->GetClosePoint(px, py, pz, m_session->GetPlayer()->GetObjectBoundingRadius());
 
-    v->Relocate(px, py, pz, m_session->GetPlayer()->GetOrientation());
+    InitMovement(v, Location(px, py, pz, m_session->GetPlayer()->GetOrientation()));
 
     if (!v->IsPositionValid())
     {
@@ -719,11 +720,35 @@ bool ChatHandler::HandleDebugSendSetPhaseShiftCommand(char* args)
 //show animation
 bool ChatHandler::HandleDebugAnimCommand(char* args)
 {
-    uint32 emote_id;
-    if (!ExtractUInt32(&args, emote_id))
+    Player*pl = m_session->GetPlayer();
+    std::string comm = strtok((char*)args, " ");
+
+    char * v = strtok(NULL, " ");
+    if (!v)
         return false;
 
-    m_session->GetPlayer()->HandleEmoteCommand(emote_id);
+    uint32 val = atoi(v);
+
+    if(comm == "model")
+    {
+        if(val!=0)
+        {
+            pl->SetUInt32Value(UNIT_FIELD_DISPLAYID, val);
+            pl->SetUInt32Value(UNIT_FIELD_NATIVEDISPLAYID, val);
+        }
+    }
+    else if(comm == "skin")
+        pl->SetByteValue(PLAYER_BYTES,0, (uint8)val);
+
+    else if (comm == "race")
+        pl->SetByteValue(UNIT_FIELD_BYTES_0, 0, (uint8)val);
+
+    else if (comm == "mount")
+        pl->SetUInt32Value(UNIT_FIELD_MOUNTDISPLAYID, val);
+
+    else
+        return false;
+
     return true;
 }
 
@@ -801,6 +826,34 @@ bool ChatHandler::HandleSetValueHelper(Object* target, uint32 field, char* typeS
 
     return true;
 }
+
+//show animation
+/*
+bool ChatHandler::HandleDebugAnimCommand(const char* args)
+{
+    static ObjectGuid guid;
+
+    if (guid.IsEmpty())
+    {
+        if(Unit*u = getSelectedUnit())
+        {
+            guid = u->GetObjectGuid();
+            u->DestroyForPlayer(m_session->GetPlayer(), false);
+            m_session->GetPlayer()->m_clientGUIDs.erase(guid);
+
+        }
+    } 
+    else
+    {
+        if(Unit * u = m_session->GetPlayer()->GetMap()->GetCreatureOrPetOrVehicle(guid))
+            u->UpdateObjectVisibility();
+        guid = 0;
+    }
+
+
+    return true;
+}
+*/
 
 bool ChatHandler::HandleDebugSetItemValueCommand(char* args)
 {

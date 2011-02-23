@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005-2011 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2005-2010 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,6 +21,7 @@
 #include "MapManager.h"
 #include "Opcodes.h"
 #include "DestinationHolderImp.h"
+#include "Movement/UnitMovement.h"
 
 template<class T>
 void
@@ -105,34 +106,14 @@ void ConfusedMovementGenerator<T>::Reset(T &unit)
 template<class T>
 bool ConfusedMovementGenerator<T>::Update(T &unit, const uint32 &diff)
 {
-    if(!&unit)
+    if(!&unit)	// wtf? oO
         return true;
 
     // ignore in case other no reaction state
     if (unit.hasUnitState(UNIT_STAT_CAN_NOT_REACT & ~UNIT_STAT_CONFUSED))
         return true;
 
-    if (i_nextMoveTime.Passed())
-    {
-        // currently moving, update location
-        unit.addUnitState(UNIT_STAT_CONFUSED_MOVE);
-        Traveller<T> traveller(unit);
-        if (i_destinationHolder.UpdateTraveller(traveller, diff, false))
-        {
-            if (!IsActive(unit))                            // force stop processing (movement can move out active zone with cleanup movegens list)
-                return true;                                // not expire now, but already lost
-
-            if (i_destinationHolder.HasArrived())
-            {
-                // arrived, stop and wait a bit
-                unit.StopMoving();
-
-                i_nextMove = urand(1,MAX_CONF_WAYPOINTS);
-                i_nextMoveTime.Reset(urand(0, 1500-1));     // TODO: check the minimum reset time, should be probably higher
-            }
-        }
-    }
-    else
+    if (!i_nextMoveTime.Passed())
     {
         // waiting for next move
         i_nextMoveTime.Update(diff);
@@ -141,14 +122,30 @@ bool ConfusedMovementGenerator<T>::Update(T &unit, const uint32 &diff)
             // start moving
             unit.addUnitState(UNIT_STAT_CONFUSED_MOVE);
             MANGOS_ASSERT( i_nextMove <= MAX_CONF_WAYPOINTS );
-            const float x = i_waypoints[i_nextMove][0];
-            const float y = i_waypoints[i_nextMove][1];
-            const float z = i_waypoints[i_nextMove][2];
-            Traveller<T> traveller(unit);
-            i_destinationHolder.SetDestination(traveller, x, y, z);
+
+            using namespace Movement;
+
+            Vector3 dest;
+            dest.x = i_waypoints[i_nextMove][0];
+            dest.y = i_waypoints[i_nextMove][1];
+            dest.z = i_waypoints[i_nextMove][2];
+
+            MovementState& state = *unit.movement;
+            MoveSplineInit init(state);
+            if (state.HasMode(MoveModeLevitation) || state.HasMode(MoveModeFly))
+                init.SetFly();
+            state.Walk(true);
+            init.SetWalk().MoveTo(dest).Launch();
         }
     }
     return true;
+}
+
+template<class T>
+void ConfusedMovementGenerator<T>::OnSplineDone( Unit& )
+{
+    i_nextMove = urand(1,MAX_CONF_WAYPOINTS);
+    i_nextMoveTime.Reset(urand(0, 1500));     // TODO: check the minimum reset time, should be probably higher
 }
 
 template<>
@@ -161,7 +158,6 @@ template<>
 void ConfusedMovementGenerator<Creature>::Finalize(Creature &unit)
 {
     unit.clearUnitState(UNIT_STAT_CONFUSED|UNIT_STAT_CONFUSED_MOVE);
-    unit.AddSplineFlag(SPLINEFLAG_WALKMODE);
 }
 
 template void ConfusedMovementGenerator<Player>::Initialize(Player &player);

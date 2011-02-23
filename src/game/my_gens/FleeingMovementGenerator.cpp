@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005-2011 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2005-2010 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,6 +22,7 @@
 #include "FleeingMovementGenerator.h"
 #include "DestinationHolderImp.h"
 #include "ObjectAccessor.h"
+#include "Movement/UnitMovement.h"
 
 #define MIN_QUIET_DISTANCE 28.0f
 #define MAX_QUIET_DISTANCE 43.0f
@@ -45,8 +46,20 @@ FleeingMovementGenerator<T>::_setTargetLocation(T &owner)
         return;
 
     owner.addUnitState(UNIT_STAT_FLEEING_MOVE);
-    Traveller<T> traveller(owner);
-    i_destinationHolder.SetDestination(traveller, x, y, z);
+
+    {
+        arrived = false;
+
+        using namespace Movement;
+        MovementState& state = *owner.movement;
+        MoveSplineInit(state).MoveTo(Vector3(x,y,z)).Launch();
+    }
+}
+
+template<class T>
+void FleeingMovementGenerator<T>::OnSplineDone( Unit& )
+{
+    arrived = true;
 }
 
 template<class T>
@@ -310,8 +323,7 @@ template<>
 void
 FleeingMovementGenerator<Creature>::_Init(Creature &owner)
 {
-    owner.RemoveSplineFlag(SPLINEFLAG_WALKMODE);
-    owner.SetTargetGuid(ObjectGuid());
+    owner.ResetTarget();
     is_water_ok = owner.CanSwim();
     is_land_ok  = owner.CanWalk();
 }
@@ -333,7 +345,6 @@ void FleeingMovementGenerator<Player>::Finalize(Player &owner)
 template<>
 void FleeingMovementGenerator<Creature>::Finalize(Creature &owner)
 {
-    owner.AddSplineFlag(SPLINEFLAG_WALKMODE);
     owner.clearUnitState(UNIT_STAT_FLEEING|UNIT_STAT_FLEEING_MOVE);
 }
 
@@ -363,28 +374,17 @@ bool FleeingMovementGenerator<T>::Update(T &owner, const uint32 & time_diff)
         return true;
     }
 
-    Traveller<T> traveller(owner);
+    if (!IsActive(owner))                               // force stop processing (movement can move out active zone with cleanup movegens list)
+        return true;                                    // not expire now, but already lost
 
-    i_nextCheckTime.Update(time_diff);
-
-    if( (owner.IsStopped() && !i_destinationHolder.HasArrived()) || !i_destinationHolder.HasDestination() )
+    if(arrived && !i_nextCheckTime.Passed())
     {
-        _setTargetLocation(owner);
-        return true;
-    }
+        i_nextCheckTime.Update(time_diff);
 
-    if (i_destinationHolder.UpdateTraveller(traveller, time_diff, false))
-    {
-        if (!IsActive(owner))                               // force stop processing (movement can move out active zone with cleanup movegens list)
-            return true;                                    // not expire now, but already lost
-
-        i_destinationHolder.ResetUpdate(50);
-        if(i_nextCheckTime.Passed() && i_destinationHolder.HasArrived())
-        {
+        if (i_nextCheckTime.Passed())
             _setTargetLocation(owner);
-            return true;
-        }
     }
+
     return true;
 }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005-2011 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2005-2010 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -39,11 +39,11 @@ class MANGOS_DLL_SPEC TargetedMovementGeneratorMedium
 {
     protected:
         TargetedMovementGeneratorMedium()
-            : TargetedMovementGeneratorBase(), i_offset(0), i_angle(0), i_recalculateTravel(false) {}
+            : TargetedMovementGeneratorBase(), i_offset(0), i_angle(0), i_recalculateTravel(false), i_distance_check(0) {}
         TargetedMovementGeneratorMedium(Unit &target)
-            : TargetedMovementGeneratorBase(target), i_offset(0), i_angle(0), i_recalculateTravel(false) {}
+            : TargetedMovementGeneratorBase(target), i_offset(0), i_angle(0), i_recalculateTravel(false), i_distance_check(0) {}
         TargetedMovementGeneratorMedium(Unit &target, float offset, float angle)
-            : TargetedMovementGeneratorBase(target), i_offset(offset), i_angle(angle), i_recalculateTravel(false) {}
+            : TargetedMovementGeneratorBase(target), i_offset(offset), i_angle(angle), i_recalculateTravel(false), i_distance_check(0) {}
         ~TargetedMovementGeneratorMedium() {}
 
     public:
@@ -53,20 +53,20 @@ class MANGOS_DLL_SPEC TargetedMovementGeneratorMedium
 
         bool GetDestination(float &x, float &y, float &z) const
         {
-            if(!i_destinationHolder.HasDestination()) return false;
-            i_destinationHolder.GetDestination(x,y,z);
-            return true;
+            return false;
         }
 
+        void OnSplineDone(Unit&);
         void unitSpeedChanged() { i_recalculateTravel=true; }
         void UpdateFinalDistance(float fDistance);
 
     protected:
-        void _setTargetLocation(T &);
+        void _moveToTarget(T &);
 
         float i_offset;
         float i_angle;
-        DestinationHolder< Traveller<T> > i_destinationHolder;
+        ShortTimeTracker i_distance_check;
+        bool arrived;
         bool i_recalculateTravel;
 };
 

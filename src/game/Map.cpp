@@ -725,44 +725,34 @@ Map::CreatureRelocation(Creature *creature, float x, float y, float z, float ang
 {
     MANGOS_ASSERT(CheckGridIntegrity(creature,false));
 
-    Cell old_cell = creature->GetCurrentCell();
-
+    CellPair old_val = MaNGOS::ComputeCellPair(creature->GetPositionX(), creature->GetPositionY());
     CellPair new_val = MaNGOS::ComputeCellPair(x, y);
+
+    Cell old_cell(old_val);
     Cell new_cell(new_val);
 
-    // delay creature move for grid/cell to grid/cell moves
-    if (old_cell.DiffCell(new_cell) || old_cell.DiffGrid(new_cell))
+    creature->Relocate(x, y, z, ang);
+
+    if( old_cell.DiffGrid(new_cell) )
     {
-        DEBUG_FILTER_LOG(LOG_FILTER_CREATURE_MOVES, "Creature (GUID: %u Entry: %u) added to moving list from grid[%u,%u]cell[%u,%u] to grid[%u,%u]cell[%u,%u].", creature->GetGUIDLow(), creature->GetEntry(), old_cell.GridX(), old_cell.GridY(), old_cell.CellX(), old_cell.CellY(), new_cell.GridX(), new_cell.GridY(), new_cell.CellX(), new_cell.CellY());
-
-        // do move or do move to respawn or remove creature if previous all fail
-        if(CreatureCellRelocation(creature,new_cell))
-        {
-            // update pos
-            creature->Relocate(x, y, z, ang);
-
-            // in diffcell/diffgrid case notifiers called in Creature::Update
-            creature->SetNeedNotify();
-        }
+        if (creature->isActiveObject())
+            EnsureGridLoadedAtEnter(new_cell);
         else
-        {
-            // if creature can't be move in new cell/grid (not loaded) move it to repawn cell/grid
-            // creature coordinates will be updated and notifiers send
-            if(!CreatureRespawnRelocation(creature))
-            {
-                // ... or unload (if respawn grid also not loaded)
-                DEBUG_FILTER_LOG(LOG_FILTER_CREATURE_MOVES, "Creature (GUID: %u Entry: %u ) can't be move to unloaded respawn grid.",creature->GetGUIDLow(),creature->GetEntry());
-                creature->SetNeedNotify();
-            }
-        }
+            EnsureGridCreated(GridPair(new_cell.GridX(),new_cell.GridY()));
     }
-    else
+
+    if( old_val != new_val )
     {
-        creature->Relocate(x, y, z, ang);
-        creature->SetNeedNotify();
+        NGridType* oldGrid = getNGrid(old_cell.GridX(), old_cell.GridY());
+        RemoveFromGrid(creature, oldGrid,old_cell);
+
+        NGridType* newGrid = getNGrid(new_cell.GridX(), new_cell.GridY());
+        AddToGrid(creature, newGrid,new_cell);
+        creature->GetViewPoint().Event_GridChanged( &(*newGrid)(new_cell.CellX(),new_cell.CellY()));
     }
 
     creature->GetViewPoint().Call_UpdateVisibilityForOwner();
+    creature->SetNeedNotify();
     MANGOS_ASSERT(CheckGridIntegrity(creature,true));
 }
 

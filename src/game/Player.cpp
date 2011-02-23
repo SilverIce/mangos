@@ -60,6 +60,7 @@
 #include "SocialMgr.h"
 #include "AchievementMgr.h"
 #include "Mail.h"
+#include "Movement/MovementBase.h"
 
 #include <cmath>
 
@@ -673,7 +674,7 @@ bool Player::Create( uint32 guidlow, const std::string& name, uint8 race, uint8 
         m_items[i] = NULL;
 
     SetLocationMapId(info->mapId);
-    Relocate(info->positionX,info->positionY,info->positionZ, info->orientation);
+    InitMovement(this, Location(info->positionX,info->positionY,info->positionZ, info->orientation));
 
     SetMap(sMapMgr.CreateMap(info->mapId, this));
 
@@ -15279,8 +15280,8 @@ bool Player::LoadFromDB(ObjectGuid guid, SqlQueryHolder *holder )
 
     // init saved position, and fix it later if problematic
     uint32 transGUID = fields[30].GetUInt32();
-    Relocate(fields[12].GetFloat(),fields[13].GetFloat(),fields[14].GetFloat(),fields[16].GetFloat());
     SetLocationMapId(fields[15].GetUInt32());
+    InitMovement(this,Location(fields[12].GetFloat(),fields[13].GetFloat(),fields[14].GetFloat(),fields[16].GetFloat()));
 
     uint32 difficulty = fields[38].GetUInt32();
     if(difficulty >= MAX_DUNGEON_DIFFICULTY)
@@ -15367,7 +15368,7 @@ bool Player::LoadFromDB(ObjectGuid guid, SqlQueryHolder *holder )
             // move to bg enter point
             const WorldLocation& _loc = GetBattleGroundEntryPoint();
             SetLocationMapId(_loc.mapid);
-            Relocate(_loc.coord_x, _loc.coord_y, _loc.coord_z, _loc.orientation);
+            InitMovement(this, Location(_loc.coord_x, _loc.coord_y, _loc.coord_z, _loc.orientation));
 
             // We are not in BG anymore
             SetBattleGroundId(0, BATTLEGROUND_TYPE_NONE);
@@ -15382,7 +15383,7 @@ bool Player::LoadFromDB(ObjectGuid guid, SqlQueryHolder *holder )
         {
             const WorldLocation& _loc = GetBattleGroundEntryPoint();
             SetLocationMapId(_loc.mapid);
-            Relocate(_loc.coord_x, _loc.coord_y, _loc.coord_z, _loc.orientation);
+            InitMovement(this, Location(_loc.coord_x, _loc.coord_y, _loc.coord_z, _loc.orientation));
         }
     }
 
@@ -15463,7 +15464,7 @@ bool Player::LoadFromDB(ObjectGuid guid, SqlQueryHolder *holder )
     {
         AreaTrigger const* at = sObjectMgr.GetMapEntranceTrigger(GetMapId());
         if(at)
-            Relocate(at->target_X, at->target_Y, at->target_Z, at->target_Orientation);
+            InitMovement(this, Location(at->target_X, at->target_Y, at->target_Z, at->target_Orientation));
         else
             sLog.outError("Player %s(GUID: %u) logged in to a reset instance (map: %u) and there is no area-trigger leading to this map. Thus he can't be ported back to the entrance. This _might_ be an exploit attempt.", GetName(), GetGUIDLow(), GetMapId());
     }
@@ -15530,7 +15531,7 @@ bool Player::LoadFromDB(ObjectGuid guid, SqlQueryHolder *holder )
     // clear charm/summon related fields
     SetCharm(NULL);
     SetPet(NULL);
-    SetTargetGuid(ObjectGuid());
+    ResetTarget();
     SetCharmerGuid(ObjectGuid());
     SetOwnerGuid(ObjectGuid());
     SetCreatorGuid(ObjectGuid());
@@ -15653,7 +15654,7 @@ bool Player::LoadFromDB(ObjectGuid guid, SqlQueryHolder *holder )
         {
             sLog.outError("Character %u have too short taxi destination list, teleport to original node.",GetGUIDLow());
             SetLocationMapId(nodeEntry->map_id);
-            Relocate(nodeEntry->x, nodeEntry->y, nodeEntry->z,0.0f);
+            InitMovement(this, Location(nodeEntry->x, nodeEntry->y, nodeEntry->z,0.0f));
         }
 
         //we can be relocated from taxi and still have an outdated Map pointer!
@@ -19582,9 +19583,6 @@ void Player::UpdateVisibilityOf(WorldObject const* viewPoint, WorldObject* targe
             // send data at target visibility change (adding to client)
             if(target!=this && target->isType(TYPEMASK_UNIT))
                 SendAurasForTarget((Unit*)target);
-
-            if(target->GetTypeId()==TYPEID_UNIT && ((Creature*)target)->isAlive())
-                ((Creature*)target)->SendMonsterMoveWithSpeedToCurrentDestination(this);
         }
     }
 }
@@ -22577,4 +22575,10 @@ void Player::SetRestType( RestType n_r_type, uint32 areaTriggerId /*= 0*/)
         if(sWorld.IsFFAPvPRealm())
             SetFFAPvP(false);
     }
+}
+
+void Player::RelocateToHomebind()
+{
+    SetLocationMapId(m_homebindMapId);
+    InitMovement(this, Location(m_homebindX, m_homebindY, m_homebindZ, GetOrientation()));
 }

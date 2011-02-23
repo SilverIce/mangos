@@ -26,6 +26,7 @@
 #include "CellImpl.h"
 #include "GridNotifiersImpl.h"
 #include "SpellMgr.h"
+#include "Movement/UnitMovement.h"
 
 DynamicObject::DynamicObject() : WorldObject()
 {
@@ -35,6 +36,7 @@ DynamicObject::DynamicObject() : WorldObject()
     m_updateFlag = (UPDATEFLAG_HIGHGUID | UPDATEFLAG_HAS_POSITION | UPDATEFLAG_POSITION);
 
     m_valuesCount = DYNAMICOBJECT_END;
+    movement = NULL;
 }
 
 void DynamicObject::AddToWorld()
@@ -53,6 +55,7 @@ void DynamicObject::RemoveFromWorld()
     {
         GetMap()->GetObjectsStore().erase<DynamicObject>(GetGUID(), (DynamicObject*)NULL);
         GetViewPoint().Event_RemovedFromWorld();
+        movement->CleanReferences();
     }
 
     Object::RemoveFromWorld();
@@ -62,7 +65,7 @@ bool DynamicObject::Create( uint32 guidlow, Unit *caster, uint32 spellId, SpellE
 {
     WorldObject::_Create(guidlow, HIGHGUID_DYNAMICOBJECT, caster->GetPhaseMask());
     SetMap(caster->GetMap());
-    Relocate(x, y, z, 0);
+    InitMovement(this, Location(x, y, z, 0));
 
     if(!IsPositionValid())
     {
@@ -210,4 +213,9 @@ bool DynamicObject::IsFriendlyTo( Unit const* unit ) const
         return owner->IsFriendlyTo(unit);
     else
         return true;
+}
+
+DynamicObject::~DynamicObject()
+{
+    delete movement;
 }

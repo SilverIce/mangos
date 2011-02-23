@@ -26,6 +26,8 @@
 #include "ObjectGuid.h"
 #include "Camera.h"
 
+#include "Movement/movement_lib.h"
+
 #include <set>
 #include <string>
 
@@ -423,7 +425,7 @@ class MANGOS_DLL_SPEC WorldObject : public Object
                 WorldObject * const m_obj;
         };
 
-        virtual ~WorldObject ( ) {}
+        virtual ~WorldObject ( );
 
         virtual void Update ( uint32 /*update_diff*/, uint32 /*time_diff*/ ) {}
 
@@ -574,7 +576,11 @@ class MANGOS_DLL_SPEC WorldObject : public Object
 
         bool isActiveObject() const { return m_isActiveObject || m_viewPoint.hasViewers(); }
 
+		const G3D::Vector3& GetVector3() const { return (G3D::Vector3&)m_positionX; }
+		const Movement::Location& GetLocation() const { return (Movement::Location&)m_positionX; }
+
         ViewPoint& GetViewPoint() { return m_viewPoint; }
+
     protected:
         explicit WorldObject();
 
@@ -603,5 +609,8 @@ class MANGOS_DLL_SPEC WorldObject : public Object
 
         WorldUpdateCounter m_updateTracker;
 };
+
+template<class T>
+void InitMovement(T * owner, Location& loc);
 
 #endif

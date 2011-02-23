@@ -30,9 +30,12 @@ class DynamicObject : public WorldObject
     public:
         typedef std::set<ObjectGuid> AffectedSet;
         explicit DynamicObject();
+        ~DynamicObject();
 
         void AddToWorld();
         void RemoveFromWorld();
+
+        Movement::MovementBase * movement;
 
         bool Create(uint32 guidlow, Unit *caster, uint32 spellId, SpellEffectIndex effIndex, float x, float y, float z, int32 duration, float radius);
         void Update(uint32 update_diff, uint32 p_time);

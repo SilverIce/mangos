@@ -28,6 +28,7 @@
 #include "CellImpl.h"
 #include "Corpse.h"
 #include "ObjectMgr.h"
+#include "Movement\MoveUpdater.h"
 
 #define CLASS_LOCK MaNGOS::ClassLevelLockable<MapManager, ACE_Recursive_Thread_Mutex>
 INSTANTIATE_SINGLETON_2(MapManager, CLASS_LOCK);
@@ -262,6 +263,8 @@ MapManager::Update(uint32 diff)
     i_timer.Update(diff);
     if( !i_timer.Passed() )
         return;
+
+    Movement::sMoveUpdater.update();
 
     for(MapMapType::iterator iter=i_maps.begin(); iter != i_maps.end(); ++iter)
         iter->second->Update((uint32)i_timer.GetCurrent());

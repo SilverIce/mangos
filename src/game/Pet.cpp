@@ -27,6 +27,7 @@
 #include "CreatureAI.h"
 #include "Unit.h"
 #include "Util.h"
+#include "Movement/MovementBase.h"
 
 Pet::Pet(PetType type) :
 Creature(CREATURE_SUBTYPE_PET),
@@ -160,7 +161,7 @@ bool Pet::LoadPetFromDB( Player* owner, uint32 petentry, uint32 petnumber, bool 
     float px, py, pz;
     owner->GetClosePoint(px, py, pz, GetObjectBoundingRadius(), PET_FOLLOW_DIST, PET_FOLLOW_ANGLE, this);
 
-    Relocate(px, py, pz, owner->GetOrientation());
+    InitMovement(this, Location(px, py, pz, owner->GetOrientation()));
 
     if (!IsPositionValid())
     {
@@ -814,7 +815,7 @@ bool Pet::CreateBaseAtCreature(Creature* creature)
     if(!Create(guid, creature->GetMap(), creature->GetPhaseMask(), creature->GetEntry(), pet_number))
         return false;
 
-    Relocate(creature->GetPositionX(), creature->GetPositionY(), creature->GetPositionZ(), creature->GetOrientation());
+    InitMovement(this, (Location&)creature->GetLocation());
 
     if(!IsPositionValid())
     {

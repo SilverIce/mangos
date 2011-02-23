@@ -22,6 +22,7 @@
 #include "Common.h"
 #include <stack>
 #include <vector>
+#include "movement\movelistener.h"
 
 class MovementGenerator;
 class Unit;
@@ -57,7 +58,7 @@ enum MMCleanFlag
     MMCF_RESET  = 2                                         // Flag if need top()->Reset()
 };
 
-class MANGOS_DLL_SPEC MotionMaster : private std::stack<MovementGenerator *>
+class MANGOS_DLL_SPEC MotionMaster : private std::stack<MovementGenerator *>, public Movement::IListener
 {
     private:
         typedef std::stack<MovementGenerator *> Impl;
@@ -116,6 +117,8 @@ class MANGOS_DLL_SPEC MotionMaster : private std::stack<MovementGenerator *>
         void UpdateFinalDistanceToTarget(float fDistance);
 
         bool GetDestination(float &x, float &y, float &z);
+        void OnSplineDone();
+        void OnEvent(int,int);
     private:
         void Mutate(MovementGenerator *m);                  // use Move* functions instead
 

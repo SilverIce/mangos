@@ -28,6 +28,7 @@
 #include "DBCStores.h"
 #include "ProgressBar.h"
 #include "ScriptMgr.h"
+#include "Movement\MovementBase.h"
 
 void MapManager::LoadTransports()
 {
@@ -148,7 +149,7 @@ Transport::Transport() : GameObject()
 
 bool Transport::Create(uint32 guidlow, uint32 mapid, float x, float y, float z, float ang, uint8 animprogress, uint16 dynamicHighValue)
 {
-    Relocate(x,y,z,ang);
+    InitMovement(this, Location(x,y,z,ang));
     // instance id and phaseMask isn't set to values different from std.
 
     if(!IsPositionValid())

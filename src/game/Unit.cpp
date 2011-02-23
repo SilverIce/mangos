@@ -51,18 +51,19 @@
 
 #include <math.h>
 #include <stdarg.h>
+#include "Movement/UnitMovement.h"
 
 float baseMoveSpeed[MAX_MOVE_TYPE] =
 {
     2.5f,                                                   // MOVE_WALK
     7.0f,                                                   // MOVE_RUN
-    2.5f,                                                   // MOVE_RUN_BACK
-    4.722222f,                                              // MOVE_SWIM
     4.5f,                                                   // MOVE_SWIM_BACK
-    3.141594f,                                              // MOVE_TURN_RATE
+    4.722222f,                                              // MOVE_SWIM
+    2.5f,                                                   // MOVE_RUN_BACK
     7.0f,                                                   // MOVE_FLIGHT
     4.5f,                                                   // MOVE_FLIGHT_BACK
-    3.14f                                                   // MOVE_PITCH_RATE
+    3.141594f,                                              // MOVE_TURN_RATE
+    3.141594f                                               // MOVE_PITCH_RATE
 };
 
 ////////////////////////////////////////////////////////////
@@ -265,6 +266,8 @@ Unit::Unit()
     // remove aurastates allowing special moves
     for(int i=0; i < MAX_REACTIVE; ++i)
         m_reactiveTimer[i] = 0;
+
+    movement = NULL;
 }
 
 Unit::~Unit()
@@ -287,6 +290,8 @@ Unit::~Unit()
     MANGOS_ASSERT(m_dynObjGUIDs.size() == 0);
     MANGOS_ASSERT(m_deletedAuras.size() == 0);
     MANGOS_ASSERT(m_deletedHolders.size() == 0);
+
+    delete movement;
 }
 
 void Unit::Update( uint32 update_diff, uint32 p_time )
@@ -3748,9 +3753,6 @@ void Unit::SetFacingTo(float ori, bool bToSelf /*= false*/)
 {
     // update orientation at server
     SetOrientation(ori);
-
-    // and client
-    SendHeartBeat(bToSelf);
 }
 
 // Consider move this to Creature:: since only creature appear to be able to use this
@@ -3766,7 +3768,6 @@ void Unit::SetFacingToObject(WorldObject* pObject)
     // TODO: figure out under what conditions creature will move towards object instead of facing it where it currently is.
 
     SetOrientation(GetAngle(pObject));
-    SendMonsterMove(GetPositionX(), GetPositionY(), GetPositionZ(), SPLINETYPE_FACINGTARGET, ((Creature*)this)->GetSplineFlags(), 0, NULL, pObject->GetGUID());
 }
 
 bool Unit::isInAccessablePlaceFor(Creature const* c) const
@@ -5669,7 +5670,7 @@ bool Unit::Attack(Unit *victim, bool meleeAttack)
     }
 
     // Set our target
-    SetTargetGuid(victim->GetObjectGuid());
+    SetTarget(victim);
 
     if(meleeAttack)
         addUnitState(UNIT_STAT_MELEE_ATTACKING);
@@ -5704,7 +5705,7 @@ bool Unit::AttackStop(bool targetSwitch /*=false*/)
     m_attacking = NULL;
 
     // Clear our target
-    SetTargetGuid(ObjectGuid());
+    ResetTarget();
 
     clearUnitState(UNIT_STAT_MELEE_ATTACKING);
 
@@ -8319,7 +8320,7 @@ void Unit::UpdateSpeed(UnitMoveType mtype, bool forced, float ratio)
 
 float Unit::GetSpeed( UnitMoveType mtype ) const
 {
-    return m_speed_rate[mtype]*baseMoveSpeed[mtype];
+    return movement->GetSpeed((Movement::SpeedType)mtype);
 }
 
 struct SetSpeedRateHelper
@@ -8336,110 +8337,19 @@ void Unit::SetSpeedRate(UnitMoveType mtype, float rate, bool forced)
         rate = 0.0f;
 
     // Update speed only on change
-    if (m_speed_rate[mtype] == rate)
-        return;
-
-    m_speed_rate[mtype] = rate;
-
-    propagateSpeedChange();
-
-    WorldPacket data;
-    if(!forced)
+    if (m_speed_rate[mtype] != rate)
     {
-        switch(mtype)
-        {
-            case MOVE_WALK:
-                data.Initialize(MSG_MOVE_SET_WALK_SPEED, 8+4+2+4+4+4+4+4+4+4);
-                break;
-            case MOVE_RUN:
-                data.Initialize(MSG_MOVE_SET_RUN_SPEED, 8+4+2+4+4+4+4+4+4+4);
-                break;
-            case MOVE_RUN_BACK:
-                data.Initialize(MSG_MOVE_SET_RUN_BACK_SPEED, 8+4+2+4+4+4+4+4+4+4);
-                break;
-            case MOVE_SWIM:
-                data.Initialize(MSG_MOVE_SET_SWIM_SPEED, 8+4+2+4+4+4+4+4+4+4);
-                break;
-            case MOVE_SWIM_BACK:
-                data.Initialize(MSG_MOVE_SET_SWIM_BACK_SPEED, 8+4+2+4+4+4+4+4+4+4);
-                break;
-            case MOVE_TURN_RATE:
-                data.Initialize(MSG_MOVE_SET_TURN_RATE, 8+4+2+4+4+4+4+4+4+4);
-                break;
-            case MOVE_FLIGHT:
-                data.Initialize(MSG_MOVE_SET_FLIGHT_SPEED, 8+4+2+4+4+4+4+4+4+4);
-                break;
-            case MOVE_FLIGHT_BACK:
-                data.Initialize(MSG_MOVE_SET_FLIGHT_BACK_SPEED, 8+4+2+4+4+4+4+4+4+4);
-                break;
-            case MOVE_PITCH_RATE:
-                data.Initialize(MSG_MOVE_SET_PITCH_RATE, 8+4+2+4+4+4+4+4+4+4);
-                break;
-            default:
-                sLog.outError("Unit::SetSpeedRate: Unsupported move type (%d), data not sent to client.",mtype);
-                return;
-        }
+        //propagateSpeedChange();
 
-        data << GetPackGUID();
-        data << uint32(0);                                  // movement flags
-        data << uint16(0);                                  // unk flags
-        data << uint32(WorldTimer::getMSTime());
-        data << float(GetPositionX());
-        data << float(GetPositionY());
-        data << float(GetPositionZ());
-        data << float(GetOrientation());
-        data << uint32(0);                                  // fall time
-        data << float(GetSpeed(mtype));
-        SendMessageToSet( &data, true );
-    }
-    else
-    {
-        if(GetTypeId() == TYPEID_PLAYER)
+        if (GetTypeId() == TYPEID_PLAYER && forced)
         {
             // register forced speed changes for WorldSession::HandleForceSpeedChangeAck
             // and do it only for real sent packets and use run for run/mounted as client expected
             ++((Player*)this)->m_forced_speed_changes[mtype];
         }
 
-        switch(mtype)
-        {
-            case MOVE_WALK:
-                data.Initialize(SMSG_FORCE_WALK_SPEED_CHANGE, 16);
-                break;
-            case MOVE_RUN:
-                data.Initialize(SMSG_FORCE_RUN_SPEED_CHANGE, 17);
-                break;
-            case MOVE_RUN_BACK:
-                data.Initialize(SMSG_FORCE_RUN_BACK_SPEED_CHANGE, 16);
-                break;
-            case MOVE_SWIM:
-                data.Initialize(SMSG_FORCE_SWIM_SPEED_CHANGE, 16);
-                break;
-            case MOVE_SWIM_BACK:
-                data.Initialize(SMSG_FORCE_SWIM_BACK_SPEED_CHANGE, 16);
-                break;
-            case MOVE_TURN_RATE:
-                data.Initialize(SMSG_FORCE_TURN_RATE_CHANGE, 16);
-                break;
-            case MOVE_FLIGHT:
-                data.Initialize(SMSG_FORCE_FLIGHT_SPEED_CHANGE, 16);
-                break;
-            case MOVE_FLIGHT_BACK:
-                data.Initialize(SMSG_FORCE_FLIGHT_BACK_SPEED_CHANGE, 16);
-                break;
-            case MOVE_PITCH_RATE:
-                data.Initialize(SMSG_FORCE_PITCH_RATE_CHANGE, 16);
-                break;
-            default:
-                sLog.outError("Unit::SetSpeedRate: Unsupported move type (%d), data not sent to client.",mtype);
-                return;
-        }
-        data << GetPackGUID();
-        data << (uint32)0;                                  // moveEvent, NUM_PMOVE_EVTS = 0x39
-        if (mtype == MOVE_RUN)
-            data << uint8(0);                               // new 2.1.0
-        data << float(GetSpeed(mtype));
-        SendMessageToSet( &data, true );
+        Movement::Scketches(movement).SetSpeed(Movement::SpeedType(mtype), rate * baseMoveSpeed[mtype]);
+        m_speed_rate[mtype] = rate;
     }
 
     CallForAllControlledUnits(SetSpeedRateHelper(mtype,forced), CONTROLLED_PET|CONTROLLED_GUARDIANS|CONTROLLED_CHARM|CONTROLLED_MINIPET);
@@ -8474,18 +8384,8 @@ void Unit::SetDeathState(DeathState s)
 
         // after removing a Fearaura (in RemoveAllAurasOnDeath)
         // Unit::SetFeared is called and makes that creatures attack player again
-        if (GetTypeId() == TYPEID_UNIT)
-        {
-            clearUnitState(UNIT_STAT_MOVING);
+        StopMoving();
 
-            GetMap()->CreatureRelocation((Creature*)this, GetPositionX(), GetPositionY(), GetPositionZ(), GetOrientation());
-            SendMonsterMove(GetPositionX(), GetPositionY(), GetPositionZ(), SPLINETYPE_NORMAL, SPLINEFLAG_WALKMODE, 0);
-        }
-        else
-        {
-            if (!IsStopped())
-                StopMoving();
-        }
 
         ModifyAuraState(AURA_STATE_HEALTHLESS_20_PERCENT, false);
         ModifyAuraState(AURA_STATE_HEALTHLESS_35_PERCENT, false);
@@ -9421,8 +9321,53 @@ uint32 Unit::GetCreatePowers( Powers power ) const
     return 0;
 }
 
+static bool dbg_spawn_points = true;
+
+class PositionSyncEvent : public BasicEvent
+{
+public:
+
+    enum{
+        UpdateDelay = 500,
+    };
+
+    explicit PositionSyncEvent(Unit& owner) : m_owner(owner) {}
+
+    bool Execute(uint64, uint32)
+    {
+        Movement::Location pos = m_owner.movement->GetPosition();
+
+        if (m_owner.GetLocation() != pos && MaNGOS::IsValidMapCoord(pos.x,pos.y,pos.z))
+        {
+            if (m_owner.GetTypeId() == TYPEID_UNIT)
+                m_owner.GetMap()->CreatureRelocation((Creature*)&m_owner,pos.x,pos.y,pos.z,pos.orientation);
+            else
+                m_owner.GetMap()->PlayerRelocation((Player*)&m_owner,pos.x,pos.y,pos.z,pos.orientation);
+
+            if (m_owner.movement->dbg_flags & 0x1)
+            {
+                if (Creature * c = m_owner.SummonCreature(1, pos.x,pos.y,pos.z,pos.orientation, TEMPSUMMON_TIMED_DESPAWN, 600))
+                    c->SetDisplayId(m_owner.GetDisplayId());
+            }
+        }
+
+        m_owner.m_Events.AddEvent(new PositionSyncEvent(m_owner), m_owner.m_Events.CalculateTime(UpdateDelay));
+        return true;
+    }
+
+private:
+
+    Unit& m_owner;
+};
+
 void Unit::AddToWorld()
 {
+    if (!IsInWorld())
+    {
+        m_Events.AddEvent(new PositionSyncEvent(*this),
+            m_Events.CalculateTime(PositionSyncEvent::UpdateDelay));
+    }
+
     Object::AddToWorld();
 }
 
@@ -9440,6 +9385,7 @@ void Unit::RemoveFromWorld()
         RemoveAllDynObjects();
         CleanupDeletedAuras();
         GetViewPoint().Event_RemovedFromWorld();
+        movement->CleanReferences();
     }
 
     Object::RemoveFromWorld();
@@ -9980,16 +9926,13 @@ void Unit::StopMoving()
 {
     clearUnitState(UNIT_STAT_MOVING);
 
-    // not need send any packets if not in world
-    if (!IsInWorld())
-        return;
+    Movement::Scketches(movement).ForceStop();
+    //// send explicit stop packet
+    //// player expected for correct work SPLINEFLAG_WALKMODE
+    //SendMonsterMove(GetPositionX(), GetPositionY(), GetPositionZ(), SPLINETYPE_STOP, GetTypeId() == TYPEID_PLAYER ? SPLINEFLAG_WALKMODE : SPLINEFLAG_NONE, 0);
 
-    // send explicit stop packet
-    // player expected for correct work SPLINEFLAG_WALKMODE
-    SendMonsterMove(GetPositionX(), GetPositionY(), GetPositionZ(), SPLINETYPE_STOP, GetTypeId() == TYPEID_PLAYER ? SPLINEFLAG_WALKMODE : SPLINEFLAG_NONE, 0);
-
-    // update position and orientation for near players
-    SendHeartBeat(false);
+    //// update position and orientation for near players
+    //SendHeartBeat(false);
 }
 
 void Unit::SetFeared(bool apply, ObjectGuid casterGuid, uint32 spellID, uint32 time)
@@ -10694,9 +10637,13 @@ void Unit::KnockBackFrom(Unit* target, float horizontalSpeed, float verticalSpee
 
         UpdateAllowedPositionZ(fx, fy, fz);
 
+        using namespace Movement;
+
+        MoveKnockBackStrategy::Apply(*movement,Vector3(fx,fy,fz), 62);
+
         //FIXME: this mostly hack, must exist some packet for proper creature move at client side
         //       with CreatureRelocation at server side
-        NearTeleportTo(fx, fy, fz, GetOrientation(), this == target);
+        //NearTeleportTo(fx, fy, fz, GetOrientation(), this == target);
     }
 }
 
@@ -10893,4 +10840,24 @@ bool Unit::IsAllowedDamageInArea(Unit* pVictim) const
         return false;
 
     return true;
+}
+
+ObjectGuid const& Unit::GetTargetGuid() const
+{
+    return GetGuidValue(UNIT_FIELD_TARGET);
+}
+
+void Unit::SetTargetGuid(ObjectGuid targetGuid)
+{
+    SetUInt64Value(UNIT_FIELD_TARGET, targetGuid.GetRawValue());
+}
+
+void Unit::SetTarget(Unit *target)
+{
+    movement->BindOrientationTo(*target->movement);
+}
+
+void Unit::ResetTarget()
+{
+    movement->UnbindOrientation();
 }

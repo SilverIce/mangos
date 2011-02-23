@@ -594,6 +594,8 @@ class MANGOS_DLL_SPEC GameObject : public WorldObject
         explicit GameObject();
         ~GameObject();
 
+        Movement::GameobjectMovement * movement;
+
         void AddToWorld();
         void RemoveFromWorld();
 
