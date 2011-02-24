@@ -47,7 +47,7 @@
 				Name="VCCLCompilerTool"
 				AdditionalOptions="/MP /Zm200"
 				Optimization="0"
-				AdditionalIncludeDirectories="..\..\dep\include;..\..\src\framework;..\..\src\shared;..\..\src\game\vmap;..\..\dep\ACE_wrappers;..\..\dep\include\g3dlite;e:\Development\Movement\;e:\Development\MovementMangos\src\game\;..\..\src\game\my_gens\"
+				AdditionalIncludeDirectories="..\..\dep\include;..\..\src\framework;..\..\src\shared;..\..\src\game\vmap;..\..\dep\ACE_wrappers;..\..\dep\include\g3dlite;..\..\src\game\Movement\;..\..\src\game\;..\..\src\game\my_gens\"
 				PreprocessorDefinitions="WIN32;_DEBUG;MANGOS_DEBUG;_LIB;"
 				StringPooling="false"
 				MinimalRebuild="false"
@@ -129,7 +129,7 @@
 				Name="VCCLCompilerTool"
 				AdditionalOptions="/MP /Zm200"
 				InlineFunctionExpansion="1"
-				AdditionalIncludeDirectories="..\..\dep\include;..\..\src\framework;..\..\src\shared;..\..\src\game\vmap;..\..\dep\ACE_wrappers;..\..\dep\include\g3dlite;e:\Development\Movement\;e:\Development\MovementMangos\src\game\;..\..\src\game\my_gens\"
+				AdditionalIncludeDirectories="..\..\dep\include;..\..\src\framework;..\..\src\shared;..\..\src\game\vmap;..\..\dep\ACE_wrappers;..\..\dep\include\g3dlite;..\..\src\game\Movement\;..\..\src\game\;..\..\src\game\my_gens\"
 				PreprocessorDefinitions="WIN32;NDEBUG;_LIB;_SECURE_SCL=0"
 				StringPooling="true"
 				RuntimeLibrary="2"
@@ -210,7 +210,7 @@
 				Name="VCCLCompilerTool"
 				AdditionalOptions="/MP"
 				Optimization="0"
-				AdditionalIncludeDirectories="..\..\dep\include;..\..\src\framework;..\..\src\shared;..\..\src\game\vmap;..\..\dep\ACE_wrappers;..\..\dep\include\g3dlite;e:\Development\Movement\;e:\Development\MovementMangos\src\game\;..\..\src\game\my_gens\"
+				AdditionalIncludeDirectories="..\..\dep\include;..\..\src\framework;..\..\src\shared;..\..\src\game\vmap;..\..\dep\ACE_wrappers;..\..\dep\include\g3dlite;..\..\src\game\Movement\;..\..\src\game\;..\..\src\game\my_gens\"
 				PreprocessorDefinitions="WIN32;_DEBUG;MANGOS_DEBUG;_LIB;"
 				StringPooling="false"
 				MinimalRebuild="false"
@@ -1715,38 +1715,38 @@
 			Name="Movement"
 			>
 			<File
-				RelativePath="..\..\..\Movement\Movement\MoveListener.h"
+				RelativePath="..\..\src\game\Movement\Movement\MoveListener.h"
 				>
 			</File>
 			<File
-				RelativePath="..\..\..\Movement\Movement\movement_lib.h"
+				RelativePath="..\..\src\game\Movement\Movement\movement_lib.h"
 				>
 			</File>
 			<File
-				RelativePath="..\..\..\Movement\Movement\MovementBase.cpp"
+				RelativePath="..\..\src\game\Movement\Movement\MovementBase.cpp"
 				>
 			</File>
 			<File
-				RelativePath="..\..\..\Movement\Movement\MovementBase.h"
+				RelativePath="..\..\src\game\Movement\Movement\MovementBase.h"
 				>
 			</File>
 			<File
-				RelativePath="..\..\..\Movement\Movement\UnitMovement.cpp"
+				RelativePath="..\..\src\game\Movement\Movement\UnitMovement.cpp"
 				>
 			</File>
 			<File
-				RelativePath="..\..\..\Movement\Movement\UnitMovement.h"
+				RelativePath="..\..\src\game\Movement\Movement\UnitMovement.h"
 				>
 			</File>
 			<Filter
 				Name="util"
 				>
 				<File
-					RelativePath="..\..\..\Movement\Movement\outLog.cpp"
+					RelativePath="..\..\src\game\Movement\Movement\outLog.cpp"
 					>
 				</File>
 				<File
-					RelativePath="..\..\..\Movement\Movement\util.cpp"
+					RelativePath="..\..\src\game\Movement\Movement\util.cpp"
 					>
 				</File>
 			</Filter>
@@ -1754,19 +1754,19 @@
 				Name="constants"
 				>
 				<File
-					RelativePath="..\..\..\Movement\Movement\globals.cpp"
+					RelativePath="..\..\src\game\Movement\Movement\globals.cpp"
 					>
 				</File>
 				<File
-					RelativePath="..\..\..\Movement\Movement\mov_constants.h"
+					RelativePath="..\..\src\game\Movement\Movement\mov_constants.h"
 					>
 				</File>
 				<File
-					RelativePath="..\..\..\Movement\Movement\opcodes.cpp"
+					RelativePath="..\..\src\game\Movement\Movement\opcodes.cpp"
 					>
 				</File>
 				<File
-					RelativePath="..\..\..\Movement\Movement\opcodes.h"
+					RelativePath="..\..\src\game\Movement\Movement\opcodes.h"
 					>
 				</File>
 			</Filter>
@@ -1774,19 +1774,19 @@
 				Name="sketches"
 				>
 				<File
-					RelativePath="..\..\..\Movement\Movement\ClientMoveStatus.h"
+					RelativePath="..\..\src\game\Movement\Movement\ClientMoveStatus.h"
 					>
 				</File>
 				<File
-					RelativePath="..\..\..\Movement\Movement\MoveUpdater.cpp"
+					RelativePath="..\..\src\game\Movement\Movement\MoveUpdater.cpp"
 					>
 				</File>
 				<File
-					RelativePath="..\..\..\Movement\Movement\MoveUpdater.h"
+					RelativePath="..\..\src\game\Movement\Movement\MoveUpdater.h"
 					>
 				</File>
 				<File
-					RelativePath="..\..\..\Movement\Movement\Session.h"
+					RelativePath="..\..\src\game\Movement\Movement\Session.h"
 					>
 					<FileConfiguration
 						Name="Release|Win32"
@@ -1798,7 +1798,7 @@
 					</FileConfiguration>
 				</File>
 				<File
-					RelativePath="..\..\..\Movement\Movement\UnitMoveFlags.h"
+					RelativePath="..\..\src\game\Movement\Movement\UnitMoveFlags.h"
 					>
 				</File>
 			</Filter>
@@ -1806,11 +1806,11 @@
 				Name="common"
 				>
 				<File
-					RelativePath="..\..\..\Movement\Movement\LinkedList.h"
+					RelativePath="..\..\src\game\Movement\Movement\LinkedList.h"
 					>
 				</File>
 				<File
-					RelativePath="..\..\..\Movement\Movement\typedefs.h"
+					RelativePath="..\..\src\game\Movement\Movement\typedefs.h"
 					>
 				</File>
 			</Filter>
@@ -1818,15 +1818,15 @@
 				Name="packet_builder"
 				>
 				<File
-					RelativePath="..\..\..\Movement\Movement\ByteBufferExtensions.h"
+					RelativePath="..\..\src\game\Movement\Movement\ByteBufferExtensions.h"
 					>
 				</File>
 				<File
-					RelativePath="..\..\..\Movement\Movement\packet_builder.cpp"
+					RelativePath="..\..\src\game\Movement\Movement\packet_builder.cpp"
 					>
 				</File>
 				<File
-					RelativePath="..\..\..\Movement\Movement\packet_builder.h"
+					RelativePath="..\..\src\game\Movement\Movement\packet_builder.h"
 					>
 				</File>
 			</Filter>
@@ -1834,15 +1834,15 @@
 				Name="spline"
 				>
 				<File
-					RelativePath="..\..\..\Movement\Movement\spline.cpp"
+					RelativePath="..\..\src\game\Movement\Movement\spline.cpp"
 					>
 				</File>
 				<File
-					RelativePath="..\..\..\Movement\Movement\spline.h"
+					RelativePath="..\..\src\game\Movement\Movement\spline.h"
 					>
 				</File>
 				<File
-					RelativePath="..\..\..\Movement\Movement\spline.impl.h"
+					RelativePath="..\..\src\game\Movement\Movement\spline.impl.h"
 					>
 				</File>
 			</Filter>
@@ -1850,27 +1850,27 @@
 				Name="move_spline"
 				>
 				<File
-					RelativePath="..\..\..\Movement\Movement\MoveSpline.cpp"
+					RelativePath="..\..\src\game\Movement\Movement\MoveSpline.cpp"
 					>
 				</File>
 				<File
-					RelativePath="..\..\..\Movement\Movement\MoveSpline.h"
+					RelativePath="..\..\src\game\Movement\Movement\MoveSpline.h"
 					>
 				</File>
 				<File
-					RelativePath="..\..\..\Movement\Movement\MoveSplineFlag.h"
+					RelativePath="..\..\src\game\Movement\Movement\MoveSplineFlag.h"
 					>
 				</File>
 				<File
-					RelativePath="..\..\..\Movement\Movement\MoveSplineInit.cpp"
+					RelativePath="..\..\src\game\Movement\Movement\MoveSplineInit.cpp"
 					>
 				</File>
 				<File
-					RelativePath="..\..\..\Movement\Movement\MoveSplineInit.h"
+					RelativePath="..\..\src\game\Movement\Movement\MoveSplineInit.h"
 					>
 				</File>
-				<File
-					RelativePath="..\..\..\Movement\Movement\MoveSplineInitArgs.h"
+                <File
+                    RelativePath="..\..\src\game\Movement\Movement\MoveSplineInitArgs.h"
 					>
 				</File>
 			</Filter>

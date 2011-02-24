@@ -1989,7 +1989,7 @@ void Map::ScriptsProcess()
                     break;
                 }
 
-                ((Unit*)source)->MonsterMoveWithSpeed(step.script->x, step.script->y, step.script->z, step.script->moveTo.travelTime);
+                ((Unit*)source)->GetMotionMaster()->MovePoint(0, step.script->x, step.script->y, step.script->z);
                 break;
             case SCRIPT_COMMAND_FLAG_SET:
                 if (!source)

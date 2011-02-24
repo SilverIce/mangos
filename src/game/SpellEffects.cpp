@@ -1778,7 +1778,9 @@ void Spell::EffectDummy(SpellEffectIndex eff_idx)
                         if (unitTarget->hasUnitState(UNIT_STAT_FOLLOW | UNIT_STAT_FOLLOW_MOVE))
                             unitTarget->GetMotionMaster()->MovementExpired();
 
-                        unitTarget->MonsterMove(pTargetDummy->GetPositionX(), pTargetDummy->GetPositionY(), pTargetDummy->GetPositionZ(), IN_MILLISECONDS);
+                        float speed = 20; //TODO: find correct value
+                        using namespace Movement;
+                        MoveSplineInit(*unitTarget->movement).MoveTo(pTargetDummy->GetLocation()).SetVelocity(speed).Launch();
 
                         // Add state to temporarily prevent follow
                         unitTarget->addUnitState(UNIT_STAT_ROOT);
@@ -4621,8 +4623,11 @@ void Spell::EffectDistract(SpellEffectIndex /*eff_idx*/)
     float angle = unitTarget->GetAngle(m_targets.m_destX, m_targets.m_destY);
 
     unitTarget->clearUnitState(UNIT_STAT_MOVING);
-    unitTarget->SetOrientation(angle);
-    unitTarget->SendMonsterMove(unitTarget->GetPositionX(), unitTarget->GetPositionY(), unitTarget->GetPositionZ(), SPLINETYPE_FACINGANGLE, SPLINEFLAG_WALKMODE, 0, NULL, angle);
+
+    Movement::MoveSplineInit init(*unitTarget->movement);
+    init.MoveTo(unitTarget->GetLocation());
+    init.SetFacing(angle);
+    init.Launch();
 
     if (unitTarget->GetTypeId() == TYPEID_UNIT)
         unitTarget->GetMotionMaster()->MoveDistract(damage * IN_MILLISECONDS);
@@ -7833,6 +7838,8 @@ void Spell::EffectSkinning(SpellEffectIndex /*eff_idx*/)
     ((Player*)m_caster)->UpdateGatherSkill(skill, skillValue, reqValue, creature->IsElite() ? 2 : 1 );
 }
 
+extern void GeneratePath(const Map*, G3D::Vector3, const G3D::Vector3&, std::vector<G3D::Vector3>&);
+
 void Spell::EffectCharge(SpellEffectIndex /*eff_idx*/)
 {
     if (!unitTarget)
@@ -7844,11 +7851,17 @@ void Spell::EffectCharge(SpellEffectIndex /*eff_idx*/)
     unitTarget->GetContactPoint(m_caster, x, y, z, 3.666666f);
 
     if (unitTarget->GetTypeId() != TYPEID_PLAYER)
-        ((Creature *)unitTarget)->StopMoving();
+        unitTarget->StopMoving();
 
-    // Only send MOVEMENTFLAG_WALK_MODE, client has strange issues with other move flags
-    m_caster->MonsterMove(x, y, z, 1);
+    {
+        using namespace Movement;
+        PointsArray path;
+        GeneratePath(m_caster->GetMap(),m_caster->GetLocation(),Vector3(x,y,z),path);
+        float speed = 24.f; // TODO: find correct speed
+        MoveSplineInit(*m_caster->movement).MovebyPath(path).SetVelocity(speed).Launch();
+    }
 
+    // TODO: trigger attack on arrive, not now
     // not all charge effects used in negative spells
     if (unitTarget != m_caster && !IsPositiveSpell(m_spellInfo->Id))
         m_caster->Attack(unitTarget, true);
@@ -7864,16 +7877,22 @@ void Spell::EffectCharge2(SpellEffectIndex /*eff_idx*/)
         z = m_targets.m_destZ;
 
         if (unitTarget->GetTypeId() != TYPEID_PLAYER)
-            ((Creature *)unitTarget)->StopMoving();
+            unitTarget->StopMoving();
     }
     else if (unitTarget && unitTarget != m_caster)
         unitTarget->GetContactPoint(m_caster, x, y, z, 3.666666f);
     else
         return;
 
-    // Only send MOVEMENTFLAG_WALK_MODE, client has strange issues with other move flags
-    m_caster->MonsterMove(x, y, z, 1);
+    {
+        using namespace Movement;
+        PointsArray path;
+        GeneratePath(m_caster->GetMap(),m_caster->GetLocation(),Vector3(x,y,z),path);
+        float speed = 24.f; // TODO: find correct speed
+        MoveSplineInit(*m_caster->movement).MovebyPath(path).SetVelocity(speed).Launch();
+    }
 
+    // TODO: trigger attack on arrive, not now
     // not all charge effects used in negative spells
     if (unitTarget && unitTarget != m_caster && !IsPositiveSpell(m_spellInfo->Id))
         m_caster->Attack(unitTarget, true);
