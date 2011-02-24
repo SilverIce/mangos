@@ -1,0 +1,3 @@
+[submodule "src/game/Movement"]
+	path = src/game/Movement
+	url = git://github.com/SilverIce/Movement.git
