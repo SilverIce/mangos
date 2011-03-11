@@ -263,8 +263,6 @@ class MANGOS_DLL_SPEC Map : public GridRefManager<NGridType>
         void SendInitTransports( Player * player );
         void SendRemoveTransports( Player * player );
 
-        void PlayerRelocationNotify(Player* player, Cell cell, CellPair cellpair);
-
         bool CreatureCellRelocation(Creature *creature, Cell new_cell);
 
         bool loaded(const GridPair &) const;
@@ -327,6 +325,8 @@ class MANGOS_DLL_SPEC Map : public GridRefManager<NGridType>
         uint32 i_script_id;
 
         // Map local low guid counters
+        ObjectGuidGenerator<HIGHGUID_UNIT> m_CreatureGuids;
+        ObjectGuidGenerator<HIGHGUID_GAMEOBJECT> m_GameObjectGuids;
         ObjectGuidGenerator<HIGHGUID_DYNAMICOBJECT> m_DynObjectGuids;
         ObjectGuidGenerator<HIGHGUID_PET> m_PetGuids;
         ObjectGuidGenerator<HIGHGUID_VEHICLE> m_VehicleGuids;
@@ -334,9 +334,6 @@ class MANGOS_DLL_SPEC Map : public GridRefManager<NGridType>
         // Type specific code for add/remove to/from grid
         template<class T>
             void AddToGrid(T*, NGridType *, Cell const&);
-
-        template<class T>
-            void AddNotifier(T*, Cell const&, CellPair const&);
 
         template<class T>
             void RemoveFromGrid(T*, NGridType *, Cell const&);

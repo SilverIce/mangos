@@ -78,9 +78,9 @@ float MAX_LINEAR_DISTANCE  = 200.f;
 //-----------------------------------------------//
 bool WaypointMovementGenerator<Creature>::LoadPath(Creature &c)
 {
-    DETAIL_FILTER_LOG(LOG_FILTER_AI_AND_MOVEGENSS, "LoadPath: loading waypoint path for creature %u, %u", c.GetGUIDLow(), c.GetDBTableGUIDLow());
+    DETAIL_FILTER_LOG(LOG_FILTER_AI_AND_MOVEGENSS, "LoadPath: loading waypoint path for creature %u, %u", c.GetGUIDLow(), c.GetGUIDLow());
 
-    i_path = sWaypointMgr.GetPath(c.GetDBTableGUIDLow());
+    i_path = sWaypointMgr.GetPath(c.GetGUIDLow());
 
     // We may LoadPath() for several occasions:
 
@@ -102,7 +102,7 @@ bool WaypointMovementGenerator<Creature>::LoadPath(Creature &c)
         if (!i_path)
         {
             sLog.outErrorDb("WaypointMovementGenerator::LoadPath: creature %s (Entry: %u GUID: %u) doesn't have waypoint path",
-                c.GetName(), c.GetEntry(), c.GetDBTableGUIDLow());
+                c.GetName(), c.GetEntry(), c.GetGUIDLow());
         return false;
         }
     }
@@ -296,7 +296,7 @@ void WaypointMovementGenerator<Creature>::processNodeScripts(Creature& creature,
 
     if (node.script_id)
     {
-        //DEBUG_FILTER_LOG(LOG_FILTER_AI_AND_MOVEGENSS, "Creature movement start script %u at point %u for creature %u (entry %u).", node.script_id, node_indexes[current_node].lastIdx, creature.GetDBTableGUIDLow(), creature.GetEntry());
+        //DEBUG_FILTER_LOG(LOG_FILTER_AI_AND_MOVEGENSS, "Creature movement start script %u at point %u for creature %u (entry %u).", node.script_id, node_indexes[current_node].lastIdx, creature.GetGUIDLow(), creature.GetEntry());
         creature.GetMap()->ScriptsStart(sCreatureMovementScripts, node.script_id, &creature, &creature);
     }
 

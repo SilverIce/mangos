@@ -40,14 +40,13 @@
 
 Map::~Map()
 {
-    ObjectAccessor::DelinkMap(this);
     UnloadAll(true);
 
     if(!m_scriptSchedule.empty())
         sWorld.DecreaseScheduledScriptCount(m_scriptSchedule.size());
 
     if (m_persistentState)
-        m_persistentState->SetUsedByMapState(false);        // field pointer can be deleted after this
+        m_persistentState->SetUsedByMapState(NULL);         // field pointer can be deleted after this
 
     if(i_data)
     {
@@ -78,6 +77,9 @@ Map::Map(uint32 id, time_t expiry, uint32 InstanceId, uint8 SpawnMode)
   i_gridExpiry(expiry), m_TerrainData(sTerrainMgr.LoadTerrain(id)),
   i_data(NULL), i_script_id(0)
 {
+    m_CreatureGuids.Set(sObjectMgr.GetFirstCreatureLowGuid());
+    m_GameObjectGuids.Set(sObjectMgr.GetFirstGameObjectLowGuid());
+
     for(unsigned int j=0; j < MAX_NUMBER_OF_GRIDS; ++j)
     {
         for(unsigned int idx=0; idx < MAX_NUMBER_OF_GRIDS; ++idx)
@@ -87,7 +89,6 @@ Map::Map(uint32 id, time_t expiry, uint32 InstanceId, uint8 SpawnMode)
             setNGrid(NULL, idx, j);
         }
     }
-    ObjectAccessor::LinkMap(this);
 
     //lets initialize visibility distance for map
     Map::InitVisibilityDistance();
@@ -96,7 +97,7 @@ Map::Map(uint32 id, time_t expiry, uint32 InstanceId, uint8 SpawnMode)
     m_TerrainData->AddRef();
 
     m_persistentState = sMapPersistentStateMgr.AddPersistentState(i_mapEntry, GetInstanceId(), GetDifficulty(), 0, IsDungeon());
-    m_persistentState->SetUsedByMapState(true);
+    m_persistentState->SetUsedByMapState(this);
 }
 
 void Map::InitVisibilityDistance()
@@ -196,23 +197,6 @@ void Map::DeleteFromWorld(Player* pl)
 {
     sObjectAccessor.RemoveObject(pl);
     delete pl;
-}
-
-template<class T>
-void Map::AddNotifier(T* , Cell const& , CellPair const& )
-{
-}
-
-template<>
-void Map::AddNotifier(Player* obj, Cell const& cell, CellPair const& cellpair)
-{
-    PlayerRelocationNotify(obj,cell,cellpair);
-}
-
-template<>
-void Map::AddNotifier(Creature* obj, Cell const&, CellPair const&)
-{
-    obj->SetNeedNotify();
 }
 
 void
@@ -316,8 +300,6 @@ bool Map::Add(Player *player)
     player->GetViewPoint().Event_AddedToWorld(&(*grid)(cell.CellX(), cell.CellY()));
     UpdateObjectVisibility(player,cell,p);
 
-    AddNotifier(player,cell,p);
-
     if (i_data)
         i_data->OnPlayerEnter(player);
 
@@ -358,8 +340,6 @@ Map::Add(T *obj)
 
     obj->GetViewPoint().Event_AddedToWorld(&(*grid)(cell.CellX(), cell.CellY()));
     UpdateObjectVisibility(obj,cell,p);
-
-    AddNotifier(obj,cell,p);
 }
 
 void Map::MessageBroadcast(Player *player, WorldPacket *msg, bool to_self)
@@ -707,10 +687,7 @@ Map::PlayerRelocation(Player *player, float x, float y, float z, float orientati
         player->GetViewPoint().Event_GridChanged(&(*newGrid)(new_cell.CellX(),new_cell.CellY()));
     }
 
-    player->GetViewPoint().Call_UpdateVisibilityForOwner();
-    // if move then update what player see and who seen
-    UpdateObjectVisibility(player, new_cell, new_val);
-    PlayerRelocationNotify(player,new_cell,new_val);
+    player->OnRelocated();
 
     NGridType* newGrid = getNGrid(new_cell.GridX(), new_cell.GridY());
     if( !same_cell && newGrid->GetGridState()!= GRID_STATE_ACTIVE )
@@ -725,34 +702,36 @@ Map::CreatureRelocation(Creature *creature, float x, float y, float z, float ang
 {
     MANGOS_ASSERT(CheckGridIntegrity(creature,false));
 
-    CellPair old_val = MaNGOS::ComputeCellPair(creature->GetPositionX(), creature->GetPositionY());
-    CellPair new_val = MaNGOS::ComputeCellPair(x, y);
+    Cell old_cell = creature->GetCurrentCell();
 
-    Cell old_cell(old_val);
+    CellPair new_val = MaNGOS::ComputeCellPair(x, y);
     Cell new_cell(new_val);
 
-    creature->Relocate(x, y, z, ang);
-
-    if( old_cell.DiffGrid(new_cell) )
+    if (old_cell.DiffCell(new_cell) || old_cell.DiffGrid(new_cell))
     {
-        if (creature->isActiveObject())
-            EnsureGridLoadedAtEnter(new_cell);
-        else
-            EnsureGridCreated(GridPair(new_cell.GridX(),new_cell.GridY()));
+        DEBUG_FILTER_LOG(LOG_FILTER_CREATURE_MOVES, "Creature (GUID: %u Entry: %u) added to moving list from grid[%u,%u]cell[%u,%u] to grid[%u,%u]cell[%u,%u].", creature->GetGUIDLow(), creature->GetEntry(), old_cell.GridX(), old_cell.GridY(), old_cell.CellX(), old_cell.CellY(), new_cell.GridX(), new_cell.GridY(), new_cell.CellX(), new_cell.CellY());
+
+        // do move or do move to respawn or remove creature if previous all fail
+        if (CreatureCellRelocation(creature,new_cell))
+        {
+            // update pos
+            creature->Relocate(x, y, z, ang);
+            creature->OnRelocated();
+        }
+        // if creature can't be move in new cell/grid (not loaded) move it to repawn cell/grid
+        // creature coordinates will be updated and notifiers send
+        else if (!CreatureRespawnRelocation(creature))
+        {
+            // ... or unload (if respawn grid also not loaded)
+            DEBUG_FILTER_LOG(LOG_FILTER_CREATURE_MOVES, "Creature (GUID: %u Entry: %u ) can't be move to unloaded respawn grid.",creature->GetGUIDLow(),creature->GetEntry());
+        }
+    }
+    else
+    {
+        creature->Relocate(x, y, z, ang);
+        creature->OnRelocated();
     }
 
-    if( old_val != new_val )
-    {
-        NGridType* oldGrid = getNGrid(old_cell.GridX(), old_cell.GridY());
-        RemoveFromGrid(creature, oldGrid,old_cell);
-
-        NGridType* newGrid = getNGrid(new_cell.GridX(), new_cell.GridY());
-        AddToGrid(creature, newGrid,new_cell);
-        creature->GetViewPoint().Event_GridChanged( &(*newGrid)(new_cell.CellX(),new_cell.CellY()));
-    }
-
-    creature->GetViewPoint().Call_UpdateVisibilityForOwner();
-    creature->SetNeedNotify();
     MANGOS_ASSERT(CheckGridIntegrity(creature,true));
 }
 
@@ -836,7 +815,7 @@ bool Map::CreatureRespawnRelocation(Creature *c)
     {
         c->Relocate(resp_x, resp_y, resp_z, resp_o);
         c->GetMotionMaster()->Initialize();                 // prevent possible problems with default move generators
-        c->SetNeedNotify();
+        c->OnRelocated();
         return true;
     }
     else
@@ -951,19 +930,6 @@ void Map::UpdateObjectVisibility( WorldObject* obj, Cell cell, CellPair cellpair
     MaNGOS::VisibleChangesNotifier notifier(*obj);
     TypeContainerVisitor<MaNGOS::VisibleChangesNotifier, WorldTypeMapContainer > player_notifier(notifier);
     cell.Visit(cellpair, player_notifier, *this, *obj, GetVisibilityDistance());
-}
-
-void Map::PlayerRelocationNotify( Player* player, Cell cell, CellPair cellpair )
-{
-    MaNGOS::PlayerRelocationNotifier relocationNotifier(*player);
-
-    TypeContainerVisitor<MaNGOS::PlayerRelocationNotifier, GridTypeMapContainer >  p2grid_relocation(relocationNotifier);
-    TypeContainerVisitor<MaNGOS::PlayerRelocationNotifier, WorldTypeMapContainer > p2world_relocation(relocationNotifier);
-
-    float radius = MAX_CREATURE_ATTACK_RADIUS * sWorld.getConfig(CONFIG_FLOAT_RATE_CREATURE_AGGRO);
-
-    cell.Visit(cellpair, p2grid_relocation, *this, *player, radius);
-    cell.Visit(cellpair, p2world_relocation, *this, *player, radius);
 }
 
 void Map::SendInitSelf( Player * player )
@@ -1172,7 +1138,7 @@ void Map::AddToActive( WorldObject* obj )
     {
         Creature* c= (Creature*)obj;
 
-        if (!c->IsPet() && c->GetDBTableGUIDLow())
+        if (!c->IsPet() && c->HasStaticDBSpawnData())
         {
             float x,y,z;
             c->GetRespawnCoord(x,y,z);
@@ -1207,7 +1173,7 @@ void Map::RemoveFromActive( WorldObject* obj )
     {
         Creature* c= (Creature*)obj;
 
-        if(!c->IsPet() && c->GetDBTableGUIDLow())
+        if(!c->IsPet() && c->HasStaticDBSpawnData())
         {
             float x,y,z;
             c->GetRespawnCoord(x,y,z);
@@ -2129,11 +2095,8 @@ void Map::ScriptsProcess()
             }
             case SCRIPT_COMMAND_RESPAWN_GAMEOBJECT:
             {
-                if (!step.script->respawnGo.goGuid)         // gameobject not specified
-                {
-                    sLog.outError("SCRIPT_COMMAND_RESPAWN_GAMEOBJECT (script id %u) call for NULL gameobject.", step.script->id);
+                if (!step.script->respawnGo.goGuid)         // checked at load
                     break;
-                }
 
                 if (!source)
                 {
@@ -2148,17 +2111,23 @@ void Map::ScriptsProcess()
                 }
 
                 WorldObject* summoner = (WorldObject*)source;
+                if (!summoner->IsInWorld())
+                {
+                    sLog.outError("SCRIPT_COMMAND_RESPAWN_GAMEOBJECT (script id %u) call for non-in-world WorldObject (TypeId: %u), skipping.", step.script->id, source->GetTypeId());
+                    break;
+                }
 
-                GameObject *go = NULL;
                 int32 time_to_despawn = step.script->respawnGo.despawnDelay < 5 ? 5 : step.script->respawnGo.despawnDelay;
 
-                MaNGOS::GameObjectWithDbGUIDCheck go_check(*summoner, step.script->respawnGo.goGuid);
-                MaNGOS::GameObjectSearcher<MaNGOS::GameObjectWithDbGUIDCheck> checker(go, go_check);
-                Cell::VisitGridObjects(summoner, checker, GetVisibilityDistance());
+                uint32 guidlow = step.script->respawnGo.goGuid;
+                GameObjectData const* goData = sObjectMgr.GetGOData(guidlow);
+                if (!goData)
+                    break;                                  // checked at load
 
+                GameObject *go = summoner->GetMap()->GetGameObject(ObjectGuid(HIGHGUID_GAMEOBJECT, goData->id, guidlow));
                 if (!go)
                 {
-                    sLog.outError("SCRIPT_COMMAND_RESPAWN_GAMEOBJECT (script id %u) failed for gameobject(guid: %u).", step.script->id, step.script->respawnGo.goGuid);
+                    sLog.outError("SCRIPT_COMMAND_RESPAWN_GAMEOBJECT (script id %u) failed for gameobject(guid: %u).", step.script->id, guidlow);
                     break;
                 }
 
@@ -2218,11 +2187,8 @@ void Map::ScriptsProcess()
             }
             case SCRIPT_COMMAND_OPEN_DOOR:
             {
-                if (!step.script->openDoor.goGuid)          // door not specified
-                {
-                    sLog.outError("SCRIPT_COMMAND_OPEN_DOOR (script id %u) call for NULL door.", step.script->id);
+                if (!step.script->openDoor.goGuid)          // checked at load
                     break;
-                }
 
                 if (!source)
                 {
@@ -2237,14 +2203,20 @@ void Map::ScriptsProcess()
                 }
 
                 Unit* caster = (Unit*)source;
+                if (!caster->IsInWorld())
+                {
+                    sLog.outError("SCRIPT_COMMAND_OPEN_DOOR (script id %u) call for non-in-world unit (TypeId: %u), skipping.", step.script->id, source->GetTypeId());
+                    break;
+                }
 
-                GameObject *door = NULL;
                 int32 time_to_close = step.script->openDoor.resetDelay < 15 ? 15 : step.script->openDoor.resetDelay;
 
-                MaNGOS::GameObjectWithDbGUIDCheck go_check(*caster, step.script->openDoor.goGuid);
-                MaNGOS::GameObjectSearcher<MaNGOS::GameObjectWithDbGUIDCheck> checker(door, go_check);
-                Cell::VisitGridObjects(caster, checker, GetVisibilityDistance());
+                uint32 guidlow = step.script->openDoor.goGuid;
+                GameObjectData const* goData = sObjectMgr.GetGOData(guidlow);
+                if (!goData)                                // checked at load
+                    break;
 
+                GameObject *door = caster->GetMap()->GetGameObject(ObjectGuid(HIGHGUID_GAMEOBJECT, goData->id, guidlow));
                 if (!door)
                 {
                     sLog.outError("SCRIPT_COMMAND_OPEN_DOOR (script id %u) failed for gameobject(guid: %u).", step.script->id, step.script->openDoor.goGuid);
@@ -2269,11 +2241,8 @@ void Map::ScriptsProcess()
             }
             case SCRIPT_COMMAND_CLOSE_DOOR:
             {
-                if (!step.script->closeDoor.goGuid)         // guid for door not specified
-                {
-                    sLog.outError("SCRIPT_COMMAND_CLOSE_DOOR (script id %u) call for NULL door.", step.script->id);
+                if (!step.script->closeDoor.goGuid)         // checked at load
                     break;
-                }
 
                 if (!source)
                 {
@@ -2288,17 +2257,23 @@ void Map::ScriptsProcess()
                 }
 
                 Unit* caster = (Unit*)source;
+                if (!caster->IsInWorld())
+                {
+                    sLog.outError("SCRIPT_COMMAND_CLOSE_DOOR (script id %u) call for non-in-world unit (TypeId: %u), skipping.", step.script->id, source->GetTypeId());
+                    break;
+                }
 
-                GameObject *door = NULL;
                 int32 time_to_open = step.script->closeDoor.resetDelay < 15 ? 15 : step.script->closeDoor.resetDelay;
 
-                MaNGOS::GameObjectWithDbGUIDCheck go_check(*caster, step.script->closeDoor.goGuid);
-                MaNGOS::GameObjectSearcher<MaNGOS::GameObjectWithDbGUIDCheck> checker(door, go_check);
-                Cell::VisitGridObjects(caster, checker, GetVisibilityDistance());
+                uint32 guidlow = step.script->closeDoor.goGuid;
+                GameObjectData const* goData = sObjectMgr.GetGOData(guidlow);
+                if (!goData)                                // checked at load
+                    break;
 
+                GameObject *door = caster->GetMap()->GetGameObject(ObjectGuid(HIGHGUID_GAMEOBJECT, goData->id, guidlow));
                 if (!door)
                 {
-                    sLog.outError("SCRIPT_COMMAND_CLOSE_DOOR (script id %u) failed for gameobject(guid: %u).", step.script->id, step.script->closeDoor.goGuid);
+                    sLog.outError("SCRIPT_COMMAND_CLOSE_DOOR (script id %u) failed for gameobject(guid: %u).", step.script->id, guidlow);
                     break;
                 }
                 if (door->GetGoType() != GAMEOBJECT_TYPE_DOOR)
@@ -3017,6 +2992,10 @@ uint32 Map::GenerateLocalLowGuid(HighGuid guidhigh)
     // TODO: for map local guid counters possible force reload map instead shutdown server at guid counter overflow
     switch(guidhigh)
     {
+        case HIGHGUID_UNIT:
+            return m_CreatureGuids.Generate();
+        case HIGHGUID_GAMEOBJECT:
+            return m_GameObjectGuids.Generate();
         case HIGHGUID_DYNAMICOBJECT:
             return m_DynObjectGuids.Generate();
         case HIGHGUID_PET:
