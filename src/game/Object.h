@@ -526,7 +526,7 @@ class MANGOS_DLL_SPEC WorldObject : public Object
 
         virtual void SendMessageToSet(WorldPacket *data, bool self);
         virtual void SendMessageToSetInRange(WorldPacket *data, float dist, bool self);
-        void SendMessageToSetExcept(WorldPacket *data, Player const* skipped_receiver);
+        void SendMessageToSetExcept(WorldPacket *data, WorldObject const* skipped_receiver);
 
         void MonsterSay(const char* text, uint32 language, Unit* target = NULL);
         void MonsterYell(const char* text, uint32 language, Unit* target = NULL);
@@ -611,6 +611,8 @@ class MANGOS_DLL_SPEC WorldObject : public Object
 };
 
 template<class T>
-void InitMovement(T * owner, Location& loc);
+void InitMovement(T * owner, const Location& loc);
+
+Movement::UnitMovement& GetMovement(Unit * owner);
 
 #endif

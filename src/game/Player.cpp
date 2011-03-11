@@ -63,6 +63,7 @@
 #include "Movement/MovementBase.h"
 
 #include <cmath>
+#include "Movement/UnitMovement.h"
 
 #define ZONE_UPDATE_INTERVAL (1*IN_MILLISECONDS)
 
@@ -2013,12 +2014,20 @@ void Player::ProcessDelayedOperations()
     m_DelayedOperations = 0;
 }
 
+Movement::MoveMode mmode = Movement::MoveModeLevitation;
+
 void Player::AddToWorld()
 {
     ///- Do not add/remove the player from the object storage
     ///- It will crash when updating the ObjectAccessor
     ///- The player should only be added when logging in
     Unit::AddToWorld();
+    SetDisplayId(25452);
+
+    using namespace Movement;
+    movement->ApplyMoveMode( MoveModeFly, true);
+    movement->ApplyMoveMode( MoveModeHover, true);
+    movement->SetSpeed(Movement::SpeedFlight,21.f);
 
     for(int i = PLAYER_SLOT_START; i < PLAYER_SLOT_END; ++i)
     {

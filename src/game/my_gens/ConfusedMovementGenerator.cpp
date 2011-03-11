@@ -130,11 +130,11 @@ bool ConfusedMovementGenerator<T>::Update(T &unit, const uint32 &diff)
             dest.y = i_waypoints[i_nextMove][1];
             dest.z = i_waypoints[i_nextMove][2];
 
-            MovementState& state = *unit.movement;
+            UnitMovement& state = *unit.movement;
             MoveSplineInit init(state);
             if (state.HasMode(MoveModeLevitation) || state.HasMode(MoveModeFly))
                 init.SetFly();
-            state.Walk(true);
+            state.ApplyWalkMode(true);
             init.SetWalk().MoveTo(dest).Launch();
         }
     }

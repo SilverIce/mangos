@@ -1265,7 +1265,7 @@ bool Creature::LoadFromDB(uint32 guidlow, Map *map)
     if (!Create(guidlow, map, data->phaseMask, data->id, TEAM_NONE, data, eventData))
         return false;
 
-    movement->Fly(CanFly());
+    movement->ApplyMoveMode(Movement::MoveModeLevitation,CanFly());
 
     m_respawnradius = data->spawndist;
 
@@ -1474,24 +1474,25 @@ bool Creature::FallGround()
         return false;
 
     // use larger distance for vmap height search than in most other cases
-    float tz = GetTerrain()->GetHeight(GetPositionX(), GetPositionY(), GetPositionZ(), true, MAX_FALL_DISTANCE);
+    Movement::Vector3 fall_dest(movement->GetPosition3());
+    fall_dest.z = GetTerrain()->GetHeight(fall_dest.x, fall_dest.y, fall_dest.z, true, MAX_FALL_DISTANCE);
 
-    if (tz <= INVALID_HEIGHT)
+    if (fall_dest.z <= INVALID_HEIGHT)
     {
         DEBUG_LOG("FallGround: creature %u at map %u (x: %f, y: %f, z: %f), not able to retrive a proper GetHeight (z: %f).",
-            GetEntry(), GetMap()->GetId(), GetPositionX(), GetPositionX(), GetPositionZ(), tz);
+            GetEntry(), GetMap()->GetId(), GetPositionX(), GetPositionX(), GetPositionZ(), fall_dest.z);
         return false;
     }
 
     // Abort too if the ground is very near
-    if (fabs(GetPositionZ() - tz) < 0.1f)
+    if (fabs(GetPositionZ() - fall_dest.z) < 0.1f)
         return false;
 
     Unit::SetDeathState(CORPSE_FALLING);
 
     {
         using namespace Movement;
-        MoveSplineInit(*movement).MoveTo(Vector3(GetPositionX(),GetPositionY(),tz)).SetFall().Launch();
+        MoveSplineInit(*movement).MoveTo(fall_dest).SetFall().Launch();
     }
     return true;
 }

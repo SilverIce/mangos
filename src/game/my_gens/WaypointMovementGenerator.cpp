@@ -107,7 +107,7 @@ bool WaypointMovementGenerator<Creature>::LoadPath(Creature &c)
         }
     }
 
-    // ignore some nosense paths
+    // ignore some nonsense paths
 	// TODO: it should be handled in waypoint manager, not here
     if (i_path->size() < 2)
     {
@@ -118,7 +118,7 @@ bool WaypointMovementGenerator<Creature>::LoadPath(Creature &c)
     {
         // TODO: info about path type (linear\catmullrom) should be stored in db,
         // it shouldn't be determined here
-        bool isLinear = !c.movement->HasMode(Movement::MoveModeLevitation) && !c.movement->HasMode(Movement::MoveModeFly);
+        bool isLinear = false;//!c.movement->HasMode(Movement::MoveModeLevitation) && !c.movement->HasMode(Movement::MoveModeFly);
 
         uint32 last = i_path->size() - 1 ;
 
@@ -126,18 +126,18 @@ bool WaypointMovementGenerator<Creature>::LoadPath(Creature &c)
         current_node = 0;
 
         float length = 0.f;
-        for (uint32 i = 1; i <= last; ++i)
-        {
-/*            
+        for (uint32 i = 1, j = 0; i <= last; ++i, ++j)
+        {            
             const WaypointNode& node = i_path->at(i);
-            if (isLinear)
+            //if (isLinear)
+            //{
+            //    const WaypointNode& prev_node = i_path->at(i-1);
+            //    length += Vector3(node.x-prev_node.x,node.y-prev_node.y,node.z-prev_node.z).length();
+            //}
+
+            if (node.delay || /*|| node.script_id || node.behavior || */(isLinear && j > 5))
             {
-                const WaypointNode& prev_node = i_path->at(i-1);
-                length += Vector3(node.x-prev_node.x,node.y-prev_node.y,node.z-prev_node.z).length();
-            }
-*/
-            if (/*node.delay || node.script_id || node.behavior || (*/isLinear/* && length > MAX_LINEAR_DISTANCE)*/)
-            {
+                j = 0;
                 length = 0.f;
 
                 if (!node_indexes.empty())
@@ -148,12 +148,12 @@ bool WaypointMovementGenerator<Creature>::LoadPath(Creature &c)
             }
         }
 
-        is_cyclic = false;//(node_indexes.size() == 1);
+        is_cyclic = (node_indexes.size() == 1);
     }
     return true;
 }
 
-void WaypointMovementGenerator<Creature>::movebyNode( Unit &u, uint32 /*node_index*/ )
+void WaypointMovementGenerator<Creature>::continueMove( Unit &u, uint32 /*node_index*/ )
 {
     if (!i_path || i_path->size() < 2)
         return;
@@ -167,25 +167,24 @@ void WaypointMovementGenerator<Creature>::movebyNode( Unit &u, uint32 /*node_ind
     PointsArray path;
     FillPath(*i_path, path, first, last);
 
-    MovementState& state = *u.movement;
+    UnitMovement& state = *u.movement;
 
     MoveSplineInit init(state);
     if (state.HasMode(MoveModeLevitation) || state.HasMode(MoveModeFly))
     {
-        init.SetVelocity(14.0f).SetFly();
-        state.Walk(false);
+        init.SetVelocity(10.f).SetFly();
+        state.ApplyWalkMode(false);
     }
     else
     {
-        state.Walk(true);
-        //init.SetSmooth();
+        //state.ApplyWalkMode(true);
+        state.ApplyWalkMode(false);
     }
 
     if (is_cyclic)
         init.SetCyclic();
 
-    // dunno why, but currently all mangos's waypoints first index is 1, not 0!
-    init.MovebyPath(path, first).Launch();
+    init.MovebyPath(path, first, true).Launch();
 }
 
 void WaypointMovementGenerator<Creature>::Initialize( Creature &u )
@@ -193,7 +192,7 @@ void WaypointMovementGenerator<Creature>::Initialize( Creature &u )
     //u.StopMoving();
     if (LoadPath(u))
     {
-        movebyNode(u,false);
+        continueMove(u);
     }
 }
 
@@ -208,9 +207,7 @@ void WaypointMovementGenerator<Creature>::Interrupt(Creature &creature)
     // Temporary solution:
     if (creature.hasUnitState(UNIT_STAT_ROAMING|UNIT_STAT_ROAMING_MOVE))
     {
-        //creature.movement->GetSplineFace().UpdateState();
         reset_position = (Pos&)creature.movement->GetPosition3();
-
         creature.clearUnitState(UNIT_STAT_ROAMING|UNIT_STAT_ROAMING_MOVE);
     }
 }
@@ -218,7 +215,7 @@ void WaypointMovementGenerator<Creature>::Interrupt(Creature &creature)
 void WaypointMovementGenerator<Creature>::Reset(Creature &u)
 {
     b_Stopped = false;
-    movebyNode(u, current_node_index+1);
+    continueMove(u);
 }
 
 bool WaypointMovementGenerator<Creature>::Update(Creature &creature, const uint32 &diff)
@@ -228,21 +225,26 @@ bool WaypointMovementGenerator<Creature>::Update(Creature &creature, const uint3
 
     // Waypoint movement can be switched on/off
     // This is quite handy for escort quests and other stuff
-    if (creature.hasUnitState(UNIT_STAT_NOT_MOVE))
+    //if (creature.hasUnitState(UNIT_STAT_NOT_MOVE))
+    //{
+    //    creature.clearUnitState(UNIT_STAT_ROAMING_MOVE);
+    //    return true;
+    //}
+
+    while (!OnArrived.empty())
     {
-        creature.clearUnitState(UNIT_STAT_ROAMING_MOVE);
-        return true;
+        int point = OnArrived.front();
+        OnArrived.pop_front();
+        processNodeScripts(creature, point);
     }
 
-    if (!IsActive(creature))
-        return true;
-    if (b_Stopped)
+    if (IsPaused())
     {
         i_stopTimer.Update(diff);
         if (i_stopTimer.Passed())
         {
             b_Stopped = false;
-            movebyNode(creature);
+            continueMove(creature);
         }
     }
     else if (creature.IsStopped())
@@ -255,33 +257,37 @@ bool WaypointMovementGenerator<Creature>::Update(Creature &creature, const uint3
 
 void WaypointMovementGenerator<Creature>::OnSplineDone(Unit& u)
 {
-    processNodeScripts((Creature&)u);
-
-    if ((++current_node) >= node_indexes.size())
-        current_node = 0;
-
-    if (!b_Stopped)
-        movebyNode(u);
 }
 
 void WaypointMovementGenerator<Creature>::OnEvent(Unit& u, int eventId, int data)
 {
     if (eventId == 1)
     {
-        current_node_index = data;
-
-        //char buf[100];
-        //snprintf(buf, sizeof buf, "point done: %d", data);
-        //u.MonsterSay(buf,LANG_UNIVERSAL);
+        OnArrived.push_back(data);
+        current_path_index = data;
+    }
+    else if (eventId == 0)
+    {
+        if ((++current_node) >= node_indexes.size())
+            current_node = 0;
+        OnArrived.push_back(-10);
     }
 }
 
-void WaypointMovementGenerator<Creature>::processNodeScripts(Creature& creature)
+void WaypointMovementGenerator<Creature>::processNodeScripts(Creature& creature, int32 pointId)
 {
     if (!i_path || i_path->size() < 2)
         return;
+   
+    if (pointId == -10)// current dirty way of OnArrived even processing
+    {
+        if (!IsPaused())
+            continueMove(creature);
+        return;
+    }
+    return;
 
-    const WaypointNode& node = i_path->at(node_indexes[current_node].lastIdx);
+    const WaypointNode& node = i_path->at(pointId);
 
     if (node.delay)
     {
@@ -328,13 +334,13 @@ void WaypointMovementGenerator<Creature>::processNodeScripts(Creature& creature)
     //m_isArrivalDone = true;
 
     // Inform script
-    MovementInform(creature);
+    MovementInform(creature, pointId);
 }
 
-void WaypointMovementGenerator<Creature>::MovementInform(Creature &creature)
+void WaypointMovementGenerator<Creature>::MovementInform(Creature &creature, uint32 pointId)
 {
     if (creature.AI())
-        creature.AI()->MovementInform(WAYPOINT_MOTION_TYPE, node_indexes[current_node].firstIdx+current_node_index);
+        creature.AI()->MovementInform(WAYPOINT_MOTION_TYPE, pointId);
 }
 
 bool WaypointMovementGenerator<Creature>::GetResetPosition(Creature&, float& x, float& y, float& z)
@@ -428,7 +434,7 @@ bool FlightPathMovementGenerator::Update(Player &player, const uint32 &diff)
         DoEventIfAny(player, point, true);
     }
 
-    // we have arrived at the end of the path
+    // we have arrived to the end of the path
     return !player.movement->move_spline.Finalized();
 }
 

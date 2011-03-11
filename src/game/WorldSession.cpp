@@ -279,8 +279,8 @@ bool WorldSession::Update(uint32 diff, PacketFilter& updater)
         }
         catch (ByteBufferException &)
         {
-            sLog.outError("WorldSession::Update ByteBufferException occured while parsing a packet (opcode: %u) from client %s, accountid=%i.",
-                    packet->GetOpcode(), GetRemoteAddress().c_str(), GetAccountId());
+            sLog.outError("WorldSession::Update ByteBufferException occured while parsing a packet (opcode: %s) from client %s, accountid=%i.",
+                    LookupOpcodeName(packet->GetOpcode()), GetRemoteAddress().c_str(), GetAccountId());
             if (sLog.HasLogLevelOrHigher(LOG_LVL_DEBUG))
             {
                 sLog.outDebug("Dumping error causing packet:");

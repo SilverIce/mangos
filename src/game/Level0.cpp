@@ -291,7 +291,7 @@ bool ChatHandler::HandleServerMotdCommand(char* /*args*/)
     return true;
 }
 
-extern void print_movement(const Movement::MovementState& st, std::string& str );
+extern void print_movement(const Movement::UnitMovement& st, std::string& str );
 
 bool ChatHandler::HandlePrintMovementState(char* args)
 {
@@ -303,7 +303,7 @@ bool ChatHandler::HandlePrintMovementState(char* args)
     if (!p)
         return false;
 
-    Movement::MovementState& st = *u->movement;
+    Movement::UnitMovement& st = *u->movement;
 
     if (!strcmp(p, "print"))
     {
@@ -322,12 +322,24 @@ bool ChatHandler::HandlePrintMovementState(char* args)
         PSendSysMessage("Position visualization for %s turned %s", u->GetName(), (u->movement->dbg_flags & 0x1 ? "on":"off"));
     }
 
-    else if (!strcmp(p, "test"))
+    else if (!strcmp(p, "board"))
     {
-        uint32 anim = 0;
-        using namespace Movement;
-        ExtractUInt32(&args, anim);        
-        MoveSplineInit(*u->movement).MoveTo(m_session->GetPlayer()->GetVector3()).SetFly().SetAnimation((AnimType)anim,0).Launch();
+        Player* pl = m_session->GetPlayer();
+
+        pl->GetCamera().SetView(u);
+        Movement::Scketches(*pl->movement).EnterTransport(u->movement->GetTransporter());
+        pl->SetMover(u);
+        pl->SetClientControl(u, 1);
+        u->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PLAYER_CONTROLLED);
+
+        //MoveSplineInit(*u->movement).MoveTo(m_session->GetPlayer()->GetVector3()).SetFly().SetAnimation((AnimType)anim,0).Launch();
+    }
+
+    else if (!strcmp(p, "fall"))
+    {
+        Movement::Location loc = u->GetLocation();
+        loc.z = u->GetTerrain()->GetHeight(u->GetPositionX(),u->GetPositionY(),u->GetPositionZ());
+        Movement::MoveSplineInit(*u->movement).MoveTo(loc).SetFall().SetFacing(3.14f).Launch();
     }
     else
         return false;

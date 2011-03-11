@@ -50,15 +50,20 @@ using Movement::MovementBase;
 using Movement::MovementBase;
 using Movement::GameobjectMovement;
 
+// TODO: one updater per map
+namespace Movement{
+    extern MoveUpdater sMoveUpdater;
+}
+
 inline void InitUnitMovement(Unit * owner, const Location& loc)
 {
     mov_assert(owner->isType(TYPEMASK_UNIT));
     owner->Relocate(loc.x,loc.y,loc.z,loc.orientation);
 
     if (!owner->movement)
-        owner->movement = new Movement::MovementState(owner);
+        owner->movement = new Movement::UnitMovement(*owner);
 
-    owner->movement->Initialize(Movement::MovControlServer, loc);
+    owner->movement->Initialize(Movement::MovControlServer, loc, Movement::sMoveUpdater);
 }
 
 template<class T> inline void InitGameobjectMovement(T * owner, const Location& loc)
@@ -69,10 +74,9 @@ template<class T> inline void InitGameobjectMovement(T * owner, const Location& 
     if (!owner->movement)
         owner->movement = new Movement::GameobjectMovement(*owner);
     owner->movement->SetPosition(loc);
-    owner->movement->SetInitialized();
 }
 
-template<class T> void InitMovement(T * owner, Location& loc)
+template<class T> void InitMovement(T * owner, const Location& loc)
 {
     mov_assert(!owner->isType(TYPEMASK_UNIT));
     owner->Relocate(loc.x,loc.y,loc.z,loc.orientation);
@@ -81,22 +85,46 @@ template<class T> void InitMovement(T * owner, Location& loc)
         owner->movement = new Movement::MovementBase(*owner);
 
     owner->movement->SetPosition(loc);
-    owner->movement->SetInitialized();
 }
 
-template void InitMovement(Corpse * owner, Location& loc);
+template void InitMovement(Corpse * owner, const Location& loc);
 
-template<> void InitMovement(GameObject * owner, Location& loc) {InitGameobjectMovement(owner,loc);}
-template<> void InitMovement(DynamicObject * owner, Location& loc) {InitGameobjectMovement(owner,loc);}
-template<> void InitMovement(Transport * owner, Location& loc) {InitGameobjectMovement(owner,loc);}
+template<> void InitMovement(GameObject * owner, const Location& loc) {InitGameobjectMovement(owner,loc);}
+template<> void InitMovement(DynamicObject * owner, const Location& loc) {InitGameobjectMovement(owner,loc);}
 
-template<> void InitMovement(Unit * owner, Location& loc) { InitUnitMovement(owner,loc);}
-template<> void InitMovement(Creature * owner, Location& loc) { InitUnitMovement(owner,loc);}
-template<> void InitMovement(TemporarySummon * owner, Location& loc) { InitUnitMovement(owner,loc);}
-template<> void InitMovement(Pet * owner, Location& loc) { InitUnitMovement(owner,loc);}
-template<> void InitMovement(Totem * owner, Location& loc) { InitUnitMovement(owner,loc);}
-template<> void InitMovement(Vehicle * owner, Location& loc) { InitUnitMovement(owner,loc);}
-template<> void InitMovement(Player * owner, Location& loc) { InitUnitMovement(owner,loc);}
+template<> void InitMovement(Transport * owner, const Location& loc)
+{
+    mov_assert(owner->isType(TYPEMASK_GAMEOBJECT | TYPEMASK_DYNAMICOBJECT));
+    owner->Relocate(loc.x,loc.y,loc.z,loc.orientation);
+
+    if (!owner->movement)
+    {
+        owner->movement = new Movement::MO_Transport(*owner);
+        owner->movement->SetPosition(loc);
+        owner->movement->SetUpdater(Movement::sMoveUpdater);
+    }
+}
+
+template<> void InitMovement(Unit * owner, const Location& loc) { InitUnitMovement(owner,loc);}
+template<> void InitMovement(Creature * owner, const Location& loc) { InitUnitMovement(owner,loc);}
+template<> void InitMovement(TemporarySummon * owner, const Location& loc) { InitUnitMovement(owner,loc);}
+template<> void InitMovement(Pet * owner, const Location& loc) { InitUnitMovement(owner,loc);}
+template<> void InitMovement(Totem * owner, const Location& loc) { InitUnitMovement(owner,loc);}
+template<> void InitMovement(Vehicle * owner, const Location& loc) { InitUnitMovement(owner,loc);}
+template<> void InitMovement(Player * owner, const Location& loc) { InitUnitMovement(owner,loc);}
+
+// Actually movement should be initialized BEFORE aura loading
+// but with current ugly code (we have ~40 places in code where unit creation called)
+Movement::UnitMovement& GetMovement(Unit * owner)
+{
+    if (!owner->movement)
+    {
+        sLog.outError("Unit movement was not initialized!");
+        InitUnitMovement(owner, owner->GetLocation());
+    }
+    
+    return *owner->movement;
+}
 
 Object::Object( )
 {
@@ -1497,7 +1525,7 @@ void WorldObject::SendMessageToSetInRange(WorldPacket *data, float dist, bool /*
         GetMap()->MessageDistBroadcast(this, data, dist);
 }
 
-void WorldObject::SendMessageToSetExcept(WorldPacket *data, Player const* skipped_receiver)
+void WorldObject::SendMessageToSetExcept(WorldPacket *data, WorldObject const* skipped_receiver)
 {
     //if object is in world, map for it already created!
     if (IsInWorld())
@@ -1550,11 +1578,16 @@ Creature* WorldObject::SummonCreature(uint32 id, float x, float y, float z, floa
     if (GetTypeId()==TYPEID_PLAYER)
         team = ((Player*)this)->GetTeam();
 
+    InitMovement((Creature*)pCreature,Location(x, y, z, ang));
+
+    if (!pCreature->Create(sObjectMgr.GenerateLowGuid(HIGHGUID_UNIT), GetMap(), GetPhaseMask(), id, team))
+    {
+        delete pCreature;
+        return NULL;
+    }
+
     if (x == 0.0f && y == 0.0f && z == 0.0f)
         GetClosePoint(x, y, z, pCreature->GetObjectBoundingRadius());
-
-    InitMovement((Creature*)pCreature,Location(x, y, z, ang));
-    pCreature->SetSummonPoint(x, y, z, ang);
 
     if(!pCreature->IsPositionValid())
     {
@@ -1563,11 +1596,8 @@ Creature* WorldObject::SummonCreature(uint32 id, float x, float y, float z, floa
         return NULL;
     }
 
-    if (!pCreature->Create(sObjectMgr.GenerateLowGuid(HIGHGUID_UNIT), GetMap(), GetPhaseMask(), id, team))
-    {
-        delete pCreature;
-        return NULL;
-    }
+    pCreature->SetSummonPoint(x, y, z, ang);
+    InitMovement((Creature*)pCreature,Location(x, y, z, ang));
 
     // Active state set before added to map
     pCreature->SetActiveObjectState(asActiveObject);

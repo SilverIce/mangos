@@ -82,7 +82,7 @@ bool Corpse::Create( uint32 guidlow, Player *owner)
     MANGOS_ASSERT(owner);
 
     WorldObject::_Create(guidlow, HIGHGUID_CORPSE, owner->GetPhaseMask());
-    InitMovement(this, (Location&)owner->GetLocation());
+    InitMovement(this, owner->GetLocation());
 
     //we need to assign owner's map for corpse
     //in other way we will get a crash in Corpse::SaveToDB()

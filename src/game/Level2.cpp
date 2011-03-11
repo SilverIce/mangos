@@ -43,7 +43,7 @@
 #include <map>
 
 #include "TargetedMovementGenerator.h"                      // for HandleNpcUnFollowCommand
-#include "Movement/MovementBase.h"
+#include "Movement/Location.h"
 
 static uint32 ReputationRankStrIndex[MAX_REPUTATION_RANK] =
 {
@@ -3191,7 +3191,7 @@ bool ChatHandler::HandleWpModifyCommand(char* args)
         }
         else
         {
-            InitMovement(wpCreature,Location(chr->GetPositionX(), chr->GetPositionY(), chr->GetPositionZ(), chr->GetOrientation()));
+            InitMovement(wpCreature,chr->GetLocation());
 
             if (!wpCreature->IsPositionValid())
             {
@@ -3311,7 +3311,7 @@ bool ChatHandler::HandleWpModifyCommand(char* args)
                     return false;
                 }
 
-                InitMovement(wpCreature2,Location(chr->GetPositionX(), chr->GetPositionY(), chr->GetPositionZ(), chr->GetOrientation()));
+                InitMovement(wpCreature2,chr->GetLocation());
 
                 if (!wpCreature2->IsPositionValid())
                 {

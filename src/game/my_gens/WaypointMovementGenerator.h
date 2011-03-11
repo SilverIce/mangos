@@ -71,7 +71,7 @@ class MANGOS_DLL_SPEC WaypointMovementGenerator<Creature>
 public PathMovementBase<Creature, WaypointPath const*>
 {
     public:
-        WaypointMovementGenerator(Creature &) : current_node_index(0), b_Stopped(false), i_stopTimer(0) {}
+        WaypointMovementGenerator(Creature &) : current_path_index(0), b_Stopped(false), i_stopTimer(0) {}
 
         ~WaypointMovementGenerator() { i_path = NULL; }
         void Initialize(Creature &u);
@@ -80,7 +80,7 @@ public PathMovementBase<Creature, WaypointPath const*>
         void Reset(Creature &u);
         bool Update(Creature &u, const uint32 &diff);
 
-        void MovementInform(Creature &);
+        void MovementInform(Creature &, uint32 pointId);
 
         MovementGeneratorType GetMovementGeneratorType() const { return WAYPOINT_MOTION_TYPE; }
 
@@ -110,17 +110,18 @@ public PathMovementBase<Creature, WaypointPath const*>
             uint32 size() const { return lastIdx-firstIdx+1;}
         };
 
-        void movebyNode(Unit &u, uint32 node_index = 0);
-        void processNodeScripts(Creature& u);
+        void continueMove(Unit &u, uint32 node_index = 0);
+        void processNodeScripts(Creature& u, int32 pointId);
 
         std::vector<Node> node_indexes;
         struct Pos
         {
             float x, y, z;
         } reset_position;
-        uint32 current_node_index;
+        uint32 current_path_index;
         bool is_cyclic;
         bool b_Stopped;
+        std::list<int32> OnArrived;
 
         ShortTimeTracker i_stopTimer;
 };

@@ -58,7 +58,7 @@ enum MMCleanFlag
     MMCF_RESET  = 2                                         // Flag if need top()->Reset()
 };
 
-class MANGOS_DLL_SPEC MotionMaster : private std::stack<MovementGenerator *>, public Movement::IListener
+class MANGOS_DLL_SPEC MotionMaster : private std::stack<MovementGenerator *>, public Movement::IListener2
 {
     private:
         typedef std::stack<MovementGenerator *> Impl;

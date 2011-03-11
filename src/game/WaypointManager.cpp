@@ -24,6 +24,7 @@
 #include "MapManager.h"
 #include "ObjectMgr.h"
 #include "ScriptMgr.h"
+#include "Movement/Location.h"
 
 INSTANTIATE_SINGLETON_1(WaypointManager);
 
@@ -215,6 +216,35 @@ void WaypointManager::Load()
                 node.behavior = NULL;
         }
         while(result->NextRow());
+
+        // burn in hell, Db devs!
+        // some waypoint paths have only one point or all points have same coords,
+        // some cyclic paths points extracted wrong and have redundant points
+        for (WaypointPathMap::iterator it = m_pathMap.begin();it!= m_pathMap.end();)
+        {
+            WaypointPath& path = it->second;
+            if (path.size() < 2)
+            {
+                m_pathMap.erase(it++);
+                continue;
+            }
+
+            bool increased = false;
+            Movement::Vector3& loc = (Movement::Vector3&)path.front();
+            for (WaypointPath::iterator it2 = path.begin()+1;it2!= path.end(); ++it2)
+            {
+                if (loc == (Movement::Vector3&)(*it2))
+                {
+                    increased = true;
+                    m_pathMap.erase(it++);
+                    break;
+                }
+            }
+
+            if (!increased)
+                ++it;
+        }
+
 
         if (!creatureNoMoveType.empty())
         {

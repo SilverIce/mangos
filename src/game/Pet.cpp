@@ -815,7 +815,7 @@ bool Pet::CreateBaseAtCreature(Creature* creature)
     if(!Create(guid, creature->GetMap(), creature->GetPhaseMask(), creature->GetEntry(), pet_number))
         return false;
 
-    InitMovement(this, (Location&)creature->GetLocation());
+    InitMovement(this, creature->GetLocation());
 
     if(!IsPositionValid())
     {

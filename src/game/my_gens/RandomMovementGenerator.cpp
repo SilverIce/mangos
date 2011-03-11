@@ -99,7 +99,7 @@ bool GenerateCoord(const Creature &creature, Vector3& v)
 
 enum{
     RANDOM_POINTS_MIN = 1,
-    RANDOM_POINTS_MAX = 3,
+    RANDOM_POINTS_MAX = 4,
 };
 
 template<>
@@ -109,7 +109,7 @@ RandomMovementGenerator<Creature>::_setRandomLocation(Creature &creature)
     Vector3 v;
     Movement::PointsArray path;
     uint32 points_count = urand(RANDOM_POINTS_MIN, RANDOM_POINTS_MAX);
-    for (uint32 i = 0; i < 2; ++i)
+    for (uint32 i = 0; i < points_count; ++i)
     {
         if (!GenerateCoord(creature, v))
             return;
@@ -119,7 +119,7 @@ RandomMovementGenerator<Creature>::_setRandomLocation(Creature &creature)
     {
         using namespace Movement;
 
-        MovementState& state = *creature.movement;
+        UnitMovement& state = *creature.movement;
 
         MoveSplineInit init(state);
         if (state.HasMode(MoveModeLevitation) || state.HasMode(MoveModeFly))
@@ -127,14 +127,14 @@ RandomMovementGenerator<Creature>::_setRandomLocation(Creature &creature)
             init.SetFly();
             init.MovebyPath(path);
             // walk mode - 90% chance, hovever not offlike
-            state.Walk(urand(0,3));
+            state.ApplyWalkMode(urand(0,3));
         }
         else
         {
             //PointsArray path;
             //GeneratePath(creature.GetMap(),state.GetPosition3(),Vector3(destX, destY, destZ), path);
             // walk mode - 90% chance, hovever not offlike
-            state.Walk(urand(0,9));
+            state.ApplyWalkMode(urand(0,9));
             init.MovebyPath(path);
         }
         init.Launch();

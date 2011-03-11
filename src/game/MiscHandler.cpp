@@ -14,8 +14,7 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
- */
-
+ */ 
 #include "Common.h"
 #include "Language.h"
 #include "Database/DatabaseEnv.h"
@@ -955,86 +954,7 @@ void WorldSession::HandleNextCinematicCamera( WorldPacket & /*recv_data*/ )
     DEBUG_LOG( "WORLD: Which movie to play" );
 }
 
-void WorldSession::HandleMoveTimeSkippedOpcode( WorldPacket & recv_data )
-{
-    /*  WorldSession::Update( WorldTimer::getMSTime() );*/
-    DEBUG_LOG( "WORLD: Time Lag/Synchronization Resent/Update" );
 
-    ObjectGuid guid;
-
-    recv_data >> guid.ReadAsPacked();
-    recv_data >> Unused<uint32>();
-
-    /*
-        ObjectGuid guid;
-        uint32 time_skipped;
-        recv_data >> guid;
-        recv_data >> time_skipped;
-        DEBUG_LOG( "WORLD: CMSG_MOVE_TIME_SKIPPED" );
-
-        /// TODO
-        must be need use in mangos
-        We substract server Lags to move time ( AntiLags )
-        for exmaple
-        GetPlayer()->ModifyLastMoveTime( -int32(time_skipped) );
-    */
-}
-
-void WorldSession::HandleFeatherFallAck(WorldPacket &recv_data)
-{
-    DEBUG_LOG("WORLD: CMSG_MOVE_FEATHER_FALL_ACK");
-
-    // no used
-    recv_data.rpos(recv_data.wpos());                       // prevent warnings spam
-}
-
-void WorldSession::HandleMoveUnRootAck(WorldPacket& recv_data)
-{
-    // no used
-    recv_data.rpos(recv_data.wpos());                       // prevent warnings spam
-/*
-    ObjectGuid guid;
-    recv_data >> guid;
-
-    // now can skip not our packet
-    if(_player->GetGUID() != guid)
-    {
-        recv_data.rpos(recv_data.wpos());                   // prevent warnings spam
-        return;
-    }
-
-    DEBUG_LOG( "WORLD: CMSG_FORCE_MOVE_UNROOT_ACK" );
-
-    recv_data.read_skip<uint32>();                          // unk
-
-    MovementInfo movementInfo;
-    ReadMovementInfo(recv_data, &movementInfo);
-*/
-}
-
-void WorldSession::HandleMoveRootAck(WorldPacket& recv_data)
-{
-    // no used
-    recv_data.rpos(recv_data.wpos());                       // prevent warnings spam
-/*
-    ObjectGuid guid;
-    recv_data >> guid;
-
-    // now can skip not our packet
-    if(_player->GetObjectGuid() != guid)
-    {
-        recv_data.rpos(recv_data.wpos());                   // prevent warnings spam
-        return;
-    }
-
-    DEBUG_LOG( "WORLD: CMSG_FORCE_MOVE_ROOT_ACK" );
-
-    recv_data.read_skip<uint32>();                          // unk
-
-    MovementInfo movementInfo;
-    ReadMovementInfo(recv_data, &movementInfo);
-*/
-}
 
 void WorldSession::HandleSetActionBarTogglesOpcode(WorldPacket& recv_data)
 {
@@ -1325,26 +1245,6 @@ void WorldSession::HandleSetTitleOpcode( WorldPacket & recv_data )
     GetPlayer()->SetUInt32Value(PLAYER_CHOSEN_TITLE, title);
 }
 
-void WorldSession::HandleTimeSyncResp( WorldPacket & recv_data )
-{
-    DEBUG_LOG("CMSG_TIME_SYNC_RESP");
-
-    uint32 counter, clientTicks;
-    recv_data >> counter >> clientTicks;
-
-    if(counter != _player->m_timeSyncCounter - 1)
-        DEBUG_LOG("Wrong time sync counter from player %s (cheater?)", _player->GetName());
-
-    DEBUG_LOG("Time sync received: counter %u, client ticks %u, time since last sync %u", counter, clientTicks, clientTicks - _player->m_timeSyncClient);
-
-    uint32 ourTicks = clientTicks + (WorldTimer::getMSTime() - _player->m_timeSyncServer);
-
-    // diff should be small
-    DEBUG_LOG("Our ticks: %u, diff %u, latency %u", ourTicks, ourTicks - clientTicks, GetLatency());
-
-    _player->m_timeSyncClient = clientTicks;
-}
-
 void WorldSession::HandleResetInstancesOpcode( WorldPacket & /*recv_data*/ )
 {
     DEBUG_LOG("WORLD: CMSG_RESET_INSTANCES");
@@ -1471,23 +1371,6 @@ void WorldSession::HandleCancelMountAuraOpcode( WorldPacket & /*recv_data*/ )
 
     _player->Unmount(_player->HasAuraType(SPELL_AURA_MOUNTED));
     _player->RemoveSpellsCausingAura(SPELL_AURA_MOUNTED);
-}
-
-void WorldSession::HandleMoveSetCanFlyAckOpcode( WorldPacket & recv_data )
-{
-    // fly mode on/off
-    DEBUG_LOG("WORLD: CMSG_MOVE_SET_CAN_FLY_ACK");
-    //recv_data.hexlike();
-
-    ObjectGuid guid;                                        // guid - unused
-    MovementInfo movementInfo;
-
-    recv_data >> guid.ReadAsPacked();
-    recv_data >> Unused<uint32>();                          // unk
-    recv_data >> movementInfo;
-    recv_data >> Unused<float>();                           // unk2
-
-    _player->m_movementInfo.SetMovementFlags(movementInfo.GetMovementFlags());
 }
 
 void WorldSession::HandleRequestPetInfoOpcode( WorldPacket & /*recv_data */)

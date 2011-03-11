@@ -32,7 +32,7 @@
 #include "ObjectMgr.h"
 #include "ObjectGuid.h"
 #include "SpellMgr.h"
-#include "Movement/UnitMovement.h"
+#include "Movement/Location.h"
 
 bool ChatHandler::HandleDebugSendSpellFailCommand(char* args)
 {
@@ -676,6 +676,7 @@ bool ChatHandler::HandleDebugSpawnVehicleCommand(char* args)
     m_session->GetPlayer()->GetClosePoint(px, py, pz, m_session->GetPlayer()->GetObjectBoundingRadius());
 
     InitMovement(v, Location(px, py, pz, m_session->GetPlayer()->GetOrientation()));
+    v->SetSummonPoint(px, py, pz, m_session->GetPlayer()->GetOrientation());
 
     if (!v->IsPositionValid())
     {

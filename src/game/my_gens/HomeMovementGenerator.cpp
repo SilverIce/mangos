@@ -55,7 +55,7 @@ HomeMovementGenerator<Creature>::_setTargetLocation(Creature & owner)
         arrived = false;
 
         using namespace Movement;
-        MovementState& state = *owner.movement;
+        UnitMovement& state = *owner.movement;
         MoveSplineInit init(state);
         if (state.HasMode(MoveModeLevitation)||state.HasMode(MoveModeFly))
         {
@@ -68,7 +68,7 @@ HomeMovementGenerator<Creature>::_setTargetLocation(Creature & owner)
             init.MovebyPath(path);
         }
 
-        state.Walk(false);
+        state.ApplyWalkMode(false);
 
         if (isRespawnMove)
             init.SetFacing(o);

@@ -7620,8 +7620,8 @@ void Unit::Mount(uint32 mount, uint32 spellId)
     RemoveAurasWithInterruptFlags(AURA_INTERRUPT_FLAG_MOUNTING);
 
     SetUInt32Value(UNIT_FIELD_MOUNTDISPLAYID, mount);
-
     SetFlag( UNIT_FIELD_FLAGS, UNIT_FLAG_MOUNT );
+    UpdateModelData();
 
     if (GetTypeId() == TYPEID_PLAYER)
     {
@@ -7658,6 +7658,7 @@ void Unit::Unmount(bool from_aura)
 
     SetUInt32Value(UNIT_FIELD_MOUNTDISPLAYID, 0);
     RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_MOUNT);
+    UpdateModelData();
 
     // Called NOT by Taxi system / GM command
     if (from_aura)
@@ -8348,7 +8349,7 @@ void Unit::SetSpeedRate(UnitMoveType mtype, float rate, bool forced)
             ++((Player*)this)->m_forced_speed_changes[mtype];
         }
 
-        Movement::Scketches(movement).SetSpeed(Movement::SpeedType(mtype), rate * baseMoveSpeed[mtype]);
+        GetMovement(this).SetSpeed(Movement::SpeedType(mtype), rate * baseMoveSpeed[mtype]);
         m_speed_rate[mtype] = rate;
     }
 
@@ -9335,7 +9336,7 @@ public:
 
     bool Execute(uint64, uint32)
     {
-        Movement::Location pos = m_owner.movement->GetPosition();
+        Movement::Location pos = m_owner.movement->GetGlobalPosition();
 
         if (m_owner.GetLocation() != pos && MaNGOS::IsValidMapCoord(pos.x,pos.y,pos.z))
         {
@@ -9366,6 +9367,8 @@ void Unit::AddToWorld()
     {
         m_Events.AddEvent(new PositionSyncEvent(*this),
             m_Events.CalculateTime(PositionSyncEvent::UpdateDelay));
+        // for test
+        SetFloatValue(UNIT_FIELD_HOVERHEIGHT, 1.8f);
     }
 
     Object::AddToWorld();
@@ -10123,7 +10126,10 @@ void Unit::SetDisplayId(uint32 modelId)
 
 void Unit::UpdateModelData()
 {
-    if (CreatureModelInfo const* modelInfo = sObjectMgr.GetCreatureModelInfo(GetDisplayId()))
+    // vehicle passenger should use vehicle display ID?
+    uint32 used_displayId = IsMounted() ? GetMountID() : GetDisplayId();
+
+    if (CreatureModelInfo const* modelInfo = sObjectMgr.GetCreatureModelInfo(used_displayId))
     {
         // we expect values in database to be relative to scale = 1.0
         SetFloatValue(UNIT_FIELD_BOUNDINGRADIUS, GetObjectScale() * modelInfo->bounding_radius);
@@ -10639,7 +10645,7 @@ void Unit::KnockBackFrom(Unit* target, float horizontalSpeed, float verticalSpee
 
         using namespace Movement;
 
-        MoveKnockBackStrategy::Apply(*movement,Vector3(fx,fy,fz), 62);
+        MoveKnockBackStrategy::Apply(*movement,Vector3(fx,fy,fz), 60);
 
         //FIXME: this mostly hack, must exist some packet for proper creature move at client side
         //       with CreatureRelocation at server side

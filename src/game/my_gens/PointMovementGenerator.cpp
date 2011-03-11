@@ -36,7 +36,7 @@ void PointMovementGenerator<T>::Initialize(T &unit)
     arrived = false;
     using namespace Movement;
 
-    MovementState& state = *unit.movement;
+    UnitMovement& state = *unit.movement;
 
     MoveSplineInit init(state);
     if (state.HasMode(MoveModeLevitation) || state.HasMode(MoveModeFly))

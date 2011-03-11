@@ -145,6 +145,7 @@ void MapManager::LoadTransports()
 Transport::Transport() : GameObject()
 {
     m_updateFlag = (UPDATEFLAG_TRANSPORT | UPDATEFLAG_HIGHGUID | UPDATEFLAG_HAS_POSITION | UPDATEFLAG_ROTATION);
+    movement = NULL;
 }
 
 bool Transport::Create(uint32 guidlow, uint32 mapid, float x, float y, float z, float ang, uint8 animprogress, uint16 dynamicHighValue)
@@ -582,4 +583,9 @@ void Transport::DoEventIfAny(WayPointMap::value_type const& node, bool departure
         if (!sScriptMgr.OnProcessEvent(eventid, this, this, departure))
             GetMap()->ScriptsStart(sEventScripts, eventid, this, this);
     }
+}
+
+Transport::~Transport()
+{
+    delete movement;
 }

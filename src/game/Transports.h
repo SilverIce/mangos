@@ -29,6 +29,7 @@ class Transport : public GameObject
 {
     public:
         explicit Transport();
+        virtual ~Transport();
 
         bool Create(uint32 guidlow, uint32 mapid, float x, float y, float z, float ang, uint8 animprogress, uint16 dynamicHighValue);
         bool GenerateWaypoints(uint32 pathid, std::set<uint32> &mapids);
@@ -38,6 +39,8 @@ class Transport : public GameObject
 
         typedef std::set<Player*> PlayerSet;
         PlayerSet const& GetPassengers() const { return m_passengers; }
+
+        Movement::MO_Transport * movement;
 
     private:
         struct WayPoint

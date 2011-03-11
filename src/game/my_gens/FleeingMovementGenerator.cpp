@@ -51,7 +51,7 @@ FleeingMovementGenerator<T>::_setTargetLocation(T &owner)
         arrived = false;
 
         using namespace Movement;
-        MovementState& state = *owner.movement;
+        UnitMovement& state = *owner.movement;
         MoveSplineInit(state).MoveTo(Vector3(x,y,z)).Launch();
     }
 }
