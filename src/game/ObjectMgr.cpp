@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005-2010 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2005-2011 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -40,7 +40,7 @@
 #include "Spell.h"
 #include "Chat.h"
 #include "AccountMgr.h"
-#include "InstanceSaveMgr.h"
+#include "MapPersistentStateMgr.h"
 #include "SpellAuras.h"
 #include "Util.h"
 #include "WaypointManager.h"
@@ -141,6 +141,9 @@ template uint32 IdGenerator<uint32>::Generate();
 template uint64 IdGenerator<uint64>::Generate();
 
 ObjectMgr::ObjectMgr() :
+    m_CreatureFirstGuid(1),
+    m_GameObjectFirstGuid(1),
+
     m_ArenaTeamIds("Arena team ids"),
     m_AuctionIds("Auction ids"),
     m_EquipmentSetIds("Equipment set ids"),
@@ -591,14 +594,14 @@ void ObjectMgr::LoadCreatureTemplates()
             if (difficultyInfo->AIName && *difficultyInfo->AIName)
             {
                 sLog.outErrorDb("Difficulty %u mode creature (Entry: %u) has `AIName`, but in any case will used difficulty 0 mode creature (Entry: %u) AIName.",
-                    diff, cInfo->DifficultyEntry[diff], i);
+                    diff + 1, cInfo->DifficultyEntry[diff], i);
                 continue;
             }
 
             if (difficultyInfo->ScriptID)
             {
                 sLog.outErrorDb("Difficulty %u mode creature (Entry: %u) has `ScriptName`, but in any case will used difficulty 0 mode creature (Entry: %u) ScriptName.",
-                    diff, cInfo->DifficultyEntry[diff], i);
+                    diff + 1, cInfo->DifficultyEntry[diff], i);
                 continue;
             }
 
@@ -983,7 +986,7 @@ uint32 ObjectMgr::GetModelForRace(uint32 sourceModelId, uint32 racemask)
 
         if (itr->second.creature_entry)
         {
-            const CreatureInfo *cInfo = sObjectMgr.GetCreatureTemplate(itr->second.creature_entry);
+            const CreatureInfo *cInfo = GetCreatureTemplate(itr->second.creature_entry);
             modelId = Creature::ChooseDisplayId(cInfo);
         }
         else
@@ -1228,14 +1231,18 @@ void ObjectMgr::LoadCreatureModelRace()
 void ObjectMgr::LoadCreatures()
 {
     uint32 count = 0;
-    //                                                0              1   2    3
-    QueryResult *result = WorldDatabase.Query("SELECT creature.guid, id, map, modelid,"
+    //                                                0                       1   2    3
+    QueryResult *result = WorldDatabase.Query("SELECT creature.guid, creature.id, map, modelid,"
     //   4             5           6           7           8            9              10         11
         "equipment_id, position_x, position_y, position_z, orientation, spawntimesecs, spawndist, currentwaypoint,"
-    //   12         13       14          15            16         17         18     19
-        "curhealth, curmana, DeathState, MovementType, spawnMask, phaseMask, event, pool_entry "
-        "FROM creature LEFT OUTER JOIN game_event_creature ON creature.guid = game_event_creature.guid "
-        "LEFT OUTER JOIN pool_creature ON creature.guid = pool_creature.guid");
+    //   12         13       14          15            16         17         18
+        "curhealth, curmana, DeathState, MovementType, spawnMask, phaseMask, event,"
+    //   19                        20
+        "pool_creature.pool_entry, pool_creature_template.pool_entry "
+        "FROM creature "
+        "LEFT OUTER JOIN game_event_creature ON creature.guid = game_event_creature.guid "
+        "LEFT OUTER JOIN pool_creature ON creature.guid = pool_creature.guid "
+        "LEFT OUTER JOIN pool_creature_template ON creature.id = pool_creature_template.id");
 
     if(!result)
     {
@@ -1301,7 +1308,8 @@ void ObjectMgr::LoadCreatures()
         data.spawnMask          = fields[16].GetUInt8();
         data.phaseMask          = fields[17].GetUInt16();
         int16 gameEvent         = fields[18].GetInt16();
-        int16 PoolId            = fields[19].GetInt16();
+        int16 GuidPoolId        = fields[19].GetInt16();
+        int16 EntryPoolId       = fields[20].GetInt16();
 
         MapEntry const* mapEntry = sMapStore.LookupEntry(data.mapid);
         if(!mapEntry)
@@ -1350,7 +1358,15 @@ void ObjectMgr::LoadCreatures()
         if(cInfo->flags_extra & CREATURE_FLAG_EXTRA_INSTANCE_BIND)
         {
             if(!mapEntry || !mapEntry->IsDungeon())
-                sLog.outErrorDb("Table `creature` have creature (GUID: %u Entry: %u) with `creature_template`.`flags_extra` including CREATURE_FLAG_EXTRA_INSTANCE_BIND but creature are not in instance.",guid,data.id);
+                sLog.outErrorDb("Table `creature` have creature (GUID: %u Entry: %u) with `creature_template`.`flags_extra` including CREATURE_FLAG_EXTRA_INSTANCE_BIND (%u) but creature are not in instance.",
+                    guid, data.id, CREATURE_FLAG_EXTRA_INSTANCE_BIND);
+        }
+
+        if(cInfo->flags_extra & CREATURE_FLAG_EXTRA_AGGRO_ZONE)
+        {
+            if(!mapEntry || !mapEntry->IsDungeon())
+                sLog.outErrorDb("Table `creature` have creature (GUID: %u Entry: %u) with `creature_template`.`flags_extra` including CREATURE_FLAG_EXTRA_AGGRO_ZONE (%u) but creature are not in instance.",
+                    guid, data.id, CREATURE_FLAG_EXTRA_AGGRO_ZONE);
         }
 
         if(data.curmana < cInfo->minmana)
@@ -1387,7 +1403,7 @@ void ObjectMgr::LoadCreatures()
             data.phaseMask = 1;
         }
 
-        if (gameEvent==0 && PoolId==0)                      // if not this is to be managed by GameEvent System or Pool system
+        if (gameEvent==0 && GuidPoolId==0 && EntryPoolId==0)// if not this is to be managed by GameEvent System or Pool system
             AddCreatureToGrid(guid, &data);
 
         ++count;
@@ -1436,12 +1452,16 @@ void ObjectMgr::LoadGameobjects()
 {
     uint32 count = 0;
 
-    //                                                0                1   2    3           4           5           6
-    QueryResult *result = WorldDatabase.Query("SELECT gameobject.guid, id, map, position_x, position_y, position_z, orientation,"
-    //   7          8          9          10         11             12            13     14         15         16     17
-        "rotation0, rotation1, rotation2, rotation3, spawntimesecs, animprogress, state, spawnMask, phaseMask, event, pool_entry "
-        "FROM gameobject LEFT OUTER JOIN game_event_gameobject ON gameobject.guid = game_event_gameobject.guid "
-        "LEFT OUTER JOIN pool_gameobject ON gameobject.guid = pool_gameobject.guid");
+    //                                                0                           1   2    3           4           5           6
+    QueryResult *result = WorldDatabase.Query("SELECT gameobject.guid, gameobject.id, map, position_x, position_y, position_z, orientation,"
+    //   7          8          9          10         11             12            13     14         15         16
+        "rotation0, rotation1, rotation2, rotation3, spawntimesecs, animprogress, state, spawnMask, phaseMask, event,"
+    //   17                          18
+        "pool_gameobject.pool_entry, pool_gameobject_template.pool_entry "
+        "FROM gameobject "
+        "LEFT OUTER JOIN game_event_gameobject ON gameobject.guid = game_event_gameobject.guid "
+        "LEFT OUTER JOIN pool_gameobject ON gameobject.guid = pool_gameobject.guid "
+        "LEFT OUTER JOIN pool_gameobject_template ON gameobject.id = pool_gameobject_template.id");
 
     if(!result)
     {
@@ -1540,7 +1560,8 @@ void ObjectMgr::LoadGameobjects()
         data.spawnMask      = fields[14].GetUInt8();
         data.phaseMask      = fields[15].GetUInt16();
         int16 gameEvent     = fields[16].GetInt16();
-        int16 PoolId        = fields[17].GetInt16();
+        int16 GuidPoolId    = fields[17].GetInt16();
+        int16 EntryPoolId   = fields[18].GetInt16();
 
         if (data.rotation2 < -1.0f || data.rotation2 > 1.0f)
         {
@@ -1566,7 +1587,7 @@ void ObjectMgr::LoadGameobjects()
             data.phaseMask = 1;
         }
 
-        if (gameEvent == 0 && PoolId == 0)                  // if not this is to be managed by GameEvent System or Pool system
+        if (gameEvent==0 && GuidPoolId==0 && EntryPoolId==0)// if not this is to be managed by GameEvent System or Pool system
             AddGameobjectToGrid(guid, &data);
         ++count;
 
@@ -1608,90 +1629,6 @@ void ObjectMgr::RemoveGameobjectFromGrid(uint32 guid, GameObjectData const* data
             cell_guids.gameobjects.erase(guid);
         }
     }
-}
-
-void ObjectMgr::LoadCreatureRespawnTimes()
-{
-    // remove outdated data
-    CharacterDatabase.DirectExecute("DELETE FROM creature_respawn WHERE respawntime <= UNIX_TIMESTAMP(NOW())");
-
-    uint32 count = 0;
-
-    QueryResult *result = CharacterDatabase.Query("SELECT guid, respawntime, instance FROM creature_respawn");
-
-    if(!result)
-    {
-        barGoLink bar(1);
-
-        bar.step();
-
-        sLog.outString();
-        sLog.outString(">> Loaded 0 creature respawn time.");
-        return;
-    }
-
-    barGoLink bar((int)result->GetRowCount());
-
-    do
-    {
-        Field *fields = result->Fetch();
-        bar.step();
-
-        uint32 loguid       = fields[0].GetUInt32();
-        uint64 respawn_time = fields[1].GetUInt64();
-        uint32 instance     = fields[2].GetUInt32();
-
-        mCreatureRespawnTimes[MAKE_PAIR64(loguid,instance)] = time_t(respawn_time);
-
-        ++count;
-    } while (result->NextRow());
-
-    delete result;
-
-    sLog.outString( ">> Loaded %lu creature respawn times", (unsigned long)mCreatureRespawnTimes.size() );
-    sLog.outString();
-}
-
-void ObjectMgr::LoadGameobjectRespawnTimes()
-{
-    // remove outdated data
-    CharacterDatabase.DirectExecute("DELETE FROM gameobject_respawn WHERE respawntime <= UNIX_TIMESTAMP(NOW())");
-
-    uint32 count = 0;
-
-    QueryResult *result = CharacterDatabase.Query("SELECT guid, respawntime, instance FROM gameobject_respawn");
-
-    if(!result)
-    {
-        barGoLink bar(1);
-
-        bar.step();
-
-        sLog.outString();
-        sLog.outString(">> Loaded 0 gameobject respawn time.");
-        return;
-    }
-
-    barGoLink bar((int)result->GetRowCount());
-
-    do
-    {
-        Field *fields = result->Fetch();
-        bar.step();
-
-        uint32 loguid       = fields[0].GetUInt32();
-        uint64 respawn_time = fields[1].GetUInt64();
-        uint32 instance     = fields[2].GetUInt32();
-
-        mGORespawnTimes[MAKE_PAIR64(loguid,instance)] = time_t(respawn_time);
-
-        ++count;
-    } while (result->NextRow());
-
-    delete result;
-
-    sLog.outString( ">> Loaded %lu gameobject respawn times", (unsigned long)mGORespawnTimes.size() );
-    sLog.outString();
 }
 
 // name must be checked to correctness (if received) before call this function
@@ -2764,26 +2701,15 @@ void ObjectMgr::LoadPlayerInfo()
             float  positionZ     = fields[6].GetFloat();
             float  orientation   = fields[7].GetFloat();
 
-            if(current_race >= MAX_RACES)
-            {
-                sLog.outErrorDb("Wrong race %u in `playercreateinfo` table, ignoring.",current_race);
-                continue;
-            }
-
             ChrRacesEntry const* rEntry = sChrRacesStore.LookupEntry(current_race);
-            if(!rEntry)
+            if(!rEntry || !((1 << (current_race-1)) & RACEMASK_ALL_PLAYABLE))
             {
                 sLog.outErrorDb("Wrong race %u in `playercreateinfo` table, ignoring.",current_race);
                 continue;
             }
 
-            if(current_class >= MAX_CLASSES)
-            {
-                sLog.outErrorDb("Wrong class %u in `playercreateinfo` table, ignoring.",current_class);
-                continue;
-            }
-
-            if(!sChrClassesStore.LookupEntry(current_class))
+            ChrClassesEntry const* cEntry = sChrClassesStore.LookupEntry(current_class);
+            if(!cEntry || !((1 << (current_class-1)) & CLASSMASK_ALL_PLAYABLE))
             {
                 sLog.outErrorDb("Wrong class %u in `playercreateinfo` table, ignoring.",current_class);
                 continue;
@@ -2850,14 +2776,17 @@ void ObjectMgr::LoadPlayerInfo()
                 Field* fields = result->Fetch();
 
                 uint32 current_race = fields[0].GetUInt32();
-                if(current_race >= MAX_RACES)
+                uint32 current_class = fields[1].GetUInt32();
+
+                ChrRacesEntry const* rEntry = sChrRacesStore.LookupEntry(current_race);
+                if(!rEntry || !((1 << (current_race-1)) & RACEMASK_ALL_PLAYABLE))
                 {
                     sLog.outErrorDb("Wrong race %u in `playercreateinfo_item` table, ignoring.",current_race);
                     continue;
                 }
 
-                uint32 current_class = fields[1].GetUInt32();
-                if(current_class >= MAX_CLASSES)
+                ChrClassesEntry const* cEntry = sChrClassesStore.LookupEntry(current_class);
+                if(!cEntry || !((1 << (current_class-1)) & CLASSMASK_ALL_PLAYABLE))
                 {
                     sLog.outErrorDb("Wrong class %u in `playercreateinfo_item` table, ignoring.",current_class);
                     continue;
@@ -2919,14 +2848,17 @@ void ObjectMgr::LoadPlayerInfo()
                 Field* fields = result->Fetch();
 
                 uint32 current_race = fields[0].GetUInt32();
-                if(current_race >= MAX_RACES)
+                uint32 current_class = fields[1].GetUInt32();
+
+                ChrRacesEntry const* rEntry = sChrRacesStore.LookupEntry(current_race);
+                if(!rEntry || !((1 << (current_race-1)) & RACEMASK_ALL_PLAYABLE))
                 {
                     sLog.outErrorDb("Wrong race %u in `playercreateinfo_spell` table, ignoring.",current_race);
                     continue;
                 }
 
-                uint32 current_class = fields[1].GetUInt32();
-                if(current_class >= MAX_CLASSES)
+                ChrClassesEntry const* cEntry = sChrClassesStore.LookupEntry(current_class);
+                if(!cEntry || !((1 << (current_class-1)) & CLASSMASK_ALL_PLAYABLE))
                 {
                     sLog.outErrorDb("Wrong class %u in `playercreateinfo_spell` table, ignoring.",current_class);
                     continue;
@@ -2978,14 +2910,17 @@ void ObjectMgr::LoadPlayerInfo()
                 Field* fields = result->Fetch();
 
                 uint32 current_race = fields[0].GetUInt32();
-                if(current_race >= MAX_RACES)
+                uint32 current_class = fields[1].GetUInt32();
+
+                ChrRacesEntry const* rEntry = sChrRacesStore.LookupEntry(current_race);
+                if(!rEntry || !((1 << (current_race-1)) & RACEMASK_ALL_PLAYABLE))
                 {
                     sLog.outErrorDb("Wrong race %u in `playercreateinfo_action` table, ignoring.",current_race);
                     continue;
                 }
 
-                uint32 current_class = fields[1].GetUInt32();
-                if(current_class >= MAX_CLASSES)
+                ChrClassesEntry const* cEntry = sChrClassesStore.LookupEntry(current_class);
+                if(!cEntry || !((1 << (current_class-1)) & CLASSMASK_ALL_PLAYABLE))
                 {
                     sLog.outErrorDb("Wrong class %u in `playercreateinfo_action` table, ignoring.",current_class);
                     continue;
@@ -3136,14 +3071,17 @@ void ObjectMgr::LoadPlayerInfo()
             Field* fields = result->Fetch();
 
             uint32 current_race = fields[0].GetUInt32();
-            if(current_race >= MAX_RACES)
+            uint32 current_class = fields[1].GetUInt32();
+
+            ChrRacesEntry const* rEntry = sChrRacesStore.LookupEntry(current_race);
+            if(!rEntry || !((1 << (current_race-1)) & RACEMASK_ALL_PLAYABLE))
             {
                 sLog.outErrorDb("Wrong race %u in `player_levelstats` table, ignoring.",current_race);
                 continue;
             }
 
-            uint32 current_class = fields[1].GetUInt32();
-            if(current_class >= MAX_CLASSES)
+            ChrClassesEntry const* cEntry = sChrClassesStore.LookupEntry(current_class);
+            if(!cEntry || !((1 << (current_class-1)) & CLASSMASK_ALL_PLAYABLE))
             {
                 sLog.outErrorDb("Wrong class %u in `player_levelstats` table, ignoring.",current_class);
                 continue;
@@ -3189,13 +3127,13 @@ void ObjectMgr::LoadPlayerInfo()
     for (int race = 0; race < MAX_RACES; ++race)
     {
         // skip nonexistent races
-        if(!sChrRacesStore.LookupEntry(race))
+        if(!((1 << (race-1)) & RACEMASK_ALL_PLAYABLE) || !sChrRacesStore.LookupEntry(race))
             continue;
 
         for (int class_ = 0; class_ < MAX_CLASSES; ++class_)
         {
             // skip nonexistent classes
-            if(!sChrClassesStore.LookupEntry(class_))
+            if(!((1 << (class_-1)) & CLASSMASK_ALL_PLAYABLE) || !sChrClassesStore.LookupEntry(class_))
                 continue;
 
             PlayerInfo* pInfo = &playerInfo[race][class_];
@@ -3696,8 +3634,8 @@ void ObjectMgr::LoadGroups()
                 diff = REGULAR_DIFFICULTY;                  // default for both difficaly types
             }
 
-            InstanceSave *save = sInstanceSaveMgr.AddInstanceSave(mapEntry->MapID, fields[2].GetUInt32(), Difficulty(diff), (time_t)fields[5].GetUInt64(), (fields[6].GetUInt32() == 0), true);
-            group->BindToInstance(save, fields[3].GetBool(), true);
+            DungeonPersistentState *state = (DungeonPersistentState*)sMapPersistentStateMgr.AddPersistentState(mapEntry, fields[2].GetUInt32(), Difficulty(diff), (time_t)fields[5].GetUInt64(), (fields[6].GetUInt32() == 0), true);
+            group->BindToInstance(state, fields[3].GetBool(), true);
         }while( result->NextRow() );
         delete result;
     }
@@ -4676,9 +4614,9 @@ void ObjectMgr::LoadInstanceTemplate()
             continue;
         }
 
-        if (mapEntry->IsContinent())
+        if (!mapEntry->Instanceable())
         {
-            sLog.outErrorDb("ObjectMgr::LoadInstanceTemplate: continent mapid %d for template!", temp->map);
+            sLog.outErrorDb("ObjectMgr::LoadInstanceTemplate: non-instanceable mapid %d for template!", temp->map);
             sInstanceTemplate.EraseEntry(i);
             continue;
         }
@@ -4706,6 +4644,46 @@ void ObjectMgr::LoadInstanceTemplate()
     }
 
     sLog.outString( ">> Loaded %u Instance Template definitions", sInstanceTemplate.RecordCount );
+    sLog.outString();
+}
+
+struct SQLWorldLoader : public SQLStorageLoaderBase<SQLWorldLoader>
+{
+    template<class D>
+    void convert_from_str(uint32 /*field_pos*/, char const *src, D &dst)
+    {
+        dst = D(sScriptMgr.GetScriptId(src));
+    }
+};
+
+void ObjectMgr::LoadWorldTemplate()
+{
+    SQLWorldLoader loader;
+    loader.Load(sWorldTemplate, false);
+
+    for(uint32 i = 0; i < sWorldTemplate.MaxEntry; i++)
+    {
+        WorldTemplate const* temp = GetWorldTemplate(i);
+        if (!temp)
+            continue;
+
+        MapEntry const* mapEntry = sMapStore.LookupEntry(temp->map);
+        if (!mapEntry)
+        {
+            sLog.outErrorDb("ObjectMgr::LoadWorldTemplate: bad mapid %d for template!", temp->map);
+            sWorldTemplate.EraseEntry(i);
+            continue;
+        }
+
+        if (mapEntry->Instanceable())
+        {
+            sLog.outErrorDb("ObjectMgr::LoadWorldTemplate: instanceable mapid %d for template!", temp->map);
+            sWorldTemplate.EraseEntry(i);
+            continue;
+        }
+    }
+
+    sLog.outString( ">> Loaded %u World Template definitions", sWorldTemplate.RecordCount );
     sLog.outString();
 }
 
@@ -4775,7 +4753,7 @@ void ObjectMgr::LoadGossipText()
     delete result;
 }
 
-void ObjectMgr::LoadNpcTextLocales()
+void ObjectMgr::LoadGossipTextLocales()
 {
     mNpcTextLocaleMap.clear();                              // need for reload case
 
@@ -5586,8 +5564,10 @@ void ObjectMgr::PackGroupIds()
 
             if (id == 0)
             {
+                CharacterDatabase.BeginTransaction();
                 CharacterDatabase.PExecute("DELETE FROM groups WHERE groupId = '%u'", id);
                 CharacterDatabase.PExecute("DELETE FROM group_member WHERE groupId = '%u'", id);
+                CharacterDatabase.CommitTransaction();
                 continue;
             }
 
@@ -5607,8 +5587,10 @@ void ObjectMgr::PackGroupIds()
         if (*i != groupId)
         {
             // remap group id
+            CharacterDatabase.BeginTransaction();
             CharacterDatabase.PExecute("UPDATE groups SET groupId = '%u' WHERE groupId = '%u'", groupId, *i);
             CharacterDatabase.PExecute("UPDATE group_member SET groupId = '%u' WHERE groupId = '%u'", groupId, *i);
+            CharacterDatabase.CommitTransaction();
         }
 
         ++groupId;
@@ -5633,7 +5615,7 @@ void ObjectMgr::SetHighestGuids()
     result = WorldDatabase.Query( "SELECT MAX(guid) FROM creature" );
     if( result )
     {
-        m_CreatureGuids.Set((*result)[0].GetUInt32()+1);
+        m_CreatureFirstGuid = (*result)[0].GetUInt32()+1;
         delete result;
     }
 
@@ -5652,15 +5634,17 @@ void ObjectMgr::SetHighestGuids()
     }
 
     // Cleanup other tables from nonexistent guids (>=m_hiItemGuid)
+    CharacterDatabase.BeginTransaction();
     CharacterDatabase.PExecute("DELETE FROM character_inventory WHERE item >= '%u'", m_ItemGuids.GetNextAfterMaxUsed());
     CharacterDatabase.PExecute("DELETE FROM mail_items WHERE item_guid >= '%u'", m_ItemGuids.GetNextAfterMaxUsed());
     CharacterDatabase.PExecute("DELETE FROM auction WHERE itemguid >= '%u'", m_ItemGuids.GetNextAfterMaxUsed());
     CharacterDatabase.PExecute("DELETE FROM guild_bank_item WHERE item_guid >= '%u'", m_ItemGuids.GetNextAfterMaxUsed());
+    CharacterDatabase.CommitTransaction();
 
     result = WorldDatabase.Query("SELECT MAX(guid) FROM gameobject" );
     if( result )
     {
-        m_GameobjectGuids.Set((*result)[0].GetUInt32()+1);
+        m_GameObjectFirstGuid = (*result)[0].GetUInt32()+1;
         delete result;
     }
 
@@ -5712,30 +5696,6 @@ void ObjectMgr::SetHighestGuids()
         m_GroupIds.Set((*result)[0].GetUInt32()+1);
         delete result;
     }
-}
-
-uint32 ObjectMgr::GenerateLowGuid(HighGuid guidhigh)
-{
-    switch(guidhigh)
-    {
-        case HIGHGUID_ITEM:
-            return m_ItemGuids.Generate();
-        case HIGHGUID_UNIT:
-            return m_CreatureGuids.Generate();
-        case HIGHGUID_PLAYER:
-            return m_CharGuids.Generate();
-        case HIGHGUID_GAMEOBJECT:
-            return m_GameobjectGuids.Generate();
-        case HIGHGUID_CORPSE:
-            return m_CorpseGuids.Generate();
-        case HIGHGUID_INSTANCE:
-            return m_InstanceGuids.Generate();
-        default:
-            MANGOS_ASSERT(0);
-    }
-
-    MANGOS_ASSERT(0);
-    return 0;
 }
 
 void ObjectMgr::LoadGameObjectLocales()
@@ -6785,14 +6745,6 @@ void ObjectMgr::LoadWeatherZoneChances()
     sLog.outString(">> Loaded %u weather definitions", count);
 }
 
-void ObjectMgr::SaveCreatureRespawnTime(uint32 loguid, uint32 instance, time_t t)
-{
-    mCreatureRespawnTimes[MAKE_PAIR64(loguid,instance)] = t;
-    CharacterDatabase.PExecute("DELETE FROM creature_respawn WHERE guid = '%u' AND instance = '%u'", loguid, instance);
-    if(t)
-        CharacterDatabase.PExecute("INSERT INTO creature_respawn VALUES ( '%u', '" UI64FMTD "', '%u' )", loguid, uint64(t), instance);
-}
-
 void ObjectMgr::DeleteCreatureData(uint32 guid)
 {
     // remove mapid*cellid -> guid_set map
@@ -6801,40 +6753,6 @@ void ObjectMgr::DeleteCreatureData(uint32 guid)
         RemoveCreatureFromGrid(guid, data);
 
     mCreatureDataMap.erase(guid);
-}
-
-void ObjectMgr::SaveGORespawnTime(uint32 loguid, uint32 instance, time_t t)
-{
-    mGORespawnTimes[MAKE_PAIR64(loguid,instance)] = t;
-    CharacterDatabase.PExecute("DELETE FROM gameobject_respawn WHERE guid = '%u' AND instance = '%u'", loguid, instance);
-    if(t)
-        CharacterDatabase.PExecute("INSERT INTO gameobject_respawn VALUES ( '%u', '" UI64FMTD "', '%u' )", loguid, uint64(t), instance);
-}
-
-void ObjectMgr::DeleteRespawnTimeForInstance(uint32 instance)
-{
-    RespawnTimes::iterator next;
-
-    for(RespawnTimes::iterator itr = mGORespawnTimes.begin(); itr != mGORespawnTimes.end(); itr = next)
-    {
-        next = itr;
-        ++next;
-
-        if (PAIR64_HIPART(itr->first)==instance)
-            mGORespawnTimes.erase(itr);
-    }
-
-    for(RespawnTimes::iterator itr = mCreatureRespawnTimes.begin(); itr != mCreatureRespawnTimes.end(); itr = next)
-    {
-        next = itr;
-        ++next;
-
-        if (PAIR64_HIPART(itr->first)==instance)
-            mCreatureRespawnTimes.erase(itr);
-    }
-
-    CharacterDatabase.PExecute("DELETE FROM creature_respawn WHERE instance = '%u'", instance);
-    CharacterDatabase.PExecute("DELETE FROM gameobject_respawn WHERE instance = '%u'", instance);
 }
 
 void ObjectMgr::DeleteGOData(uint32 guid)
@@ -7539,7 +7457,7 @@ bool PlayerCondition::Meets(Player const * player) const
         }
         case CONDITION_NO_AURA:
             return !player->HasAura(value1, SpellEffectIndex(value2));
-        case CONDITION_ACTIVE_EVENT:
+        case CONDITION_ACTIVE_GAME_EVENT:
             return sGameEventMgr.IsActiveEvent(value1);
         case CONDITION_AREA_FLAG:
         {
@@ -7620,6 +7538,12 @@ bool PlayerCondition::Meets(Player const * player) const
             return player->HasItemCount(value1, value2, true);
         case CONDITION_NOITEM_WITH_BANK:
             return !player->HasItemCount(value1, value2, true);
+        case CONDITION_NOT_ACTIVE_GAME_EVENT:
+            return !sGameEventMgr.IsActiveEvent(value1);
+        case CONDITION_ACTIVE_HOLIDAY:
+            return sGameEventMgr.IsActiveHoliday(HolidayIds(value1));
+        case CONDITION_NOT_ACTIVE_HOLIDAY:
+            return !sGameEventMgr.IsActiveHoliday(HolidayIds(value1));
         default:
             return false;
     }
@@ -7768,10 +7692,10 @@ bool PlayerCondition::IsValid(ConditionType condition, uint32 value1, uint32 val
             }
             break;
         }
-        case CONDITION_ACTIVE_EVENT:
+        case CONDITION_ACTIVE_GAME_EVENT:
+        case CONDITION_NOT_ACTIVE_GAME_EVENT:
         {
-            GameEventMgr::GameEventDataMap const& events = sGameEventMgr.GetEventMap();
-            if (value1 >=events.size() || !events[value1].isValid())
+            if (!sGameEventMgr.IsValidEvent(value1))
             {
                 sLog.outErrorDb("Active event (%u) condition requires existing event id (%u), skipped", condition, value1);
                 return false;
@@ -7866,6 +7790,16 @@ bool PlayerCondition::IsValid(ConditionType condition, uint32 value1, uint32 val
                 return false;
             }
 
+            break;
+        }
+        case CONDITION_ACTIVE_HOLIDAY:
+        case CONDITION_NOT_ACTIVE_HOLIDAY:
+        {
+            if (!sHolidaysStore.LookupEntry(value1))
+            {
+                sLog.outErrorDb("Active holiday (%u) condition requires existing holiday id (%u), skipped", condition, value1);
+                return false;
+            }
             break;
         }
         case CONDITION_NONE:
@@ -8083,7 +8017,7 @@ void ObjectMgr::LoadMailLevelRewards()
             continue;
         }
 
-        if(!GetCreatureTemplateStore(senderEntry))
+        if(!GetCreatureTemplate(senderEntry))
         {
             sLog.outErrorDb("Table `mail_level_reward` have nonexistent sender creature entry (%u) for level %u that invalid not include any player races, ignoring.",senderEntry,level);
             continue;
@@ -8337,7 +8271,7 @@ void ObjectMgr::LoadVendorTemplates()
         sLog.outErrorDb("Table `npc_vendor_template` has vendor template %u not used by any vendors ", *vItr);
 }
 
-void ObjectMgr::LoadNpcTextId()
+void ObjectMgr::LoadNpcGossips()
 {
 
     m_mCacheNpcTextIdMap.clear();
@@ -8902,9 +8836,9 @@ bool FindCreatureData::operator()( CreatureDataPair const& dataPair )
         i_mapDist = new_dist;
     }
 
-    // skip not spawned (in any state), 
+    // skip not spawned (in any state),
     uint16 pool_id = sPoolMgr.IsPartOfAPool<Creature>(dataPair.first);
-    if (pool_id && !sPoolMgr.IsSpawnedObject<Creature>(dataPair.first))
+    if (pool_id && !i_player->GetMap()->GetPersistentState()->IsSpawnedPoolObject<Creature>(dataPair.first))
         return false;
 
     if (!i_spawnedData || new_dist < i_spawnedDist)
@@ -8954,7 +8888,7 @@ bool FindGOData::operator()( GameObjectDataPair const& dataPair )
 
     // skip not spawned (in any state)
     uint16 pool_id = sPoolMgr.IsPartOfAPool<GameObject>(dataPair.first);
-    if (pool_id && !sPoolMgr.IsSpawnedObject<GameObject>(dataPair.first))
+    if (pool_id && !i_player->GetMap()->GetPersistentState()->IsSpawnedPoolObject<GameObject>(dataPair.first))
         return false;
 
     if (!i_spawnedData || new_dist < i_spawnedDist)
