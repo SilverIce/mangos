@@ -29,6 +29,7 @@
 #include "Formulas.h"
 #include "CreatureAI.h"
 #include "Util.h"
+#include "SpellScript.h"
 
 pAuraProcHandler AuraProcHandler[TOTAL_AURAS]=
 {
@@ -574,6 +575,32 @@ SpellAuraProcResult Unit::HandleDummyAuraProc(Unit *pVictim, uint32 damage, Aura
     Unit* target = pVictim;
     int32  basepoints[MAX_EFFECT_INDEX] = {0, 0, 0};
 
+
+    if (ProcHandler const* sc = sSpellScriptMgr.GetProcScript(dummySpell->Id))
+    {
+        AuraProc_Args args(this, basepoints, effIndex);
+        args.procSpell = procSpell;
+        args.dummySpell = dummySpell;
+        args.target = target;
+        args.castItem = castItem;
+
+        args.effIndex = effIndex;
+        args.triggered_spell_id = triggered_spell_id;
+        args.damage = damage;
+        args.triggerAmount = triggerAmount;
+
+        sc->OnProc(args);
+
+        // write AuraProc_Args data into out local variables
+        // actually i shouldn't do it, but currently there are a lot of not scripted spells that use local vars
+        target = args.target;
+        castItem = args.castItem;
+        //effIndex = args.effIndex;
+        triggered_spell_id = args.triggered_spell_id;
+        damage = args.damage;
+        triggerAmount = args.triggerAmount;
+    }
+
     switch(dummySpell->SpellFamilyName)
     {
         case SPELLFAMILY_GENERIC:
@@ -581,6 +608,7 @@ SpellAuraProcResult Unit::HandleDummyAuraProc(Unit *pVictim, uint32 damage, Aura
             switch (dummySpell->Id)
             {
                 // Eye for an Eye
+                handled_by_scripts(
                 case 9799:
                 case 25988:
                 {
@@ -591,7 +619,7 @@ SpellAuraProcResult Unit::HandleDummyAuraProc(Unit *pVictim, uint32 damage, Aura
 
                     triggered_spell_id = 25997;
                     break;
-                }
+                })
                 // Sweeping Strikes (NPC spells may be)
                 case 18765:
                 case 35429:
@@ -608,6 +636,7 @@ SpellAuraProcResult Unit::HandleDummyAuraProc(Unit *pVictim, uint32 damage, Aura
                     break;
                 }
                 // Twisted Reflection (boss spell)
+                handled_by_scripts(
                 case 21063:
                     triggered_spell_id = 21064;
                     break;
@@ -619,7 +648,7 @@ SpellAuraProcResult Unit::HandleDummyAuraProc(Unit *pVictim, uint32 damage, Aura
                     // Need remove one 24659 aura
                     RemoveAuraHolderFromStack(24659);
                     return SPELL_AURA_PROC_OK;
-                }
+                })
                 // Restless Strength
                 case 24661:
                 {
@@ -691,6 +720,7 @@ SpellAuraProcResult Unit::HandleDummyAuraProc(Unit *pVictim, uint32 damage, Aura
                     break;
                 }
                 // Mana Leech (Passive) (Priest Pet Aura)
+                handled_by_scripts(
                 case 28305:
                 {
                     // Cast on owner
@@ -700,7 +730,7 @@ SpellAuraProcResult Unit::HandleDummyAuraProc(Unit *pVictim, uint32 damage, Aura
 
                     triggered_spell_id = 34650;
                     break;
-                }
+                })
                 // Divine purpose
                 case 31871:
                 case 31872:
@@ -1348,6 +1378,7 @@ SpellAuraProcResult Unit::HandleDummyAuraProc(Unit *pVictim, uint32 damage, Aura
             switch(dummySpell->SpellIconID)
             {
                 // Improved Shadowform
+                handled_by_scripts(
                 case 217:
                 {
                     if(!roll_chance_i(triggerAmount))
@@ -1363,7 +1394,7 @@ SpellAuraProcResult Unit::HandleDummyAuraProc(Unit *pVictim, uint32 damage, Aura
                     basepoints[0] = damage * triggerAmount/100;
                     triggered_spell_id = 47753;
                     break;
-                }
+                })
                 // Empowered Renew
                 case 3021:
                 {

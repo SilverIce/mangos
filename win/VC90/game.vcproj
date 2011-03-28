@@ -1707,6 +1707,26 @@
 				>
 			</File>
 		</Filter>
+		<Filter
+			Name="SpellScripts"
+			>
+			<File
+				RelativePath="..\..\src\game\spell_script_includes.h"
+				>
+			</File>
+			<File
+				RelativePath="..\..\src\game\spell_script_tests.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\src\game\SpellScript.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\src\game\SpellScript.h"
+				>
+			</File>
+		</Filter>
 		<File
 			RelativePath="..\..\src\game\pchdef.cpp"
 			>
