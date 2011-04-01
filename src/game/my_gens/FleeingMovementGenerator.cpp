@@ -20,7 +20,6 @@
 #include "CreatureAI.h"
 #include "MapManager.h"
 #include "FleeingMovementGenerator.h"
-#include "DestinationHolderImp.h"
 #include "ObjectAccessor.h"
 #include "Movement/UnitMovement.h"
 

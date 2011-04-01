@@ -20,8 +20,6 @@
 #define MANGOS_POINTMOVEMENTGENERATOR_H
 
 #include "MovementGenerator.h"
-#include "DestinationHolder.h"
-#include "Traveller.h"
 #include "FollowerReference.h"
 
 template<class T>

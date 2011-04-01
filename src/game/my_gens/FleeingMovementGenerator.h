@@ -20,8 +20,6 @@
 #define MANGOS_FLEEINGMOVEMENTGENERATOR_H
 
 #include "MovementGenerator.h"
-#include "DestinationHolder.h"
-#include "Traveller.h"
 
 template<class T>
 class MANGOS_DLL_SPEC FleeingMovementGenerator

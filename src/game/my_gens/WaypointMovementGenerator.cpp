@@ -35,7 +35,6 @@ alter table creature_movement add `wpguid` int(11) default '0';
 #include "WaypointMovementGenerator.h"
 #include "ObjectMgr.h"
 #include "Creature.h"
-#include "DestinationHolderImp.h"
 #include "CreatureAI.h"
 #include "WaypointManager.h"
 #include "WorldPacket.h"
@@ -418,7 +417,7 @@ void FlightPathMovementGenerator::Reset(Player & player)
 
     MoveSplineInit init(*player.movement);
     init.MovebyPath(path,GetCurrentNode());
-    init.SetVelocity(PLAYER_FLIGHT_SPEED);
+    init.SetVelocity(30.f);
     init.SetFly();
     init.Launch();
 }

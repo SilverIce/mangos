@@ -20,8 +20,6 @@
 #define MANGOS_TARGETEDMOVEMENTGENERATOR_H
 
 #include "MovementGenerator.h"
-#include "DestinationHolder.h"
-#include "Traveller.h"
 #include "FollowerReference.h"
 
 class MANGOS_DLL_SPEC TargetedMovementGeneratorBase

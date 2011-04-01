@@ -19,7 +19,6 @@
 #include "Creature.h"
 #include "MapManager.h"
 #include "RandomMovementGenerator.h"
-#include "DestinationHolderImp.h"
 #include "Map.h"
 #include "Util.h"
 #include "Movement/UnitMovement.h"

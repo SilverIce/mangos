@@ -19,8 +19,6 @@
 #include "ConfusedMovementGenerator.h"
 #include "Creature.h"
 #include "MapManager.h"
-#include "Opcodes.h"
-#include "DestinationHolderImp.h"
 #include "Movement/UnitMovement.h"
 
 template<class T>
@@ -96,7 +94,6 @@ void ConfusedMovementGenerator<T>::Reset(T &unit)
 {
     i_nextMove = 1;
     i_nextMoveTime.Reset(0);
-    i_destinationHolder.ResetUpdate();
     unit.StopMoving();
     unit.addUnitState(UNIT_STAT_CONFUSED|UNIT_STAT_CONFUSED_MOVE);
 }

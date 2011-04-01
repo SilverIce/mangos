@@ -21,7 +21,6 @@
 #include "Creature.h"
 #include "CreatureAI.h"
 #include "TemporarySummon.h"
-#include "DestinationHolderImp.h"
 #include "World.h"
 #include "Movement/UnitMovement.h"
 

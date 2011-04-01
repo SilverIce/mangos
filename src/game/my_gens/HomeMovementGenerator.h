@@ -20,8 +20,6 @@
 #define MANGOS_HOMEMOVEMENTGENERATOR_H
 
 #include "MovementGenerator.h"
-#include "DestinationHolder.h"
-#include "Traveller.h"
 
 class Creature;
 
