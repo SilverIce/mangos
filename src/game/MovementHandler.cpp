@@ -331,8 +331,8 @@ void WorldSession::HandleMovementOpcodes( WorldPacket & recv_data )
         plMover->UpdateFallInformationIfNeed(movementInfo, opcode);
 
     // after move info set
-    if (opcode == MSG_MOVE_SET_WALK_MODE || opcode == MSG_MOVE_SET_RUN_MODE)
-        mover->UpdateWalkMode(mover, false);
+    //if (opcode == MSG_MOVE_SET_WALK_MODE || opcode == MSG_MOVE_SET_RUN_MODE)
+       // mover->UpdateWalkMode(mover, false);
 }
 
 void WorldSession::HandleForceSpeedChangeAckOpcodes(WorldPacket &recv_data)

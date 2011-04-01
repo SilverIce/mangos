@@ -8147,19 +8147,17 @@ void Unit::UpdateWalkMode(Unit* source, bool self)
         CallForAllControlledUnits(UpdateWalkModeHelper(source), CONTROLLED_PET|CONTROLLED_GUARDIANS|CONTROLLED_CHARM|CONTROLLED_MINIPET);
     else if (self)
     {
-        bool on = source->GetTypeId() == TYPEID_PLAYER
-            ? ((Player*)source)->HasMovementFlag(MOVEFLAG_WALK_MODE)
-            : ((Creature*)source)->HasSplineFlag(SPLINEFLAG_WALKMODE);
+        bool on = source->movement->IsWalking();
 
         if (on)
         {
             if (((Creature*)this)->IsPet() && hasUnitState(UNIT_STAT_FOLLOW))
-                ((Creature*)this)->AddSplineFlag(SPLINEFLAG_WALKMODE);
+                movement->ApplyWalkMode(true);
         }
         else
         {
             if (((Creature*)this)->IsPet())
-                ((Creature*)this)->RemoveSplineFlag(SPLINEFLAG_WALKMODE);
+                movement->ApplyWalkMode(false);
         }
     }
     else
@@ -10635,8 +10633,7 @@ void Unit::KnockBackFrom(Unit* target, float horizontalSpeed, float verticalSpee
         UpdateAllowedPositionZ(fx, fy, fz);
 
         using namespace Movement;
-
-        MoveKnockBackStrategy::Apply(*movement,Vector3(fx,fy,fz), 60);
+        MoveKnockBackInit(*movement,Vector3(fx,fy,fz), 60);
 
         //FIXME: this mostly hack, must exist some packet for proper creature move at client side
         //       with CreatureRelocation at server side

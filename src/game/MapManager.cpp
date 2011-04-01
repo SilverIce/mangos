@@ -264,7 +264,7 @@ MapManager::Update(uint32 diff)
     if( !i_timer.Passed() )
         return;
 
-    Movement::sMoveUpdater.update();
+    Movement::sMoveUpdater.Update();
 
     for(MapMapType::iterator iter=i_maps.begin(); iter != i_maps.end(); ++iter)
         iter->second->Update((uint32)i_timer.GetCurrent());

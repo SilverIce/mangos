@@ -37,6 +37,7 @@
 #include "MapPersistentStateMgr.h"
 #include "VMapFactory.h"
 #include "BattleGroundMgr.h"
+#include "Movement\UnitMovement.h"
 
 Map::~Map()
 {
@@ -2810,11 +2811,7 @@ void Map::ScriptsProcess()
                     break;
                 }
 
-                if (step.script->run.run)
-                    pOwner->RemoveSplineFlag(SPLINEFLAG_WALKMODE);
-                else
-                    pOwner->AddSplineFlag(SPLINEFLAG_WALKMODE);
-
+                pOwner->movement->ApplyWalkMode(!step.script->run.run);
                 break;
             }
             default:

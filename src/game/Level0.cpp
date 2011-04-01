@@ -303,23 +303,23 @@ bool ChatHandler::HandlePrintMovementState(char* args)
     if (!p)
         return false;
 
-    Movement::UnitMovement& st = *u->movement;
+    Movement::UnitMovement& mov = *u->movement;
 
     if (!strcmp(p, "print"))
     {
         std::string str;
-        print_movement(st, str);
+        print_movement(mov, str);
         PSendSysMessage("Movement state of unit: %s", u->GetName());
         PSendSysMessage(str.c_str());
     }
 
     else if (!strcmp(p, "toggle_points"))
     {
-        if (st.dbg_flags & 0x1)
-            st.dbg_flags &= ~0x1;
+        if (mov.dbg_flags & 0x1)
+            mov.dbg_flags &= ~0x1;
         else
-            st.dbg_flags |= 0x1;
-        PSendSysMessage("Position visualization for %s turned %s", u->GetName(), (u->movement->dbg_flags & 0x1 ? "on":"off"));
+            mov.dbg_flags |= 0x1;
+        PSendSysMessage("Position visualization for %s turned %s", u->GetName(), (mov.dbg_flags & 0x1 ? "on":"off"));
     }
 
     else if (!strcmp(p, "board"))
@@ -327,7 +327,7 @@ bool ChatHandler::HandlePrintMovementState(char* args)
         Player* pl = m_session->GetPlayer();
 
         pl->GetCamera().SetView(u);
-        Movement::Scketches(*pl->movement).EnterTransport(u->movement->GetTransporter());
+        mov.Board(*pl->movement, Location(), -1);
         pl->SetMover(u);
         pl->SetClientControl(u, 1);
         u->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PLAYER_CONTROLLED);
@@ -339,7 +339,27 @@ bool ChatHandler::HandlePrintMovementState(char* args)
     {
         Movement::Location loc = u->GetLocation();
         loc.z = u->GetTerrain()->GetHeight(u->GetPositionX(),u->GetPositionY(),u->GetPositionZ());
-        Movement::MoveSplineInit(*u->movement).MoveTo(loc).SetFall().SetFacing(3.14f).Launch();
+        Movement::MoveSplineInit(mov).MoveTo(loc).SetFall().Launch();
+    }
+
+    else if (!strcmp(p, "unk"))
+    {
+        char* valStr = ExtractLiteralArg(&args);
+        if (!valStr)
+            return false;
+
+        uint32 mask;
+        if (!ExtractUInt32Base(&valStr, mask, 16))
+            return false;
+
+        struct toggle_unk{
+            uint32 mask;
+            toggle_unk(uint32 m) : mask(m) {}
+            void operator()(Movement::MoveSplineInitArgs& args) { args.flags |= mask;}
+        };
+
+        Movement::Location loc = m_session->GetPlayer()->GetLocation();
+        (Movement::MoveSplineInit(mov).MoveTo(loc) << toggle_unk(mask)).Launch();
     }
     else
         return false;

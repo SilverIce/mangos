@@ -119,24 +119,19 @@ RandomMovementGenerator<Creature>::_setRandomLocation(Creature &creature)
     {
         using namespace Movement;
 
-        UnitMovement& state = *creature.movement;
-
-        MoveSplineInit init(state);
-        if (state.HasMode(MoveModeLevitation) || state.HasMode(MoveModeFly))
+        MoveSplineInit init(*creature.movement);
+        if (creature.movement->HasMode(MoveModeLevitation) || creature.movement->HasMode(MoveModeFly))
         {
             init.SetFly();
-            init.MovebyPath(path);
-            // walk mode - 90% chance, hovever not offlike
-            state.ApplyWalkMode(urand(0,3));
+            // walk mode - 75% chance, hovever not offlike
+            init.SetWalk(urand(0,3));
         }
         else
         {
-            //PointsArray path;
-            //GeneratePath(creature.GetMap(),state.GetPosition3(),Vector3(destX, destY, destZ), path);
             // walk mode - 90% chance, hovever not offlike
-            state.ApplyWalkMode(urand(0,9));
-            init.MovebyPath(path);
+            init.SetWalk(urand(0,9));
         }
+        init.MovebyPath(path);
         init.Launch();
     }
 

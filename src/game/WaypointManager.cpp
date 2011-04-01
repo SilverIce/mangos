@@ -219,7 +219,7 @@ void WaypointManager::Load()
 
         // burn in hell, Db devs!
         // some waypoint paths have only one point or all points have same coords,
-        // some cyclic paths points extracted wrong and have redundant points
+        // some cyclic paths extracted wrong and have redundant points
         for (WaypointPathMap::iterator it = m_pathMap.begin();it!= m_pathMap.end();)
         {
             WaypointPath& path = it->second;
@@ -229,20 +229,20 @@ void WaypointManager::Load()
                 continue;
             }
 
-            bool increased = false;
-            Movement::Vector3& loc = (Movement::Vector3&)path.front();
-            for (WaypointPath::iterator it2 = path.begin()+1;it2!= path.end(); ++it2)
+            /*bool path_ok = false;
+            for (WaypointPath::iterator it2 = path.begin();it2!= path.end();)
             {
-                if (loc == (Movement::Vector3&)(*it2))
+                if ((Movement::Vector3&)(*it2) != (Movement::Vector3&)(*(++it2)))
                 {
-                    increased = true;
-                    m_pathMap.erase(it++);
+                    ++it;
+                    path_ok = true;
                     break;
                 }
             }
 
-            if (!increased)
-                ++it;
+            if (!path_ok)
+                m_pathMap.erase(it++);*/
+            ++it;
         }
 
 

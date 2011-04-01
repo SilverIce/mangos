@@ -2022,11 +2022,12 @@ void Player::AddToWorld()
     ///- It will crash when updating the ObjectAccessor
     ///- The player should only be added when logging in
     Unit::AddToWorld();
-    SetDisplayId(25452);
+    SetDisplayId(16251);
 
     using namespace Movement;
     movement->ApplyMoveMode( MoveModeFly, true);
     movement->ApplyMoveMode( MoveModeHover, true);
+    movement->ApplyMoveMode( MoveModeCanFly, true);
     movement->SetSpeed(Movement::SpeedFlight,21.f);
 
     for(int i = PLAYER_SLOT_START; i < PLAYER_SLOT_END; ++i)

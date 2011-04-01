@@ -44,7 +44,6 @@ alter table creature_movement add `wpguid` int(11) default '0';
 #include <cassert>
 
 #include "Movement/UnitMovement.h"
-#include "Movement/MoveSpline.h"
 
 using G3D::Vector3;
 
@@ -118,7 +117,7 @@ bool WaypointMovementGenerator<Creature>::LoadPath(Creature &c)
     {
         // TODO: info about path type (linear\catmullrom) should be stored in db,
         // it shouldn't be determined here
-        bool isLinear = false;//!c.movement->HasMode(Movement::MoveModeLevitation) && !c.movement->HasMode(Movement::MoveModeFly);
+        bool isLinear = !c.movement->HasMode(Movement::MoveModeLevitation) && !c.movement->HasMode(Movement::MoveModeFly);
 
         uint32 last = i_path->size() - 1 ;
 
@@ -148,7 +147,7 @@ bool WaypointMovementGenerator<Creature>::LoadPath(Creature &c)
             }
         }
 
-        is_cyclic = (node_indexes.size() == 1);
+        is_cyclic = (node_indexes.size() == 1) && !isLinear;
     }
     return true;
 }
@@ -161,24 +160,22 @@ void WaypointMovementGenerator<Creature>::continueMove( Unit &u, uint32 /*node_i
     u.addUnitState(UNIT_STAT_ROAMING|UNIT_STAT_ROAMING_MOVE);
 
     uint32 last = node_indexes[current_node].lastIdx;
-    uint32 first = std::min(node_indexes[current_node].firstIdx /*+ node_index*/, last);
+    //uint32 first = std::min(node_indexes[current_node].firstIdx /*+ node_index*/, last);
+    uint32 first =  std::min(current_path_index, last);
 
     using namespace Movement;
     PointsArray path;
     FillPath(*i_path, path, first, last);
 
     UnitMovement& state = *u.movement;
-
-    MoveSplineInit init(state);
+    MoveSplineInit init(*u.movement);
     if (state.HasMode(MoveModeLevitation) || state.HasMode(MoveModeFly))
     {
-        init.SetVelocity(10.f).SetFly();
-        state.ApplyWalkMode(false);
+        init.SetVelocity(10.f).SetFly().SetWalk(false);
     }
     else
     {
-        //state.ApplyWalkMode(true);
-        state.ApplyWalkMode(false);
+        init.SetWalk(true);
     }
 
     if (is_cyclic)
@@ -264,7 +261,6 @@ void WaypointMovementGenerator<Creature>::OnEvent(Unit& u, int eventId, int data
     if (eventId == 1)
     {
         OnArrived.push_back(data);
-        current_path_index = data;
     }
     else if (eventId == 0)
     {
@@ -285,6 +281,9 @@ void WaypointMovementGenerator<Creature>::processNodeScripts(Creature& creature,
             continueMove(creature);
         return;
     }
+    else
+        current_path_index = pointId;
+
     return;
 
     const WaypointNode& node = i_path->at(pointId);
@@ -426,16 +425,23 @@ void FlightPathMovementGenerator::Reset(Player & player)
 
 bool FlightPathMovementGenerator::Update(Player &player, const uint32 &diff)
 {
+    bool arrived = false;
     while (!OnArrived.empty())
     {
         int point = OnArrived.front();
         OnArrived.pop_front();
-        DoEventIfAny(player, point, false);
-        DoEventIfAny(player, point, true);
+
+        if (point != -10)
+        {
+            DoEventIfAny(player, point, false);
+            DoEventIfAny(player, point, true);
+        }
+        else
+            arrived = true;
     }
 
     // we have arrived to the end of the path
-    return !player.movement->move_spline.Finalized();
+    return arrived;
 }
 
 void FlightPathMovementGenerator::SetCurrentNodeAfterTeleport()
@@ -475,5 +481,9 @@ void FlightPathMovementGenerator::OnEvent(Unit& u, int eventId, int data)
         MANGOS_ASSERT(data >= 0 && data < i_path->size());
         OnArrived.push_back(data);
         current_node = data;
+    }
+    else if (eventId == 0)
+    {
+        OnArrived.push_back(-10);
     }
 }

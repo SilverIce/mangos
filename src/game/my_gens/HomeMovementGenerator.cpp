@@ -57,7 +57,7 @@ HomeMovementGenerator<Creature>::_setTargetLocation(Creature & owner)
         using namespace Movement;
         UnitMovement& state = *owner.movement;
         MoveSplineInit init(state);
-        if (state.HasMode(MoveModeLevitation)||state.HasMode(MoveModeFly))
+        if (state.HasMode(MoveModeLevitation) || state.HasMode(MoveModeFly))
         {
             init.SetFly().MoveTo(Vector3(x, y, z));
         }
@@ -67,8 +67,6 @@ HomeMovementGenerator<Creature>::_setTargetLocation(Creature & owner)
             GeneratePath(owner.GetMap(),state.GetPosition3(),Vector3(x,y,z),path);
             init.MovebyPath(path);
         }
-
-        state.ApplyWalkMode(false);
 
         if (isRespawnMove)
             init.SetFacing(o);

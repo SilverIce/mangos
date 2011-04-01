@@ -72,8 +72,6 @@ template<>
 void
 ConfusedMovementGenerator<Creature>::_InitSpecific(Creature &creature, bool &is_water_ok, bool &is_land_ok)
 {
-    creature.RemoveSplineFlag(SPLINEFLAG_WALKMODE);
-
     is_water_ok = creature.CanSwim();
     is_land_ok  = creature.CanWalk();
 }
@@ -134,8 +132,7 @@ bool ConfusedMovementGenerator<T>::Update(T &unit, const uint32 &diff)
             MoveSplineInit init(state);
             if (state.HasMode(MoveModeLevitation) || state.HasMode(MoveModeFly))
                 init.SetFly();
-            state.ApplyWalkMode(true);
-            init.SetWalk().MoveTo(dest).Launch();
+            init.SetWalk(true).MoveTo(dest).Launch();
         }
     }
     return true;

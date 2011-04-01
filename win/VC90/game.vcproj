@@ -1731,6 +1731,14 @@
 				>
 			</File>
 			<File
+				RelativePath="..\..\src\game\Movement\Movement\MoveUpdater.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\src\game\Movement\Movement\MoveUpdater.h"
+				>
+			</File>
+			<File
 				RelativePath="..\..\src\game\Movement\Movement\UnitMovement.cpp"
 				>
 			</File>
@@ -1775,14 +1783,6 @@
 				>
 				<File
 					RelativePath="..\..\src\game\Movement\Movement\ClientMoveStatus.h"
-					>
-				</File>
-				<File
-					RelativePath="..\..\src\game\Movement\Movement\MoveUpdater.cpp"
-					>
-				</File>
-				<File
-					RelativePath="..\..\src\game\Movement\Movement\MoveUpdater.h"
 					>
 				</File>
 				<File

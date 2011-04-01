@@ -91,22 +91,21 @@ bool FollowMovementGenerator<T>::compute_dest(const Unit& in_owner, const Unit& 
     UnitMovement& me = *in_owner.movement;
     UnitMovement& target = *in_target.movement;
 
-    float allowed_dist = in_target.GetFloatValue(UNIT_FIELD_BOUNDINGRADIUS) + in_owner.GetFloatValue(UNIT_FIELD_BOUNDINGRADIUS) + CONTACT_DISTANCE;
-
     Vector3 final_pos = me.move_spline.FinalDestination();
-    Vector3 new_dest = target.AssumePosition(me.SplineEnabled() ? me.move_spline.timeElapsed() : 0);
+    Location new_dest = target.AssumePosition(me.SplineEnabled() ? me.move_spline.timeElapsed() : 0);
 
-    float sq_len = (final_pos - new_dest).squaredLength();
+    float distance = (final_pos - new_dest).length();
 
-    if (sq_len <= allowed_dist*allowed_dist )
+    //float allowed_dist = (in_target.GetFloatValue(UNIT_FIELD_COMBATREACH)+in_owner.GetFloatValue(UNIT_FIELD_COMBATREACH)+CONTACT_DISTANCE)*distance/ATTACK_DISTANCE;
+    float allowed_dist = in_target.GetFloatValue(UNIT_FIELD_COMBATREACH)+in_owner.GetFloatValue(UNIT_FIELD_COMBATREACH)+CONTACT_DISTANCE;
+
+    if (distance <= allowed_dist )
         return false;
 
     Movement::uint32 move_time = SecToMS((me.GetPosition3()-target.GetPosition3()).length() / me.GetCurrentSpeed());
     new_dest = target.AssumePosition(move_time);
 
-    //final_pos = me.GetPosition3();
-
-    //new_dest = new_dest.lerp(final_pos, allowed_dist/sqrtf(distance));
+    polar_offset(new_dest, new_dest.orientation + i_angle, allowed_dist*0.8f);
 
     if (!MaNGOS::IsValidMapCoord(new_dest.x,new_dest.y))
         return false;
@@ -176,8 +175,8 @@ void TargetedMovementGeneratorMedium<T,D>::_moveToTarget(T &owner)
             GeneratePath(owner.GetMap(),me.GetPosition3(),new_dest, path);
             init.MovebyPath(path);
         }
-        me.ApplyWalkMode(false);
-        init.SetFacing(*i_target->movement).Launch();
+        init.SetWalk(D::use_walk_mode(i_target.getTarget()));
+        init/*.SetFacing(*i_target->movement)*/.Launch();
     }
 
     D::_addUnitStateMove(owner);
@@ -292,7 +291,6 @@ template<>
 void ChaseMovementGenerator<Creature>::Initialize(Creature &owner)
 {
     owner.addUnitState(UNIT_STAT_CHASE|UNIT_STAT_CHASE_MOVE);
-
     _moveToTarget(owner);
 }
 
@@ -315,6 +313,15 @@ void ChaseMovementGenerator<T>::Reset(T &owner)
 }
 
 //-----------------------------------------------//
+template<class T>
+bool FollowMovementGenerator<T>::use_walk_mode(const Unit* target)
+{
+    if (target)
+        return target->movement->IsWalking();
+    else
+        return false;
+}
+
 template<>
 void FollowMovementGenerator<Creature>::_updateWalkMode(Creature &u)
 {
@@ -349,7 +356,7 @@ template<>
 void FollowMovementGenerator<Player>::Initialize(Player &owner)
 {
     owner.addUnitState(UNIT_STAT_FOLLOW|UNIT_STAT_FOLLOW_MOVE);
-    _updateWalkMode(owner);
+    //_updateWalkMode(owner);
     _updateSpeed(owner);
     _moveToTarget(owner);
 }
@@ -358,7 +365,7 @@ template<>
 void FollowMovementGenerator<Creature>::Initialize(Creature &owner)
 {
     owner.addUnitState(UNIT_STAT_FOLLOW|UNIT_STAT_FOLLOW_MOVE);
-    _updateWalkMode(owner);
+    //_updateWalkMode(owner);
     _updateSpeed(owner);
 
     _moveToTarget(owner);
