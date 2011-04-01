@@ -3200,7 +3200,13 @@ void Spell::EffectJump(SpellEffectIndex eff_idx)
         return;
     }
 
-    m_caster->NearTeleportTo(x, y, z, o, true);
+    if (m_spellInfo->speed > 0.f)
+    {
+        float max_amplitude = 0.5f;    // default max jump amplitude. TODO: it might be stored in Spell.dbc
+        Movement::MoveJumpInit(*m_caster->movement,Movement::Vector3(x,y,z),m_spellInfo->speed,max_amplitude);
+    } 
+    else
+        m_caster->NearTeleportTo(x, y, z, o, true);
 }
 
 void Spell::EffectTeleportUnits(SpellEffectIndex eff_idx)

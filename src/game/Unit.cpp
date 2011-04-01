@@ -10518,7 +10518,7 @@ void Unit::KnockBackFrom(Unit* target, float horizontalSpeed, float verticalSpee
         UpdateAllowedPositionZ(fx, fy, fz);
 
         using namespace Movement;
-        MoveKnockBackInit(*movement,Vector3(fx,fy,fz), 60);
+        MoveJumpInit(*movement,Vector3(fx,fy,fz), 60);
 
         //FIXME: this mostly hack, must exist some packet for proper creature move at client side
         //       with CreatureRelocation at server side
