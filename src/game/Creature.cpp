@@ -1881,8 +1881,10 @@ bool Creature::LoadCreatureAddon(bool reload)
     if (cainfo->emote != 0)
         SetUInt32Value(UNIT_NPC_EMOTESTATE, cainfo->emote);
 
-    if (cainfo->splineFlags != 0)
-        SetSplineFlags(SplineFlags(cainfo->splineFlags));
+    // TODO: drop splineFlags field and column in db
+    //       or understand that silly idea of having splineflags to be stored
+    //if (cainfo->splineFlags != 0)
+        //SetSplineFlags(SplineFlags(cainfo->splineFlags));
 
     if(cainfo->auras)
     {
@@ -2312,13 +2314,6 @@ void Creature::SetActiveObjectState( bool on )
 
     if(world)
         map->Add(this);
-}
-
-void Creature::SendMonsterMoveWithSpeedToCurrentDestination(Player* player)
-{
-    float x, y, z;
-    if(GetMotionMaster()->GetDestination(x, y, z))
-        SendMonsterMoveWithSpeed(x, y, z, 0, player);
 }
 
 void Creature::SendAreaSpiritHealerQueryOpcode(Player *pl)

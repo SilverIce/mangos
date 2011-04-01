@@ -1035,18 +1035,6 @@
 				>
 			</File>
 			<File
-				RelativePath="..\..\src\game\DestinationHolder.cpp"
-				>
-			</File>
-			<File
-				RelativePath="..\..\src\game\DestinationHolder.h"
-				>
-			</File>
-			<File
-				RelativePath="..\..\src\game\DestinationHolderImp.h"
-				>
-			</File>
-			<File
 				RelativePath="..\..\src\game\my_gens\FleeingMovementGenerator.cpp"
 				>
 			</File>
@@ -1112,10 +1100,6 @@
 			</File>
 			<File
 				RelativePath="..\..\src\game\my_gens\TargetedMovementGenerator.h"
-				>
-			</File>
-			<File
-				RelativePath="..\..\src\game\Traveller.h"
 				>
 			</File>
 			<File

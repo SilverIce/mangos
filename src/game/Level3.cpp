@@ -6166,12 +6166,6 @@ bool ChatHandler::HandleComeToMeCommand(char *args)
         return false;
     }
 
-    uint32 newFlags;
-    if (!ExtractUInt32(&args, newFlags))
-        return false;
-
-    caster->SetSplineFlags(SplineFlags(newFlags));
-
     Player* pl = m_session->GetPlayer();
 
     caster->GetMotionMaster()->MovePoint(0, pl->GetPositionX(), pl->GetPositionY(), pl->GetPositionZ());
