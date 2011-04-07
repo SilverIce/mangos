@@ -4340,6 +4340,12 @@ void Spell::HandleEffects(Unit *pUnitTarget,Item *pItemTarget,GameObject *pGOTar
     if(eff < TOTAL_SPELL_EFFECTS)
     {
         (*this.*SpellEffects[eff])(i);
+
+        if (const EffectHandler * sc = sSpellScriptMgr.GetScript(this->m_spellInfo->Id, i))
+        {
+            OnEffectArgs args(this,GetCaster(),unitTarget,damage,i);
+            sc->OnEffect(args);
+        }
     }
     else
     {

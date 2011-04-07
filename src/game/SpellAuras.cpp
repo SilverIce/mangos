@@ -892,6 +892,13 @@ void Aura::ApplyModifier(bool apply, bool Real)
     SetInUse(true);
     if(aura < TOTAL_AURAS)
         (*this.*AuraHandler [aura])(apply, Real);
+
+    if (const AuraHandler2 * sc = sSpellScriptMgr.GetProcScript(GetId(),GetEffIndex()))
+    {
+        OnApplyArgs data(*this, GetCaster(), GetTarget(), GetEffIndex());
+        sc->OnApply(data, apply);
+    }
+    
     SetInUse(false);
     GetHolder()->SetInUse(false);
 }
@@ -4184,6 +4191,7 @@ void Aura::HandleAuraModStun(bool apply, bool Real)
         target->SendMessageToSet(&data, true);
 
         // Summon the Naj'entus Spine GameObject on target if spell is Impaling Spine
+        handled_by_script(
         if(GetId() == 39837)
         {
             GameObject* pObj = new GameObject;
@@ -4197,7 +4205,7 @@ void Aura::HandleAuraModStun(bool apply, bool Real)
             }
             else
                 delete pObj;
-        }
+        })
     }
     else
     {

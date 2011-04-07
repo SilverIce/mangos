@@ -576,7 +576,7 @@ SpellAuraProcResult Unit::HandleDummyAuraProc(Unit *pVictim, uint32 damage, Aura
     int32  basepoints[MAX_EFFECT_INDEX] = {0, 0, 0};
 
 
-    if (ProcHandler const* sc = sSpellScriptMgr.GetProcScript(dummySpell->Id))
+    if (AuraHandler2 const* sc = sSpellScriptMgr.GetProcScript(dummySpell->Id,EFFECT_INDEX_0))
     {
         AuraProc_Args args(this, basepoints, effIndex);
         args.procSpell = procSpell;
@@ -599,6 +599,11 @@ SpellAuraProcResult Unit::HandleDummyAuraProc(Unit *pVictim, uint32 damage, Aura
         triggered_spell_id = args.triggered_spell_id;
         damage = args.damage;
         triggerAmount = args.triggerAmount;
+
+        if (args.need_terminate)
+            return args.result;
+
+        goto end;
     }
 
     switch(dummySpell->SpellFamilyName)
@@ -608,7 +613,7 @@ SpellAuraProcResult Unit::HandleDummyAuraProc(Unit *pVictim, uint32 damage, Aura
             switch (dummySpell->Id)
             {
                 // Eye for an Eye
-                handled_by_scripts(
+                handled_by_script(
                 case 9799:
                 case 25988:
                 {
@@ -636,7 +641,7 @@ SpellAuraProcResult Unit::HandleDummyAuraProc(Unit *pVictim, uint32 damage, Aura
                     break;
                 }
                 // Twisted Reflection (boss spell)
-                handled_by_scripts(
+                handled_by_script(
                 case 21063:
                     triggered_spell_id = 21064;
                     break;
@@ -720,7 +725,7 @@ SpellAuraProcResult Unit::HandleDummyAuraProc(Unit *pVictim, uint32 damage, Aura
                     break;
                 }
                 // Mana Leech (Passive) (Priest Pet Aura)
-                handled_by_scripts(
+                handled_by_script(
                 case 28305:
                 {
                     // Cast on owner
@@ -1375,10 +1380,10 @@ SpellAuraProcResult Unit::HandleDummyAuraProc(Unit *pVictim, uint32 damage, Aura
                 return SPELL_AURA_PROC_OK;                                // no hidden cooldown
             }
 
+            handled_by_script(
             switch(dummySpell->SpellIconID)
             {
                 // Improved Shadowform
-                handled_by_scripts(
                 case 217:
                 {
                     if(!roll_chance_i(triggerAmount))
@@ -1394,7 +1399,7 @@ SpellAuraProcResult Unit::HandleDummyAuraProc(Unit *pVictim, uint32 damage, Aura
                     basepoints[0] = damage * triggerAmount/100;
                     triggered_spell_id = 47753;
                     break;
-                })
+                }
                 // Empowered Renew
                 case 3021:
                 {
@@ -1427,11 +1432,11 @@ SpellAuraProcResult Unit::HandleDummyAuraProc(Unit *pVictim, uint32 damage, Aura
                     triggered_spell_id = 63675;
                     break;
                 }
-            }
+            })
 
             switch(dummySpell->Id)
             {
-                // Vampiric Embrace
+                handled_by_script(// Vampiric Embrace
                 case 15286:
                 {
                     // Return if self damage
@@ -1443,7 +1448,7 @@ SpellAuraProcResult Unit::HandleDummyAuraProc(Unit *pVictim, uint32 damage, Aura
                     int32 self = triggerAmount*damage/100 - team;
                     CastCustomSpell(this,15290,&team,&self,NULL,true,castItem,triggeredByAura);
                     return SPELL_AURA_PROC_OK;                                // no hidden cooldown
-                }
+                })
                 // Priest Tier 6 Trinket (Ashtongue Talisman of Acumen)
                 case 40438:
                 {
@@ -2731,7 +2736,7 @@ SpellAuraProcResult Unit::HandleDummyAuraProc(Unit *pVictim, uint32 damage, Aura
         default:
             break;
     }
-
+end:
     // processed charge only counting case
     if (!triggered_spell_id)
         return SPELL_AURA_PROC_OK;

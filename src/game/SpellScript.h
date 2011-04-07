@@ -4,17 +4,38 @@
 #include "DBCEnums.h"
 #include "Policies/Singleton.h"
 //#include "Utilities/UnorderedMapSet.h"
+//#include <map>
 
-struct SpellScript;
-struct ProcHandler;
+struct EffectHandler;
+struct AuraHandler2;
+struct SpellScriptBase;
+
+struct flag96
+{
+    uint32 p3, p2, p1;
+
+    /** To create 0x00000001 00000000 00004000 mask you should write:
+        flag96(0x1, 0, 0x4000). */
+    flag96(uint32 _p1=0,uint32 _p2=0,uint32 _p3=0)
+    {
+        p3 = _p3;
+        p2 = _p2;
+        p1 = _p1;
+    }
+
+    bool operator & (const flag96& other) const
+    {
+        return (p3 & other.p3) || (p2 & other.p2) || (p1 & other.p1);
+    }
+};
 
 class SpellScriptManager
 {
     struct ScriptsSet
     {
-        ScriptsSet() : spell(0), proc(0) {}
-        SpellScript * spell;
-        ProcHandler * proc;
+        ScriptsSet() {memset(this,0,sizeof this);}
+        EffectHandler * spell[MAX_EFFECT_INDEX];
+        AuraHandler2 * proc[MAX_EFFECT_INDEX];
     };
 public:
     enum{
@@ -27,25 +48,31 @@ public:
     // shoul be called at startup, only once, after all *.dbc files loaded
     void Initialize();
 
-    SpellScript const* GetScript(uint32 spellId) const
+    EffectHandler const* GetScript(uint32 spellId, SpellEffectIndex Idx) const
     {
         if (const ScriptsSet * sc = GetScriptsSet(spellId))
-            return sc->spell;
+            return sc->spell[Idx];
         return NULL;
     }
 
-    ProcHandler const* GetProcScript(uint32 spellId) const
+    AuraHandler2 const* GetProcScript(uint32 spellId, SpellEffectIndex Idx) const
     {
         if (const ScriptsSet * sc = GetScriptsSet(spellId))
-            return sc->proc;
+            return sc->proc[Idx];
         return NULL;
     }
 
-    void Register(uint32 spellId, SpellScript* sc);
-    void Register(uint32 spellId, ProcHandler* sc);
+    static bool Validate(uint32 spellId, SpellEffects effname, SpellEffectIndex Idx, EffectHandler* sc);
+    static bool Validate(uint32 spellId, AuraType auraname, SpellEffectIndex Idx, AuraHandler2* sc);
+
+    void Register(uint32 spellId, SpellEffects effname, SpellEffectIndex Idx, EffectHandler* sc);
+    void Register(uint32 spellId, AuraType auraname, SpellEffectIndex Idx, AuraHandler2* sc);
+
+    void Register(SpellFamily family, flag96 familyFlags, SpellEffects effname, SpellEffectIndex Idx, EffectHandler* sc);
+    void Register(SpellFamily family, flag96 familyFlags, AuraType auraname, SpellEffectIndex Idx, AuraHandler2* sc);
 
 private:
-    friend struct SpellScript;
+    friend struct SpellScriptBase;
 
     const ScriptsSet * GetScriptsSet(uint32 spellId) const
     {
@@ -53,17 +80,24 @@ private:
         return spell_handlers[spellId];
     }
 
-    ScriptsSet * GetScriptsSet(uint32 spellId)
+    ScriptsSet * InitScriptsSet(uint32 spellId)
     {
         assert(spellId <= MAX_SPELL_ID);
-        if (!spell_handlers[spellId])
-            spell_handlers[spellId] = new ScriptsSet();
-        return spell_handlers[spellId];
+        ScriptsSet *& sc = spell_handlers[spellId];
+        if (!sc)
+            sc = new ScriptsSet();
+        return sc;
     }
 
     //typedef std::map<uint32, SpellScript*> SpellHandlerMap;
     //SpellHandlerMap spell_handlers;
     ScriptsSet* spell_handlers[MAX_SPELL_ID+1];
+    std::deque<SpellScriptBase*> scripts_to_initialize;
+    typedef std::multimap<uint8, const struct SpellEntry*> SpellsbyFamily;
+    typedef std::pair<SpellsbyFamily::const_iterator,SpellsbyFamily::const_iterator> SpellsbyFamilyBounds;
+    /** Spell entries sorted by their families for fast sript registration.
+        Can be cleaned after registration has ended. */
+    SpellsbyFamily spells_by_family;
 };
 
 #define sSpellScriptMgr MaNGOS::Singleton<SpellScriptManager>::Instance()
@@ -81,7 +115,6 @@ struct SpellScriptArgs
     SpellScriptCallReason const reason;
 };
 
-#define handled_by_scripts(code)
 
 class Spell;
 class SpellAuraHolder;
@@ -90,9 +123,7 @@ class Unit;
 class Item;
 struct SpellEntry;
 
-#define effect_script   struct : public SpellScript
-#define proc_script     struct : public ProcHandler
-#define regs(...)       uint32 spellIds[] = { __VA_ARGS__ }; reg(spellIds);
+#define handled_by_script(code)             // marks selected code, disables code generation
 
 struct SpellScriptBase
 {
@@ -100,17 +131,29 @@ struct SpellScriptBase
     virtual void Register() = 0;
 };
 
-struct ProcHandler : SpellScriptBase
+struct SpellScriptInitializer {}; 
+
+struct AuraHandler2 : public SpellScriptBase
 {
-    // Aura related hoooks
+    virtual void OnApply(struct OnApplyArgs& e, bool apply) const {}
     virtual void OnProc(struct AuraProc_Args&) const {}
+    virtual void OnEffectPeriodic(SpellAuraHolder&, SpellEffectIndex) const {}
 
     // handler for specific, rarely used calls
-    virtual void OnSpecificCall(struct SpellScriptCallArgs& data) const {}
+    //virtual void OnSpecificCall(struct SpellScriptCallArgs& data) const {}
 
     #pragma region register stuff
+
+    inline void Register(SpellFamily family, flag96 familyFlags, AuraType auraname, SpellEffectIndex Idx)
+    {
+        sSpellScriptMgr.Register(family,familyFlags,auraname,Idx,this);
+    }
+
     /// helpers, 'syntactic sugar' ;)
-    inline void reg(uint32 spellId) { sSpellScriptMgr.Register(spellId,this);}
+    inline void reg(AuraType auraname, SpellEffectIndex Idx, uint32 spellId)
+    {
+        sSpellScriptMgr.Register(spellId,auraname,Idx,this);
+    }
 
     template<int v>
     struct Int2Type
@@ -119,47 +162,48 @@ struct ProcHandler : SpellScriptBase
     };
 
     template<int N>
-    inline void reg(uint32 (&array_)[N])
+    inline void reg(AuraType effname, SpellEffectIndex effIdx, uint32 (&array_)[N])
     {
-        _reg(array_,Int2Type<N-1>());
+        _reg(effname, effIdx, array_, Int2Type<N-1>());
     }
 
 private:
 
     template<int N, typename Idx>
-    inline void _reg(uint32 (&array_)[N], Idx)
+    inline void _reg(AuraType effname, SpellEffectIndex effIdx, uint32 (&array_)[N], Idx)
     {
-        reg(array_[Idx::value]);
-        _reg(array_, Int2Type<Idx::value-1>());
+        reg(effname, effIdx, array_[Idx::value]);
+        _reg(effname, effIdx, array_, Int2Type<Idx::value-1>());
     }
 
     template<int N>
-    inline void _reg(uint32 (&array_)[N], Int2Type<0>)
+    inline void _reg(AuraType effname, SpellEffectIndex effIdx, uint32 (&array_)[N], Int2Type<0>)
     {
-        reg(array_[0]);
+        reg(effname, effIdx, array_[0]);
     }
     #pragma endregion
 };
 
-struct SpellScript : SpellScriptBase
+struct EffectHandler : public SpellScriptBase
 {
-    /// Spell related hooks
-    virtual void OnEffect(Spell&, SpellEffectIndex) const {}
-    virtual void BeforeHit(Spell&, SpellEffectIndex) const {}
-    virtual void OnHit(Spell&, SpellEffectIndex) const {}
-    virtual void AfterHit(Spell&, SpellEffectIndex) const {}
-
-    /// Aura related hoooks
-    virtual void OnApply(SpellAuraHolder&, SpellEffectIndex) const {}
-    virtual void OnRemove(SpellAuraHolder&, SpellEffectIndex) const {}
-    virtual void OnEffectPeriodic(SpellAuraHolder&, SpellEffectIndex) const {}
-
-    /// handler for specific, rarely used calls
-    virtual void OnSpecificCall(SpellScriptArgs& data) const {}
+    virtual void OnEffect(struct OnEffectArgs& effect) const {}
+    //virtual void BeforeHit(Spell& spell, SpellEffectIndex) const {}
+    //virtual void OnHit(Spell& spell, SpellEffectIndex) const {}
+    //virtual void AfterHit(Spell& spell, SpellEffectIndex) const {}
 
     #pragma region register stuff
     /// helpers, 'syntactic sugar' ;)
-    inline void reg(uint32 spellId) { sSpellScriptMgr.Register(spellId,this);}
+
+    inline void reg(SpellFamily family, flag96 familyFlags, SpellEffects effname, SpellEffectIndex Idx)
+    {
+        sSpellScriptMgr.Register(family,familyFlags,effname,Idx,this);
+    }
+
+    /// helpers, 'syntactic sugar' ;)
+    inline void reg(SpellEffects effname, SpellEffectIndex Idx, uint32 spellId)
+    {
+        sSpellScriptMgr.Register(spellId,effname,Idx,this);
+    }
 
     template<int v>
     struct Int2Type
@@ -168,29 +212,26 @@ struct SpellScript : SpellScriptBase
     };
 
     template<int N>
-    inline void reg(uint32 (&array_)[N])
+    inline void reg(SpellEffects effname, SpellEffectIndex effIdx, uint32 (&array_)[N])
     {
-        _reg(array_,Int2Type<N-1>());
+        _reg(effname, effIdx, array_, Int2Type<N-1>());
     }
 
 private:
 
     template<int N, typename Idx>
-    inline void _reg(uint32 (&array_)[N], Idx)
+    inline void _reg(SpellEffects effname, SpellEffectIndex effIdx, uint32 (&array_)[N], Idx)
     {
-        reg(array_[Idx::value]);
-        _reg(array_, Int2Type<Idx::value-1>());
+        reg(effname, effIdx, array_[Idx::value]);
+        _reg(effname, effIdx, array_, Int2Type<Idx::value-1>());
     }
 
     template<int N>
-    inline void _reg(uint32 (&array_)[N], Int2Type<0>)
+    inline void _reg(SpellEffects effname, SpellEffectIndex effIdx, uint32 (&array_)[N], Int2Type<0>)
     {
-        reg(array_[0]);
+        reg(effname, effIdx, array_[0]);
     }
     #pragma endregion
-
-protected:
-    uint8 sub;
 };
 
 struct AuraProc_Args : public SpellScriptArgs
@@ -201,8 +242,14 @@ struct AuraProc_Args : public SpellScriptArgs
         procSpell(0), dummySpell(0), basepoints(bp), caster(th),
         target(0), castItem(0),
         result(SPELL_AURA_PROC_OK), effIndex(idx),
-        damage(0), triggered_spell_id(0), triggerAmount(0)
+        damage(0), triggered_spell_id(0), triggerAmount(0), need_terminate(false)
     {
+    }
+
+    void terminate(SpellAuraProcResult res)
+    {
+        need_terminate = true;
+        result = res;
     }
 
     SpellEntry const *  procSpell;
@@ -217,4 +264,32 @@ struct AuraProc_Args : public SpellScriptArgs
     uint32              triggered_spell_id;
     uint32              damage;
     int32               triggerAmount;
+    bool                need_terminate;
+};
+
+struct OnEffectArgs
+{
+    OnEffectArgs(Spell * _spell, Unit * _caster, Unit * _target, int32& _damage, SpellEffectIndex _effIdx) :
+        spell(_spell), caster(_caster), target(_target), damage(_damage), effIdx(_effIdx)
+    {
+    }
+
+    Spell * spell;
+    Unit * caster;
+    Unit * target;
+    int32& damage;
+    SpellEffectIndex effIdx;
+};
+
+struct OnApplyArgs
+{
+    OnApplyArgs(Aura & _aura, Unit * _caster, Unit * _target, SpellEffectIndex _effIdx) :
+        aura(_aura), caster(_caster), target(_target), effIdx(_effIdx)
+    {
+    }
+
+    Aura & aura;
+    Unit * caster;
+    Unit * target;
+    SpellEffectIndex effIdx;
 };

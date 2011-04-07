@@ -57,6 +57,7 @@
 #include "GridNotifiers.h"
 #include "GridNotifiersImpl.h"
 #include "CellImpl.h"
+#include "SpellScript.h"
 
 pEffect SpellEffects[TOTAL_SPELL_EFFECTS]=
 {
@@ -898,6 +899,7 @@ void Spell::EffectDummy(SpellEffectIndex eff_idx)
                     creatureTarget->ForcedDespawn();
                     return;
                 }
+                handled_by_script(
                 case 16589:                                 // Noggenfogger Elixir
                 {
                     if (m_caster->GetTypeId() != TYPEID_PLAYER)
@@ -913,7 +915,7 @@ void Spell::EffectDummy(SpellEffectIndex eff_idx)
 
                     m_caster->CastSpell(m_caster, spell_id, true, NULL);
                     return;
-                }
+                })
                 case 17251:                                 // Spirit Healer Res
                 {
                     if (!unitTarget)
@@ -2805,6 +2807,7 @@ void Spell::EffectDummy(SpellEffectIndex eff_idx)
         case SPELLFAMILY_DEATHKNIGHT:
         {
             // Death Coil
+            handled_by_script(
             if (m_spellInfo->SpellFamilyFlags & UI64LIT(0x002000))
             {
                 if (m_caster->IsFriendlyTo(unitTarget))
@@ -2823,12 +2826,13 @@ void Spell::EffectDummy(SpellEffectIndex eff_idx)
                 return;
             }
             // Hungering Cold
-            else if (m_spellInfo->SpellFamilyFlags & UI64LIT(0x0000100000000000))
+            else) if (m_spellInfo->SpellFamilyFlags & UI64LIT(0x0000100000000000))
             {
                 m_caster->CastSpell(m_caster, 51209, true);
                 return;
             }
             // Death Strike
+            handled_by_script(
             else if (m_spellInfo->SpellFamilyFlags & UI64LIT(0x0000000000000010))
             {
                 uint32 count = 0;
@@ -2861,7 +2865,7 @@ void Spell::EffectDummy(SpellEffectIndex eff_idx)
 
                 m_caster->CastCustomSpell(m_caster, 45470, &bp, NULL, NULL, true);
                 return;
-            }
+            })
             // Obliterate
             else if (m_spellInfo->SpellFamilyFlags & UI64LIT(0x0002000000000000))
             {
