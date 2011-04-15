@@ -28,7 +28,25 @@
 
 class Unit;
 
-class MANGOS_DLL_SPEC MovementGenerator
+
+/*
+class MANGOS_DLL_SPEC AIState
+{
+public:
+    virtual ~AIState() = 0;
+
+    virtual void Interrupt(Unit &) = 0;
+    virtual void Reset(Unit &) = 0;
+    virtual void Initialize(Unit &) = 0;
+    virtual void Finalize(Unit &) = 0;
+
+    / * Returns true to show that state expired and can be finalized. * /
+    virtual bool Update(Unit &, const uint32& diff) = 0;
+};
+*/
+
+
+class MANGOS_DLL_SPEC MovementGenerator /*: public AIState*/
 {
     public:
         virtual ~MovementGenerator();

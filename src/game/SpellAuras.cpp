@@ -3906,7 +3906,6 @@ void Aura::HandleModPossessPet(bool apply, bool Real)
         pet->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PLAYER_CONTROLLED);
 
         pet->StopMoving();
-        pet->GetMotionMaster()->Clear(false);
         pet->GetMotionMaster()->MoveIdle();
     }
     else

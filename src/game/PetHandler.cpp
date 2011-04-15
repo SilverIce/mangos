@@ -86,7 +86,6 @@ void WorldSession::HandlePetAction( WorldPacket & recv_data )
             {
                 case COMMAND_STAY:                          //flat=1792  //STAY
                     pet->StopMoving();
-                    pet->GetMotionMaster()->Clear(false);
                     pet->GetMotionMaster()->MoveIdle();
                     charmInfo->SetCommandState( COMMAND_STAY );
                     break;
@@ -121,8 +120,6 @@ void WorldSession::HandlePetAction( WorldPacket & recv_data )
                         }
                         else
                         {
-                            pet->GetMotionMaster()->Clear();
-
                             if (((Creature*)pet)->AI())
                                 ((Creature*)pet)->AI()->AttackStart(TargetUnit);
 
@@ -243,7 +240,6 @@ void WorldSession::HandlePetAction( WorldPacket & recv_data )
                     {
                         if (pet->getVictim())
                             pet->AttackStop();
-                        pet->GetMotionMaster()->Clear();
                         if (((Creature*)pet)->AI())
                             ((Creature*)pet)->AI()->AttackStart(unit_target);
                     }

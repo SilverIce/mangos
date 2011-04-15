@@ -51,6 +51,7 @@
 
 #include <math.h>
 #include <stdarg.h>
+#include "MotionMaster2.h"
 
 float baseMoveSpeed[MAX_MOVE_TYPE] =
 {
@@ -9391,7 +9392,8 @@ void Unit::CleanupsBeforeDelete()
         else
             getHostileRefManager().deleteReferences();
         RemoveAllAuras(AURA_REMOVE_BY_DELETE);
-        GetMotionMaster()->Clear(false);                    // remove different non-standard movement generators.
+        //GetMotionMaster()->Clear(false);                    // remove different non-standard movement generators.
+        getStateMaster().InitDefaults();
     }
     WorldObject::CleanupsBeforeDelete();
 }
@@ -9933,7 +9935,6 @@ void Unit::SetFeared(bool apply, ObjectGuid casterGuid, uint32 spellID, uint32 t
 
         SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_FLEEING);
 
-        GetMotionMaster()->MovementExpired(false);
         CastStop(GetObjectGuid() == casterGuid ? spellID : 0);
 
         Unit* caster = IsInWorld() ?  GetMap()->GetUnit(casterGuid) : NULL;
@@ -9943,23 +9944,7 @@ void Unit::SetFeared(bool apply, ObjectGuid casterGuid, uint32 spellID, uint32 t
     else
     {
         RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_FLEEING);
-
-        GetMotionMaster()->MovementExpired(false);
-
-        if (GetTypeId() != TYPEID_PLAYER && isAlive())
-        {
-            Creature* c = ((Creature*)this);
-            // restore appropriate movement generator
-            if (getVictim())
-                GetMotionMaster()->MoveChase(getVictim());
-            else
-                GetMotionMaster()->Initialize();
-
-            // attack caster if can
-            if (Unit* caster = IsInWorld() ? GetMap()->GetUnit(casterGuid) : NULL)
-                if (c->AI())
-                    c->AI()->AttackedBy(caster);
-        }
+        getStateMaster().AIStateDrop(Feared);
     }
 
     if (GetTypeId() == TYPEID_PLAYER)
@@ -9979,17 +9964,7 @@ void Unit::SetConfused(bool apply, ObjectGuid casterGuid, uint32 spellID)
     else
     {
         RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_CONFUSED);
-
-        GetMotionMaster()->MovementExpired(false);
-
-        if (GetTypeId() != TYPEID_PLAYER && isAlive())
-        {
-            // restore appropriate movement generator
-            if(getVictim())
-                GetMotionMaster()->MoveChase(getVictim());
-            else
-                GetMotionMaster()->Initialize();
-        }
+        getStateMaster().AIStateDrop(Confused);
     }
 
     if(GetTypeId() == TYPEID_PLAYER)
@@ -10006,6 +9981,8 @@ void Unit::SetFeignDeath(bool apply, ObjectGuid casterGuid, uint32 /*spellID*/)
         data<<uint8(0);
         SendMessageToSet(&data,true);
         */
+
+        getStateMaster().EnterState(Idle);
 
         if (GetTypeId() != TYPEID_PLAYER)
             StopMoving();
@@ -10046,15 +10023,7 @@ void Unit::SetFeignDeath(bool apply, ObjectGuid casterGuid, uint32 /*spellID*/)
 
         clearUnitState(UNIT_STAT_DIED);
 
-        if (GetTypeId() != TYPEID_PLAYER && isAlive())
-        {
-            // restore appropriate movement generator
-            if(getVictim())
-                GetMotionMaster()->MoveChase(getVictim());
-            else
-                GetMotionMaster()->Initialize();
-        }
-
+        getStateMaster().AIStateDrop(Idle);
     }
 }
 

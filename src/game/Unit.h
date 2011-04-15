@@ -1916,6 +1916,7 @@ class MANGOS_DLL_SPEC Unit : public WorldObject
         void removeFollower(FollowerReference* /*pRef*/ ) { /* nothing to do yet */ }
 
         MotionMaster* GetMotionMaster() { return &i_motionMaster; }
+        MotionMasterImpl& getStateMaster() { return *i_motionMaster.impl; }
 
         bool IsStopped() const { return !(hasUnitState(UNIT_STAT_MOVING)); }
         void StopMoving();

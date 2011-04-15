@@ -48,6 +48,7 @@
 
 // apply implementation of the singletons
 #include "Policies/SingletonImp.h"
+#include "MotionMaster2.h"
 
 TrainerSpell const* TrainerSpellData::Find(uint32 spell_id) const
 {
@@ -464,7 +465,7 @@ void Creature::Update(uint32 update_diff, uint32 diff)
                 {
                     SetDeathState(JUST_DIED);
                     SetHealth(0);
-                    i_motionMaster.Clear();
+                    getStateMaster().InitDefaults();
                     clearUnitState(UNIT_STAT_ALL_STATE);
                     LoadCreatureAddon(true);
                 }
@@ -1447,7 +1448,7 @@ void Creature::SetDeathState(DeathState s)
         SetUInt32Value(UNIT_NPC_FLAGS, cinfo->npcflag);
         Unit::SetDeathState(ALIVE);
         clearUnitState(UNIT_STAT_ALL_STATE);
-        i_motionMaster.Clear();
+        i_motionMaster.Initialize();
         SetMeleeDamageSchool(SpellSchools(cinfo->dmgschool));
         LoadCreatureAddon(true);
     }

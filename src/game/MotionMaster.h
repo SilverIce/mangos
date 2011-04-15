@@ -64,14 +64,13 @@ class MANGOS_DLL_SPEC MotionMaster : private std::stack<MovementGenerator *>
         typedef std::vector<MovementGenerator *> ExpireList;
     public:
 
-        explicit MotionMaster(Unit *unit) : m_owner(unit), m_expList(NULL), m_cleanFlag(MMCF_NONE) {}
+        explicit MotionMaster(Unit *unit);
         ~MotionMaster();
 
         void Initialize();
 
         MovementGenerator* operator->(void) { return top(); }
 
-        using Impl::top;
         using Impl::empty;
 
         typedef Impl::container_type::const_iterator const_iterator;
@@ -79,13 +78,7 @@ class MANGOS_DLL_SPEC MotionMaster : private std::stack<MovementGenerator *>
         const_iterator end() const { return Impl::c.end(); }
 
         void UpdateMotion(uint32 diff);
-        void Clear(bool reset = true, bool all = false)
-        {
-            if (m_cleanFlag & MMCF_UPDATE)
-                DelayedClean(reset, all);
-            else
-                DirectClean(reset, all);
-        }
+        void Clear(bool reset = true, bool all = false);
         void MovementExpired(bool reset = true)
         {
             if (m_cleanFlag & MMCF_UPDATE)
@@ -115,9 +108,10 @@ class MANGOS_DLL_SPEC MotionMaster : private std::stack<MovementGenerator *>
         // will only work in MMgens where we have a target (TARGETED_MOTION_TYPE)
         void UpdateFinalDistanceToTarget(float fDistance);
 
+        MovementGenerator * top();
         bool GetDestination(float &x, float &y, float &z);
     private:
-        void Mutate(MovementGenerator *m);                  // use Move* functions instead
+        void Mutate(MovementGenerator *m, int slot);                  // use Move* functions instead
 
         void DirectClean(bool reset, bool all);
         void DelayedClean(bool reset, bool all);
