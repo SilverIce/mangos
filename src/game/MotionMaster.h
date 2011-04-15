@@ -108,6 +108,7 @@ class MANGOS_DLL_SPEC MotionMaster : private std::stack<MovementGenerator *>
         // will only work in MMgens where we have a target (TARGETED_MOTION_TYPE)
         void UpdateFinalDistanceToTarget(float fDistance);
 
+        class MotionMasterImpl * impl;
         MovementGenerator * top();
         bool GetDestination(float &x, float &y, float &z);
     private:

@@ -436,13 +436,6 @@ bool MotionMaster::GetDestination(float &x, float &y, float &z)
 void MotionMaster::UpdateFinalDistanceToTarget(float fDistance)
 {
 }
-
-void MotionMaster::OnEvent(const Movement::OnEventArgs& args)
-{
-    if (top())
-        top()->OnEvent(*m_owner, args);
-}
-
 MotionMaster::MotionMaster(Unit *unit) : m_owner(unit), m_expList(NULL), m_cleanFlag(MMCF_NONE)
 {
     impl = new MotionMasterImpl(*unit);

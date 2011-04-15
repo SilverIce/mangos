@@ -1089,6 +1089,14 @@
 				>
 			</File>
 			<File
+				RelativePath="..\..\src\game\MotionMaster2.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\src\game\MotionMaster2.h"
+				>
+			</File>
+			<File
 				RelativePath="..\..\src\game\MovementGenerator.cpp"
 				>
 			</File>

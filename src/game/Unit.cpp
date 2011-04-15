@@ -48,10 +48,10 @@
 #include "Traveller.h"
 #include "VMapFactory.h"
 #include "MovementGenerator.h"
+#include "MotionMaster2.h"
 
 #include <math.h>
 #include <stdarg.h>
-#include "MotionMaster2.h"
 
 float baseMoveSpeed[MAX_MOVE_TYPE] =
 {
