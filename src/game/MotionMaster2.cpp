@@ -1,6 +1,7 @@
 #include "MotionMaster2.h"
 #include "ConfusedMovementGenerator.h"
 #include "TargetedMovementGenerator.h"
+#include "Timer.h"
 
 /*
 enum AIStateType
@@ -73,6 +74,25 @@ std::string MotionMasterImpl::ToString() const
 
     return str.str();
 }
+
+class IdleState_ : public MovementGenerator
+{
+    ShortTimeTracker tr;
+public:
+
+    IdleState_() : tr(10000) {}
+
+    void Interrupt(Unit &) {}
+    void Reset(Unit &) {}
+    void Initialize(Unit &) {}
+    void Finalize(Unit &) {}
+    bool Update(Unit &, const uint32& diff) { tr.Update(diff); return !tr.Passed(); }
+
+    virtual MovementGeneratorType GetMovementGeneratorType() const
+    {
+        return IDLE_MOTION_TYPE;
+    }
+};
 
 bool isPlayer(Unit& owner)
 {

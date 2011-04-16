@@ -7,20 +7,6 @@
 
 typedef MovementGenerator AIState;
 
-class IdleState_ : public MovementGenerator
-{
-public:
-    void Interrupt(Unit &) {}
-    void Reset(Unit &) {}
-    void Initialize(Unit &) {}
-    void Finalize(Unit &) {}
-    bool Update(Unit &, const uint32&) { return true; }
-
-    virtual MovementGeneratorType GetMovementGeneratorType() const
-    {
-        return IDLE_MOTION_TYPE;
-    }
-};
 //stun > root > conf > fear
 
 /**	To future devs: do not add a new slot for each new movement/AI state,
@@ -80,41 +66,41 @@ public:
         bool initialized; // initialized/reseted
         bool interrupted; // finalized/interrupted
 
+        bool ontop;
+
+        Slot& operator = (const Slot&);
+        Slot(const Slot&);
+
     public:
-        Slot() : m_state(0), initialized(false), interrupted(true) {}
+        Slot() : m_state(0), initialized(false), interrupted(false), ontop(false) {}
+        ~Slot()
+        {
+            if (m_state)
+                sLog.outError("memleak");
+        }
 
         /** Need lock MotionMasterImpl before call these methods */
-        void Drop(Unit &u)
+
+        /** Only for current, top slot */
+        void OnRefreshTop(MotionMasterImpl * u, AIState * new_state)
         {
-            if (!getAI())
-                return;
-            initialized = false;
-            interrupted = false;
-            AIState * old = m_state;
-            m_state = 0;
-            old->Finalize(u);
-            delete old;
+            Put(u, new_state);
+            OnBecameOnTop(u);
         }
 
-        void Put(Unit &u, AIState * state)
+        void Drop(MotionMasterImpl * u)
         {
-            if (state == m_state)
-            {
-                sLog.outError("strange");
-                return;
-            }
-            Drop(u);
-            m_state = state;
+            _put(u, NULL);
         }
 
-        void OnBecameOnTop(Unit &u)
+        void Put(MotionMasterImpl * u, AIState * state)
         {
-            if (!getAI())
-            {
-                sLog.outError("strange");
-                return;
-            }
+            _put(u, state);
+        }
 
+        void OnBecameOnTop(MotionMasterImpl * u)
+        {
+            ontop = true;
             if (initialized)
             {
                 if (!interrupted)
@@ -123,17 +109,25 @@ public:
                     return;
                 }
                 interrupted = false;
-                getAI()->Reset(u);
+                Lock l(u);
+                getAI()->Reset(u->owner);
             }
             else
             {
+                if (interrupted)
+                {
+                    sLog.outError("strange");
+                    return;
+                }
                 initialized = true;
-                getAI()->Initialize(u);
+                Lock l(u);
+                getAI()->Initialize(u->owner);
             }
         }
 
-        void OnGoDown(Unit &u)
+        void OnGoDown(MotionMasterImpl * u)
         {
+            ontop = false;
             if (interrupted || !getAI())
             {
                 sLog.outError("strange");
@@ -141,11 +135,32 @@ public:
             }
 
             interrupted = true;
-            getAI()->Interrupt(u);
+            Lock l(u);
+            getAI()->Interrupt(u->owner);
         }
 
         operator bool() const { return m_state != NULL; }
         AIState * getAI() const { return m_state;}
+    private:
+        void _put(MotionMasterImpl * u, AIState * new_state)
+        {
+            if (new_state == m_state)
+            {
+                sLog.outError("strange");
+                return;
+            }
+            if (m_state)
+            {
+                Lock l(u);
+                if (initialized && !interrupted)
+                    m_state->Finalize(u->owner);
+                delete m_state;
+            }
+            ontop = false;
+            initialized = false;
+            interrupted = false;
+            m_state = new_state;
+        }
     };
 
     MotionMasterImpl(Unit& Owner);
@@ -167,6 +182,8 @@ public:
     //void set_Expired(AIStateType slot, bool exp);
     //bool is_Expired(AIStateType slot) const;
 
+    /**	That set of lock/unlock etc methods must be removed in future.
+        They are needed to detect some unsafe deep calls. */
     bool IsLocked() { return m_locked;}
     bool EnsureNotLocked()
     {
@@ -175,6 +192,8 @@ public:
         return !IsLocked();
     }
     /**	Locks or unlocks MotionMasterImpl to allow or skip state change calls. */
+    void lock() {set_Locked(true);}
+    void unlock() {set_Locked(false);}
     void set_Locked(bool lock)
     {
         if (lock && m_locked)
@@ -189,6 +208,8 @@ public:
 
     void InitDefaults()
     {
+        if (!EnsureNotLocked())
+            return;
        _DropEverything();
        InitDefaultStatePriorities(&m_priorities[0]);
        EnterMaxPrioritized();
@@ -196,39 +217,49 @@ public:
 
     void _DropEverything()
     {
-        Lock(this);
         for (AIStateType slot = Idle; slot < AIActionType_Count; ++((int&)slot))
         {
             if (get_AIState(slot))
-                get_Slot(slot).Drop(owner);
+                get_Slot(slot).Drop(this);
         }
     }
 
     void Update(uint32 diff)
     {
-        if (!get_CurrentState()->Update(owner, diff))
-        {
+        lock();
+        bool expired = !get_CurrentState()->Update(owner, diff);
+        unlock();
+
+        if (expired)
             AIStateDrop(get_CurrentSlotType());
-        }
     }
 
     bool IsOnTop(AIStateType slot) const { return get_CurrentSlotType() == slot && get_CurrentState();}
+    bool Initialized()  { return get_CurrentSlot();}
 
-    /**	Finalizes slot and selects slot with highest priority */
+    /**	Finalizes slot's state and enters into max prioritized state. */
     void AIStateDrop(AIStateType slot)
     {
         if (!EnsureNotLocked())
             return;
-        get_Slot(slot).Drop(owner);
+        get_Slot(slot).Drop(this);
         EnterMaxPrioritized();
     }
 
-    /**	Places new ai into the slot and selects slot with highest priority */
+    /**	Places an new AI state with not standart priority into the slot and enters AI into max prioritized state. */
+    void AIStatePut(AIStateType slot, AIState * new_state, int priority)
+    {
+        if (!EnsureNotLocked())
+            return;
+        AIStatePut(slot, new_state);
+    }
+
+    /**	Places an AI state into the slot and enters into max prioritized state. */
     void AIStatePut(AIStateType slot, AIState * new_state)
     {
         if (!EnsureNotLocked())
             return;
-        get_Slot(slot).Put(owner, new_state);
+        get_Slot(slot).Put(this, new_state);
         EnterMaxPrioritized();
     }
 
@@ -260,39 +291,46 @@ public:
 
     void EnterState(AIStateType slot)
     {
-        // slot is current slot already and exists
+        // slot is already current slot and exists
         if (IsOnTop(slot))
             return;
 
-        AIState * new_state = get_AIState(slot);
-        if (!new_state)
-        {
-            new_state = InitStandartState(slot, owner);
-        } 
-
-        PushNewState(slot, new_state);
-
         if (!get_AIState(slot))
-        {
-             AIState * new_state = InitStandartState(slot, owner);
-        } 
+            get_Slot(slot).Put(this, InitStandartState(slot,owner));
 
-        PushNewState(slot, new_state);
+        // initialized and another slot
+        if (slot != get_CurrentSlotType())
+        {
+            get_CurrentSlot().OnGoDown(this);
+            set_CurrentSlot(slot);
+        }
+        get_CurrentSlot().OnBecameOnTop(this);
+    }
+
+    void SetCurrent(AIState * new_state)
+    {
+        ;
     }
 
     /** Finalizes or interrupts current state and makes a new_state to be current.*/
     void PushNewState(AIStateType slot, AIState * new_state)
     {
         // same pointers
-        if (get_AIState(slot) != new_state)
-            get_Slot(slot).Put(owner,new_state);
+        if (get_AIState(slot) == new_state)
+            return;
 
         // initialized and another slot
-        if (slot != get_CurrentSlotType())
-            get_CurrentSlot().OnGoDown(owner);
-
-        set_CurrentSlot(slot);
-        get_Slot(slot).OnBecameOnTop(owner);
+        if (slot == get_CurrentSlotType())
+        {
+            get_CurrentSlot().OnRefreshTop(this, new_state);
+        }
+        else
+        {
+            get_Slot(slot).Put(this,new_state);
+            get_CurrentSlot().OnGoDown(this);
+            set_CurrentSlot(slot);
+            get_CurrentSlot().OnBecameOnTop(this);
+        }
     }
 
     std::string ToString() const;
