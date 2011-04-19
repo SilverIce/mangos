@@ -15,11 +15,12 @@ typedef MovementGenerator AIState;
 enum AIStateType
 {
     Idle,
+    /**	random/waypoint/follow movement */
     OutOfCombat,
-    //Follow,     // permanent
-    Combat,     // permanent
-    /** Slot for state with short lifetime that cannot be reseted.
-        Example: charge, jump etc*/
+    /**	chase/ranged movement */
+    Combat,
+    /** Simple states: short lifetimes, no internal states, should be removed on interrupt.
+        Example: charge, jump, home movement, distract  etc. */
     Effect,
 
     Feared,     
@@ -30,17 +31,17 @@ enum AIStateType
     AIActionType_Count,
 };
 
+/**	feel free to edit */
 enum AIStatePriorities
 {
     PriorityIdle,
     PriorityOutOfCombat,
-    PriorityFollow,     // permanent, how to clean?
-    PriorityCombat,     // permanent, how to clean?
-    /** Slot for state with short lifetime that cannot be reseted. */
+    PriorityCombat,
     PriorityEffect,
 
-    PriorityFeared,     
-    PriorityConfused,
+    PriorityDied,       // idle slot ?
+    PriorityFeared,     // feared slot
+    PriorityConfused,   
     PriorityRoot,
     PriorityStun,
 };
@@ -59,6 +60,72 @@ class MotionMasterImpl
 
 public:
 
+    typedef AIState* Slot ;
+
+    class AIStateWrap
+    {
+    protected:
+        AIState * m_state;
+        bool initialized;
+
+        AIStateWrap& operator = (const AIStateWrap&);
+        AIStateWrap(const AIStateWrap&);
+
+    public:
+
+        AIStateWrap() : m_state(0), initialized(false) {}
+        ~AIStateWrap() { delete m_state; }
+
+        const char* TypeName() const { return (m_state ? typeid(*m_state).name() : "<empty>");}
+        
+        operator bool() const { return m_state != NULL;}
+        bool operator == (const AIState * state) const { return m_state == state;}
+        bool operator != (const AIState * state) const { return m_state != state;}
+
+        void operator = (AIState * state)
+        {
+            if (m_state == state)
+                return;
+            delete m_state;
+            initialized = false;
+            m_state = state;
+        }
+    };
+
+    class AIStateCurrent : public AIStateWrap
+    {
+    public:
+
+        AIState* AI() const { return m_state;}
+
+        void Initialize(MotionMasterImpl * m)
+        {
+            Lock l(m);
+            if (!initialized)
+            {
+                initialized = true;
+                if (m_state) m_state->Initialize(m->owner);
+            }
+            else
+                if (m_state) m_state->Reset(m->owner);
+        }
+        void Finalize(MotionMasterImpl * m)
+        {
+            Lock l(m);
+            if (m_state) m_state->Finalize(m->owner);
+        }
+        void Interrupt(MotionMasterImpl * m)
+        {
+            Lock l(m);
+            if (m_state) m_state->Interrupt(m->owner);
+        }
+        bool Update(MotionMasterImpl * m, uint32 diff)
+        {
+            Lock l(m);
+            return m_state->Update(m->owner, diff);
+        }
+    };
+/*
     struct Slot
     {
     private:
@@ -79,9 +146,9 @@ public:
                 sLog.outError("memleak");
         }
 
-        /** Need lock MotionMasterImpl before call these methods */
+        / ** Need lock MotionMasterImpl before call these methods * /
 
-        /** Only for current, top slot */
+        / ** Only for current, top slot * /
         void OnRefreshTop(MotionMasterImpl * u, AIState * new_state)
         {
             Put(u, new_state);
@@ -141,6 +208,7 @@ public:
 
         operator bool() const { return m_state != NULL; }
         AIState * getAI() const { return m_state;}
+        AIState * operator ->() const { return m_state;}
     private:
         void _put(MotionMasterImpl * u, AIState * new_state)
         {
@@ -163,24 +231,23 @@ public:
         }
     };
 
+*/
     MotionMasterImpl(Unit& Owner);
 
     ~MotionMasterImpl()
     {
-        _DropEverything();
     }
 
-    AIState* get_AIState(AIStateType slot)   const { return m_states[slot].getAI();}
-    AIState* get_CurrentState()              const { return m_states[m_slot].getAI();}
-    Slot& get_CurrentSlot()                        { return m_states[m_slot];}
-    Slot& get_Slot(AIStateType slot)               { return m_states[slot];}
+    AIStateWrap& get_AIState(AIStateType slot)     { return m_states[slot];}
+    AIStateCurrent& get_CurrentState()             { return (AIStateCurrent&)m_states[m_slot];}
+    //Slot& get_CurrentSlot()                      { return m_states[m_slot];}
+    //Slot& get_Slot(AIStateType slot)             { return m_states[slot];}
     AIStateType get_CurrentSlotType()        const { return m_slot;}
-    //void set_State(AIStateType slot, AIState* s)   { if (EnsureNotLocked()) m_states[slot] = s;}
+    void set_AIState(AIStateType slot, AIState* s) { Lock l(this); m_states[slot] = s;}
     void set_CurrentSlot(AIStateType slot)         { if (EnsureNotLocked()) m_slot = slot;}
     int get_Priority(AIStateType slot)       const { return m_priorities[slot];}
     void set_Priority(AIStateType slot, int prio)  { if (EnsureNotLocked()) m_priorities[slot] = prio;}
-    //void set_Expired(AIStateType slot, bool exp);
-    //bool is_Expired(AIStateType slot) const;
+    void reset_Priority(AIStateType slot);
 
     /**	That set of lock/unlock etc methods must be removed in future.
         They are needed to detect some unsafe deep calls. */
@@ -210,77 +277,110 @@ public:
     {
         if (!EnsureNotLocked())
             return;
-       _DropEverything();
-       InitDefaultStatePriorities(&m_priorities[0]);
-       EnterMaxPrioritized();
-    }
-
-    void _DropEverything()
-    {
-        for (AIStateType slot = Idle; slot < AIActionType_Count; ++((int&)slot))
-        {
-            if (get_AIState(slot))
-                get_Slot(slot).Drop(this);
-        }
+       memset(&m_priorities[0], 0, sizeof m_priorities);
+       EnterState(Idle);
     }
 
     void Update(uint32 diff)
     {
-        lock();
-        bool expired = !get_CurrentState()->Update(owner, diff);
-        unlock();
-
-        if (expired)
+        if (!EnsureNotLocked())
+            return;
+        if (!get_CurrentState().Update(this, diff))
             AIStateDrop(get_CurrentSlotType());
     }
 
-    bool IsOnTop(AIStateType slot) const { return get_CurrentSlotType() == slot && get_CurrentState();}
-    bool Initialized()  { return get_CurrentSlot();}
+    bool IsOnTop(AIStateType slot) { return get_CurrentSlotType() == slot && get_CurrentState();}
+    bool Initialized()  { return get_CurrentState();}
 
-    /**	Finalizes slot's state and enters into max prioritized state. */
+    /**	Finalizes slot's state and enters into most prioritized state.
+        Hm.. should i allow drop inactive states?
+        State will be deleted, but 'Finalize' will not be called if state is not current state. And it should not!*/
     void AIStateDrop(AIStateType slot)
     {
         if (!EnsureNotLocked())
             return;
-        get_Slot(slot).Drop(this);
+        set_Priority(slot, -1);
         EnterMaxPrioritized();
+        if (get_CurrentSlotType() != slot)
+            set_AIState(slot, NULL);
     }
 
-    /**	Places an new AI state with not standart priority into the slot and enters AI into max prioritized state. */
+    /**	Tries to create a new standart state for given slot and enters into most prioritized state.
+        TODO: 'standart state' type shouldn't be determined by slot type,
+        need implement state creator, to create a new state for specified unit and stateId. */
+    void AIStatePut(AIStateType slot)
+    {
+        if (!EnsureNotLocked())
+            return;
+        AIStatePut(slot, InitStandartState(slot,owner));
+    }
+
+    /**	Tries to create a new standart state for given slot and enters into most prioritized state.
+        TODO: 'standart state' type shouldn't be determined by slot type,
+        need implement state creator, to create a new state for specified unit and stateId. */
+    void AIStatePut(AIStateType slot, int priority)
+    {
+        if (!EnsureNotLocked())
+            return;
+        AIStatePut(slot, InitStandartState(slot,owner), priority);
+    }
+
+    /**	Places an AI state with given priority into the slot and enters into most prioritized state. */
     void AIStatePut(AIStateType slot, AIState * new_state, int priority)
     {
         if (!EnsureNotLocked())
             return;
-        AIStatePut(slot, new_state);
+
+        set_Priority(slot, priority);
+        AIStateType active_slot = FindMaxPrioritizedSlot();
+        if (slot == active_slot)
+            PushNewState(active_slot, new_state);
+        else
+        {
+            EnterState(active_slot);
+            set_AIState(slot, new_state);   // put non initialized state
+        }
     }
 
-    /**	Places an AI state into the slot and enters into max prioritized state. */
+    /**	Places an AI state into the slot and enters into most prioritized state. */
     void AIStatePut(AIStateType slot, AIState * new_state)
     {
         if (!EnsureNotLocked())
             return;
-        get_Slot(slot).Put(this, new_state);
-        EnterMaxPrioritized();
+
+        /**	Strategy is: mark 'slot' as existent and find the most prioritized slot,
+            in case prioritized slot is 'new_state' slot - push 'new_state' as current state
+            or enter into max prioritized state and put not initialized 'new_state' into 'slot'
+        */
+        reset_Priority(slot);
+        AIStateType selected_slot = FindMaxPrioritizedSlot();
+        if (slot == selected_slot)
+            PushNewState(selected_slot, new_state);
+        else
+        {
+            EnterState(selected_slot);
+            set_AIState(slot, new_state);   // put non initialized state, it will be initialized when became current
+        }
     }
 
-    /**	Enters into max prioritized state. */
+    /**	Enters into most prioritized state. */
     void EnterMaxPrioritized()
     {
         if (!EnsureNotLocked())
             return;
-        AIStateType new_state = FindMaxPrioritizedSlot();
-        EnterState(new_state);
+        AIStateType new_slot = FindMaxPrioritizedSlot();
+        EnterState(new_slot);
     }
 
-    /**	Searches for the slot with highest priority. Empty slots are excluded from the search.
-        If no slots Idle state will be choosen. */
+    /**	Searches for the slot with highest priority. Empty slots are included into the search.
+        If no slots found Idle state will be choosen. */
     AIStateType FindMaxPrioritizedSlot() const
     {
         int prio = 0;
         AIStateType max_slot = Idle;
         for (AIStateType slot = Idle; slot < AIActionType_Count; ++((int&)slot))
         {
-            if (get_AIState(slot) && get_Priority(slot) > prio)
+            if (/*get_AIState(slot) &&*/ get_Priority(slot) > prio)
             {
                 prio = get_Priority(slot);
                 max_slot = slot;
@@ -295,21 +395,22 @@ public:
         if (IsOnTop(slot))
             return;
 
-        if (!get_AIState(slot))
-            get_Slot(slot).Put(this, InitStandartState(slot,owner));
-
-        // initialized and another slot
-        if (slot != get_CurrentSlotType())
+        if (slot == get_CurrentSlotType())
         {
-            get_CurrentSlot().OnGoDown(this);
-            set_CurrentSlot(slot);
+            get_CurrentState().Finalize(this);
         }
-        get_CurrentSlot().OnBecameOnTop(this);
-    }
+        else
+        {
+            get_CurrentState().Interrupt(this);
+        }
 
-    void SetCurrent(AIState * new_state)
-    {
-        ;
+        if (!get_AIState(slot))
+        {
+            set_AIState(slot, InitStandartState(slot,owner));
+        }
+
+        set_CurrentSlot(slot);
+        get_CurrentState().Initialize(this);
     }
 
     /** Finalizes or interrupts current state and makes a new_state to be current.*/
@@ -319,31 +420,29 @@ public:
         if (get_AIState(slot) == new_state)
             return;
 
-        // initialized and another slot
         if (slot == get_CurrentSlotType())
         {
-            get_CurrentSlot().OnRefreshTop(this, new_state);
+            get_CurrentState().Finalize(this);
         }
         else
         {
-            get_Slot(slot).Put(this,new_state);
-            get_CurrentSlot().OnGoDown(this);
-            set_CurrentSlot(slot);
-            get_CurrentSlot().OnBecameOnTop(this);
+            get_CurrentState().Interrupt(this);
         }
+        set_AIState(slot, new_state);
+        set_CurrentSlot(slot);
+        get_CurrentState().Initialize(this);
     }
 
-    std::string ToString() const;
+    std::string ToString();
 
 private:
 
-    static void InitDefaultStatePriorities(int * AIStatePriorities);
     static AIState * InitStandartState(AIStateType slot, Unit& owner);
 
     bool m_locked;
     Unit & owner;
     AIStateType m_slot;
-    std::vector<Slot> m_states;
-    std::vector<int> m_priorities;
+    AIStateWrap m_states[AIActionType_Count];
+    int m_priorities[AIActionType_Count];
 };
 

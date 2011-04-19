@@ -3,49 +3,35 @@
 #include "TargetedMovementGenerator.h"
 #include "Timer.h"
 
-/*
-enum AIStateType
+
+class DefaultStatePriorities
 {
-    Idle,
-    OutOfCombat,
-    Follow,
-    Combat,
-    / ** Slot for state with short lifetime that cannot be reseted. * /
-    Effect,
+    int AIStatePriorities[AIActionType_Count];
 
-    Feared,
-    Confuse,
-    Root,
-    Stun,
+public:
+    DefaultStatePriorities()
+    {
+        AIStatePriorities[Idle] = 0;
+        AIStatePriorities[OutOfCombat] = 10;
+        AIStatePriorities[Combat] = 30;
+        AIStatePriorities[Effect] = 40;
+        AIStatePriorities[Feared] = 50;
+        AIStatePriorities[Confused] = 60;
+        AIStatePriorities[Root] = 70;
+        AIStatePriorities[Stun] = 80;
+    }
 
+    int operator[](int i) const { return AIStatePriorities[i];}
 
-    AIActionType_Count,
-};*/
-
-//std::vector<int> AIStatePriorities(AIActionType_Count);
-
-void MotionMasterImpl::InitDefaultStatePriorities(int * AIStatePriorities)
-{
-    AIStatePriorities[Idle] = 0;
-    AIStatePriorities[OutOfCombat] = 10;
-    //AIStatePriorities[Follow] = 20;
-    AIStatePriorities[Combat] = 30;
-    AIStatePriorities[Effect] = 40;
-    AIStatePriorities[Feared] = 50;
-    AIStatePriorities[Confused] = 60;
-    AIStatePriorities[Root] = 70;
-    AIStatePriorities[Stun] = 80;
-}
-
+} g_DefaultStatePriorities;
 
 MotionMasterImpl::MotionMasterImpl(Unit& Owner) :
-    m_states(AIActionType_Count), m_priorities(AIActionType_Count),
     owner(Owner), m_locked(false), m_slot(Idle)
 {
     InitDefaults();
 }
 
-std::string MotionMasterImpl::ToString() const
+std::string MotionMasterImpl::ToString()
 {
     const char * AIStateType_Name[AIActionType_Count] =
     {
@@ -61,12 +47,12 @@ std::string MotionMasterImpl::ToString() const
 
     std::stringstream str;
     if (get_CurrentState())
-        str << "current slot " << AIStateType_Name[get_CurrentSlotType()] << ": " << typeid(*get_CurrentState()).name() << std::endl;
+        str << "current slot " << AIStateType_Name[get_CurrentSlotType()] << ": " << get_CurrentState().TypeName() << std::endl;
     for (AIStateType slot = Idle; slot < AIActionType_Count; ++((int&)slot))
     {
         str << "slot " << AIStateType_Name[slot] << ": ";
         if (get_AIState(slot))
-            str << typeid(*get_AIState(slot)).name();
+            str << get_AIState(slot).TypeName();
         else
             str << "empty";
         str << std::endl;
@@ -77,20 +63,106 @@ std::string MotionMasterImpl::ToString() const
 
 class IdleState_ : public MovementGenerator
 {
-    ShortTimeTracker tr;
 public:
-
-    IdleState_() : tr(10000) {}
 
     void Interrupt(Unit &) {}
     void Reset(Unit &) {}
     void Initialize(Unit &) {}
     void Finalize(Unit &) {}
-    bool Update(Unit &, const uint32& diff) { tr.Update(diff); return !tr.Passed(); }
+    bool Update(Unit &, const uint32&) { return true; }
 
     virtual MovementGeneratorType GetMovementGeneratorType() const
     {
         return IDLE_MOTION_TYPE;
+    }
+};
+
+// derived from IdleState_ to not write new GetMovementGeneratorType, Update
+class StunnedState : public IdleState_
+{
+public:
+
+    void Interrupt(Unit &u) {Finalize(u);}
+    void Reset(Unit &u) {Initialize(u);}
+    void Initialize(Unit &u)
+    {
+        Unit * const target = &u;
+        target->addUnitState(UNIT_STAT_STUNNED);
+        target->SetTargetGuid(ObjectGuid());
+
+        target->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_STUNNED);
+
+        // Creature specific
+        if (target->GetTypeId() != TYPEID_PLAYER)
+            target->StopMoving();
+        else
+        {
+            ((Player*)target)->m_movementInfo.SetMovementFlags(MOVEFLAG_NONE);
+            target->SetStandState(UNIT_STAND_STATE_STAND);// in 1.5 client
+        }
+
+        WorldPacket data(SMSG_FORCE_MOVE_ROOT, 8);
+        data << target->GetPackGUID();
+        data << uint32(0);
+        target->SendMessageToSet(&data, true);
+    }
+
+    void Finalize(Unit &u)
+    {
+        Unit * const target = &u;
+
+        target->clearUnitState(UNIT_STAT_STUNNED);
+        target->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_STUNNED);
+
+        WorldPacket data(SMSG_FORCE_MOVE_UNROOT, 8+4);
+        data << target->GetPackGUID();
+        data << uint32(0);
+        target->SendMessageToSet(&data, true);
+    }
+
+};
+
+class RootState : public IdleState_
+{
+public:
+
+    void Interrupt(Unit &u) {Finalize(u);}
+    void Reset(Unit &u) {Initialize(u);}
+    void Initialize(Unit &u)
+    {
+        Unit * const target = &u;
+        target->addUnitState(UNIT_STAT_ROOT);
+        target->SetTargetGuid(ObjectGuid());
+
+        //Save last orientation
+        if( target->getVictim() )
+            target->SetOrientation(target->GetAngle(target->getVictim()));
+
+        if(target->GetTypeId() == TYPEID_PLAYER)
+        {
+            WorldPacket data(SMSG_FORCE_MOVE_ROOT, 10);
+            data << target->GetPackGUID();
+            data << (uint32)2;
+            target->SendMessageToSet(&data, true);
+
+            //Clear unit movement flags
+            ((Player*)target)->m_movementInfo.SetMovementFlags(MOVEFLAG_NONE);
+        }
+        else
+            target->StopMoving();
+    }
+
+    void Finalize(Unit &u)
+    {
+        Unit * const target = &u;
+        target->clearUnitState(UNIT_STAT_ROOT);
+        if(target->GetTypeId() == TYPEID_PLAYER)
+        {
+            WorldPacket data(SMSG_FORCE_MOVE_UNROOT, 10);
+            data << target->GetPackGUID();
+            data << (uint32)2;
+            target->SendMessageToSet(&data, true);
+        }
     }
 };
 
@@ -110,6 +182,10 @@ AIState * MotionMasterImpl::InitStandartState(AIStateType slot, Unit& owner)
         else
             state = new ConfusedMovementGenerator<Creature>();
         break;
+    case Stun:
+        state = new StunnedState();
+    case Root:
+        state = new RootState();
     case Combat:
         {
             //if (Unit * victim = owner.getVictim())
@@ -124,4 +200,9 @@ AIState * MotionMasterImpl::InitStandartState(AIStateType slot, Unit& owner)
         state = new IdleState_();
 
     return state;
+}
+
+void MotionMasterImpl::reset_Priority(AIStateType slot)
+{
+    m_priorities[slot] = g_DefaultStatePriorities[slot];
 }

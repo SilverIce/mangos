@@ -49,7 +49,7 @@ void MotionMaster::Initialize()
     //Clear(false,true);
 
     // set new default movement generator
-    if (m_owner->GetTypeId() == TYPEID_UNIT && !m_owner->hasUnitState(UNIT_STAT_CONTROLLED))
+    if (m_owner->GetTypeId() == TYPEID_UNIT /*&& !m_owner->hasUnitState(UNIT_STAT_CONTROLLED)*/)
     {
         MovementGenerator* movement = FactorySelector::selectMovementGenerator((Creature*)m_owner);
         if (movement)
@@ -235,8 +235,10 @@ void MotionMaster::MoveRandom()
 
 void MotionMaster::MoveTargetedHome()
 {
-    if (m_owner->hasUnitState(UNIT_STAT_LOST_CONTROL))
-        return;
+   // if (m_owner->hasUnitState(UNIT_STAT_LOST_CONTROL))
+       // return;
+
+    impl->AIStateDrop(Combat);
 
     if (m_owner->GetTypeId() == TYPEID_UNIT && ((Creature*)m_owner)->GetCharmerOrOwnerGuid().IsEmpty())
     {
@@ -264,9 +266,9 @@ void MotionMaster::MoveConfused()
     DEBUG_FILTER_LOG(LOG_FILTER_AI_AND_MOVEGENSS, "%s move confused", m_owner->GetGuidStr().c_str());
 
     if (m_owner->GetTypeId() == TYPEID_PLAYER)
-        Mutate(new ConfusedMovementGenerator<Player>(), Effect);
+        Mutate(new ConfusedMovementGenerator<Player>(), Confused);
     else
-        Mutate(new ConfusedMovementGenerator<Creature>(), Effect);
+        Mutate(new ConfusedMovementGenerator<Creature>(), Confused);
 }
 
 void MotionMaster::MoveChase(Unit* target, float dist, float angle)
@@ -347,9 +349,9 @@ void MotionMaster::MoveFleeing(Unit* enemy, uint32 time)
     else
     {
         if (time)
-            Mutate(new TimedFleeingMovementGenerator(enemy->GetGUID(), time), Effect);
+            Mutate(new TimedFleeingMovementGenerator(enemy->GetGUID(), time), Feared);
         else
-            Mutate(new FleeingMovementGenerator<Creature>(enemy->GetGUID()), Effect);
+            Mutate(new FleeingMovementGenerator<Creature>(enemy->GetGUID()), Feared);
     }
 }
 
@@ -454,5 +456,5 @@ void MotionMaster::Clear(bool reset /*= true*/, bool all /*= false*/)
 
 MovementGenerator * MotionMaster::top()
 {
-    return (MovementGenerator*)impl->get_CurrentState();
+    return impl->get_CurrentState().AI();
 }
