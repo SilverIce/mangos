@@ -100,6 +100,8 @@ Map::Map(uint32 id, time_t expiry, uint32 InstanceId, uint8 SpawnMode)
 
     m_persistentState = sMapPersistentStateMgr.AddPersistentState(i_mapEntry, GetInstanceId(), GetDifficulty(), 0, IsDungeon());
     m_persistentState->SetUsedByMapState(this);
+
+    extraData = new DynamicMapTree();
 }
 
 void Map::InitVisibilityDistance()

@@ -162,6 +162,8 @@ bool GameObject::Create(uint32 guidlow, uint32 name_id, Map *map, uint32 phaseMa
     SetGoArtKit(0);                                         // unknown what this is
     SetGoAnimProgress(animprogress);
 
+    m_model = ModelInstance_Overriden::construct(*this);
+
     //Notify the map's instance data.
     //Only works if you create the object in it, not if it is moves to that map.
     //Normally non-players do not teleport to other maps.
@@ -1764,11 +1766,9 @@ bool GameObject::IsFriendlyTo(Unit const* unit) const
 
 void GameObject::SetDisplayId(uint32 modelId)
 {
-    if (GetDisplayId() != modelId)
-        UpdateModel();
-
     SetUInt32Value(GAMEOBJECT_DISPLAYID, modelId);
     m_displayInfo = sGameObjectDisplayInfoStore.LookupEntry(modelId);
+    UpdateModel();
 }
 
 float GameObject::GetObjectBoundingRadius() const
@@ -1864,13 +1864,14 @@ void GameObject::EnableCollision(bool enable)
 
 void GameObject::UpdateModel()
 {
-    if (IsInWorld() && m_model)
-        GetMap()->extraData->remove(*m_model);
+    if (!IsInWorld())
+        return;
 
+    if (m_model)
+        GetMap()->extraData->remove(*m_model);
     delete m_model;
     m_model = ModelInstance_Overriden::construct(*this);
-
-    if (IsInWorld() && m_model)
+    if (m_model)
         GetMap()->extraData->insert(*m_model);
 }
 
