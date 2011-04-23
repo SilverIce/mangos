@@ -24,7 +24,9 @@ using G3D::Vector3;
 
 class ModelInstance_Overriden : public VMAP::ModelInstance
 {
-    ModelInstance_Overriden() {}
+    uint32 phasemask;
+
+    ModelInstance_Overriden() : phasemask(0) {}
     bool initialize(const class GameObject & go, const struct GameObjectDisplayInfoEntry& info);
 
 public:
@@ -33,5 +35,16 @@ public:
 
     const Vector3& getPosition() const { return iPos;}
 
-    static ModelInstance_Overriden* construct(const class GameObject & go, const struct GameObjectDisplayInfoEntry& info);
+    /**	Enables\disables collision. */
+    void disable() { phasemask = 0;}
+    void enable(uint32 ph_mask) { phasemask = ph_mask;}
+
+    bool intersectRay(const G3D::Ray& pRay, float& pMaxDist, bool pStopAtFirstHit, uint32 ph_mask) const
+    {
+        if (phasemask & ph_mask)
+            return ModelInstance::intersectRay(pRay, pMaxDist, pStopAtFirstHit);
+        return false;
+    }
+
+    static ModelInstance_Overriden* construct(const class GameObject & go);
 };

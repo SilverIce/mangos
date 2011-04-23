@@ -890,7 +890,7 @@ namespace G3D
         Returns true if this object is in the set, otherwise
         returns false.  O(1) time.
         */
-        bool contains(const T& value) {
+        bool contains(const T& value) const{
             // Temporarily create a handle and member
             Handle h(value);
             return memberTable.containsKey(Member(&h));

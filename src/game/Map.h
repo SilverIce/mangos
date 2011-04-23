@@ -248,7 +248,7 @@ class MANGOS_DLL_SPEC Map : public GridRefManager<NGridType>
         //get corresponding TerrainData object for this particular map
         const TerrainInfo * GetTerrain() const { return m_TerrainData; }
 
-        std::vector<void*> extraData;
+        class DynamicMapTree * extraData;
 
         void CreateInstanceData(bool load);
         InstanceData* GetInstanceData() { return i_data; }

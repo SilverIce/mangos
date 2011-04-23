@@ -23,13 +23,8 @@ namespace G3D
     class Vector3;
 }
 
-namespace VMAP
-{
-    class ModelInstance;
-}
-
 using G3D::Vector3;
-using VMAP::ModelInstance;
+class ModelInstance_Overriden;
 
 class DynamicMapTree
 {
@@ -39,17 +34,16 @@ public:
     DynamicMapTree();
     ~DynamicMapTree();
 
-    bool isInLineOfSight(const Vector3& pos1, const Vector3& pos2) const;
-    bool isInLineOfSight(float x1, float y1, float z1, float x2, float y2, float z2);
+    bool isInLineOfSight(const Vector3& pos1, const Vector3& pos2, uint32 phasemask) const;
+    bool isInLineOfSight(float x1, float y1, float z1, float x2, float y2, float z2, uint32 phasemask) const;
 
-    void insert(const ModelInstance&);
-    void remove(const ModelInstance&);
-    void contains(const ModelInstance&);
+    void insert(const ModelInstance_Overriden&);
+    void remove(const ModelInstance_Overriden&);
+    bool contains(const ModelInstance_Overriden&) const;
     void clear();
     int size() const;
 
     void balance(int valuesPerNode = 5, int numMeanSplits = 3);
-
-    int unbalanced_times;
+    void update(uint32 diff);
 };
 

@@ -42,41 +42,11 @@
 #include "GameobjectModel.h"
 #include "DynamicTree.h"
 
-struct GOextraData
-{
-    ModelInstance_Overriden* model;
-
-public:
-
-    GOextraData() : model(0) {}
-
-    ~GOextraData()
-    {
-        delete model;
-    }
-
-    bool initCollision(const GameObject & go)
-    {
-        MANGOS_ASSERT(model == NULL);
-
-        GameObjectDisplayInfoEntry const* info = sGameObjectDisplayInfoStore.LookupEntry(go.GetGOInfo()->displayId);
-        if (!info)
-            return false;
-
-        model = ModelInstance_Overriden::construct(go, *info);
-        return model != NULL;
-    }
-
-    bool collisionEnabled() const{ return model;}
-};
-
-
 GameObject::GameObject() : WorldObject(),
     m_goInfo(NULL),
-    m_displayInfo(NULL)
+    m_displayInfo(NULL),
+    m_model(NULL)
 {
-    extra = new GOextraData();
-
     m_objectType |= TYPEMASK_GAMEOBJECT;
     m_objectTypeId = TYPEID_GAMEOBJECT;
 
@@ -96,7 +66,7 @@ GameObject::GameObject() : WorldObject(),
 
 GameObject::~GameObject()
 {
-    delete extra;
+    delete m_model;
 }
 
 void GameObject::AddToWorld()
@@ -106,10 +76,8 @@ void GameObject::AddToWorld()
     {
         GetMap()->GetObjectsStore().insert<GameObject>(GetGUID(), (GameObject*)this);
 
-        if (extra->initCollision(*this))
-        {
-            ((DynamicMapTree*)GetMap()->extraData[0])->insert(*extra->model);
-        }
+        if (m_model)
+            GetMap()->extraData->insert(*m_model);
     }
 
     Object::AddToWorld();
@@ -133,10 +101,8 @@ void GameObject::RemoveFromWorld()
             }
         }
 
-        if (extra->collisionEnabled())
-        {
-            ((DynamicMapTree*)GetMap()->extraData[0])->remove(*extra->model);
-        }
+        if (m_model)
+            GetMap()->extraData->remove(*m_model);
 
         GetMap()->GetObjectsStore().erase<GameObject>(GetGUID(), (GameObject*)NULL);
     }
@@ -1798,6 +1764,9 @@ bool GameObject::IsFriendlyTo(Unit const* unit) const
 
 void GameObject::SetDisplayId(uint32 modelId)
 {
+    if (GetDisplayId() != modelId)
+        UpdateModel();
+
     SetUInt32Value(GAMEOBJECT_DISPLAYID, modelId);
     m_displayInfo = sGameObjectDisplayInfoStore.LookupEntry(modelId);
 }
@@ -1879,4 +1848,35 @@ void GameObject::SpawnInMaps(uint32 db_guid, GameObjectData const* data)
 bool GameObject::HasStaticDBSpawnData() const
 {
     return sObjectMgr.GetGOData(GetGUIDLow()) != NULL;
+}
+
+void GameObject::SetPhaseMask(uint32 newPhaseMask, bool update)
+{
+    WorldObject::SetPhaseMask(newPhaseMask, update);
+    EnableCollision(true);
+}
+
+void GameObject::EnableCollision(bool enable)
+{
+    if (m_model)
+        m_model->enable(enable ? GetPhaseMask() : 0);
+}
+
+void GameObject::UpdateModel()
+{
+    if (IsInWorld() && m_model)
+        GetMap()->extraData->remove(*m_model);
+
+    delete m_model;
+    m_model = ModelInstance_Overriden::construct(*this);
+
+    if (IsInWorld() && m_model)
+        GetMap()->extraData->insert(*m_model);
+}
+
+void GameObject::SetObjectScale(float newScale)
+{
+    if (GetObjectScale() != newScale)
+        UpdateModel();
+    Object::SetObjectScale(newScale);
 }

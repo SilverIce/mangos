@@ -58,10 +58,7 @@ Map::~Map()
     if(m_TerrainData->Release())
         sTerrainMgr.UnloadTerrain(m_TerrainData->GetMapId());
 
-    struct deleter {
-        inline void operator()(void * d) const {delete d;}
-    };
-    std::for_each(extraData.begin(), extraData.end(), deleter());
+    delete extraData;
 }
 
 void Map::LoadMapAndVMap(int gx,int gy)
@@ -438,24 +435,9 @@ bool Map::loaded(const GridPair &p) const
     return ( getNGrid(p.x_coord, p.y_coord) && isGridObjectDataLoaded(p.x_coord, p.y_coord) );
 }
 
-static int unbalanced_times_limit = 30;
-
 void Map::Update(const uint32 &t_diff)
 {
-    DynamicMapTree& tree = *(DynamicMapTree*)extraData[0];
-    if (tree.size())
-    {
-        ShortTimeTracker& tr = *(ShortTimeTracker*)extraData[1];
-        tr.Update(t_diff);
-
-        if (tr.Passed())
-        {
-           tr.Reset(20000);
-
-           if (tree.unbalanced_times > unbalanced_times_limit)
-               tree.balance();
-        }
-    }
+    extraData->update(t_diff);
 
     /// update worldsessions for existing players
     for(m_mapRefIter = m_mapRefManager.begin(); m_mapRefIter != m_mapRefManager.end(); ++m_mapRefIter)

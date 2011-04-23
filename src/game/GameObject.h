@@ -582,6 +582,7 @@ enum LootState
 };
 
 class Unit;
+class ModelInstance_Overriden;
 struct GameObjectDisplayInfoEntry;
 
 // 5 sec for bobber catch
@@ -715,6 +716,9 @@ class MANGOS_DLL_SPEC GameObject : public WorldObject
         void SummonLinkedTrapIfAny();
         void TriggerLinkedGameObject(Unit* target);
 
+        virtual void SetPhaseMask(uint32 newPhaseMask, bool update);
+        virtual void SetObjectScale(float newScale);
+        void EnableCollision(bool enable);
         bool isVisibleForInState(Player const* u, WorldObject const* viewPoint, bool inVisibleList) const;
 
         GameObject* LookupFishingHoleAround(float range);
@@ -723,7 +727,7 @@ class MANGOS_DLL_SPEC GameObject : public WorldObject
 
         uint64 GetRotation() const { return m_rotation; }
 
-        struct GOextraData * extra;
+        ModelInstance_Overriden * m_model;
 
     protected:
         uint32      m_spellId;
@@ -749,6 +753,7 @@ class MANGOS_DLL_SPEC GameObject : public WorldObject
         uint64 m_rotation;
     private:
         void SwitchDoorOrButton(bool activate, bool alternative = false);
+        void UpdateModel();                                 // updates model in case displayId or scale were changed
 
         GridReference<GameObject> m_gridRef;
 };

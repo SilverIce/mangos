@@ -95,21 +95,20 @@ bool ModelInstance_Overriden::initialize(const GameObject & go, const GameObject
     if (!iModel)
         return false;
 
+    name = it->second.name;
     flags = VMAP::MOD_M2;
     adtId = 0;
     ID = 0;
     iPos = Vector3(go.GetPositionX(),go.GetPositionY(),go.GetPositionZ());
+    phasemask = go.GetPhaseMask();
+
     iRot = Vector3(0, go.GetOrientation()*180.f/G3D::pi(), 0);
     iScale = go.GetObjectScale();
     iInvScale = 1.f/iScale;
-    name = it->second.name;
-
-    G3D::Matrix3 iRotation = G3D::Matrix3::fromEulerAnglesZYX(G3D::pi()*iRot.y/180.f, G3D::pi()*iRot.x/180.f, G3D::pi()*iRot.z/180.f);
+    G3D::Matrix3 iRotation = G3D::Matrix3::fromEulerAnglesZYX(G3D::toRadians(iRot.y),G3D::toRadians(iRot.x),G3D::toRadians(iRot.z));
     iInvRot = iRotation.inverse();
-
     // transform bounding box:
     mdl_box = G3D::AABox(mdl_box.low() * iScale, mdl_box.high() * iScale);
-
     G3D::AABox rotated_bounds;
     for (int i = 0; i < 8; ++i)
         rotated_bounds.merge(iRotation * mdl_box.corner(i));
@@ -119,10 +118,14 @@ bool ModelInstance_Overriden::initialize(const GameObject & go, const GameObject
     return true;
 }
 
-ModelInstance_Overriden* ModelInstance_Overriden::construct(const class GameObject & go, const struct GameObjectDisplayInfoEntry& info)
+ModelInstance_Overriden* ModelInstance_Overriden::construct(const GameObject & go)
 {
+    const GameObjectDisplayInfoEntry * info = sGameObjectDisplayInfoStore.LookupEntry(go.GetDisplayId());
+    if (!info)
+        return NULL;
+
     ModelInstance_Overriden* mdl = new ModelInstance_Overriden();
-    if (!mdl->initialize(go, info))
+    if (!mdl->initialize(go, *info))
     {
         delete mdl;
         return NULL;

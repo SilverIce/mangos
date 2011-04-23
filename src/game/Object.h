@@ -151,7 +151,7 @@ class MANGOS_DLL_SPEC Object
             return m_floatValues[OBJECT_FIELD_SCALE_X] ? m_floatValues[OBJECT_FIELD_SCALE_X] : DEFAULT_OBJECT_SCALE;
         }
 
-        void SetObjectScale(float newScale);
+        virtual void SetObjectScale(float newScale);
 
         uint8 GetTypeId() const { return m_objectTypeId; }
         bool isType(uint16 mask) const { return (mask & m_objectType); }
