@@ -199,10 +199,6 @@
 				>
 			</File>
 			<File
-				RelativePath="..\..\..\src\game\vmap\IVMapManager.h"
-				>
-			</File>
-			<File
 				RelativePath="..\..\..\src\game\vmap\MapTree.cpp"
 				>
 			</File>
@@ -224,18 +220,6 @@
 			</File>
 			<File
 				RelativePath="..\..\..\src\game\vmap\TileAssembler.h"
-				>
-			</File>
-			<File
-				RelativePath="..\..\..\src\game\vmap\VMapDefinitions.h"
-				>
-			</File>
-			<File
-				RelativePath="..\..\..\src\game\vmap\VMapFactory.cpp"
-				>
-			</File>
-			<File
-				RelativePath="..\..\..\src\game\vmap\VMapFactory.h"
 				>
 			</File>
 			<File

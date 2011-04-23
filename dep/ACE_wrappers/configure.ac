@@ -1,4 +1,4 @@
-dnl $Id: configure.ac 91345 2010-08-12 16:20:20Z shuston $
+dnl $Id: configure.ac 92183 2010-10-08 08:44:15Z olli $
 
 dnl An autoconf script to automatically configure ACE.
 dnl Process this file with autoconf to produce a configure script.
@@ -16,7 +16,7 @@ define([ACE_VERSION], patsubst(esyscmd(grep ACE_VERSION ace/Version.h | sed 's/.
 
 AC_INIT([ACE],[ACE_VERSION],[ace-bugs@cs.wustl.edu],[ace])
 
-AC_REVISION([$Id: configure.ac 91345 2010-08-12 16:20:20Z shuston $])
+AC_REVISION([$Id: configure.ac 92183 2010-10-08 08:44:15Z olli $])
 
 AC_COPYRIGHT([ACE(TM), TAO(TM), CIAO(TM), and CoSMIC(TM) (henceforth
 referred to as "DOC software") are copyrighted by Douglas C.
@@ -36,7 +36,7 @@ additional details.])
 
 dnl Require GNU Autoconf 2.58 or better.  Previous versions did not
 dnl correctly support HP-UX.
-AC_PREREQ(2.61)
+AC_PREREQ(2.65)
 
 dnl Autoconf explicitly forbids patterns containing "_AC_".  This causes
 dnl a problem when using MPC to generate the Automake ".am" files since
@@ -164,9 +164,9 @@ dnl       -- Ossama
 dnl AC_PROG_INSTALL
 
 dnl Special handling for some UNIX variants and Cygwin32
-dnl AC_AIX
+dnl AC_USE_SYSTEM_EXTENSIONS
 
-dnl AC_MINIX
+dnl AC_USE_SYSTEM_EXTENSIONS
 
 case $host_os in
   *cygwin* ) CYGWIN=yes;;
@@ -489,12 +489,14 @@ AC_CHECK_HEADER([dlfcn.h],
 
      case "$host_os" in
      darwin*)
+	dnl MaNGOS modification: fix MacOS build by use ACE_TEXT instead ACE_LIB_TEXT (make code similar used in config-macosx.h)
 	AC_DEFINE([ACE_LD_SEARCH_PATH],
-		  [ACE_LIB_TEXT ("DYLD_LIBRARY_PATH")],
+		  [ACE_TEXT ("DYLD_LIBRARY_PATH")],
 		  [Define to environment variable used for DLL search path])
 	AC_DEFINE([ACE_DLL_SUFFIX],
-		  [ACE_LIB_TEXT (".dylib")],
+		  [ACE_TEXT (".dylib")],
 		  [Define to DLL file suffix])
+	dnl MaNGOS modification end
 	;;
      esac
     ],[])
@@ -3479,30 +3481,6 @@ if test $ac_cv_func_gethrtime = "yes"; then
                 [],
                 [#include <sys/time.h>])
 fi
-
-AC_CHECK_FUNC([pread],
-  [AC_CHECK_FUNC([pwrite],
-    [
-     AC_DEFINE([ACE_HAS_P_READ_WRITE])
-     dnl Check if _XOPEN_SOURCE=500 macro is needed to make the pread() and
-     dnl pwrite() prototypes visible.
-     ACE_CACHE_CHECK([for pread prototype],
-       [ace_cv_lib_has_pread_prototype],
-       [
-        ace_save_CPPFLAGS="$CPPFLAGS"
-        ace_no_xopen="-U_XOPEN_SOURCE"
-        CPPFLAGS="$CPPFLAGS $ace_no_xopen"
-        AC_EGREP_HEADER([[^_]+pread], [unistd.h],
-          [
-           ace_cv_lib_has_pread_prototype=yes
-          ],
-          [
-           ace_cv_lib_has_pread_prototype=no
-          ])
-        dnl Reset the compiler flags
-        CPPFLAGS="$ace_save_CPPFLAGS"
-       ],,[AC_DEFINE([ACE_LACKS_PREAD_PROTOTYPE])])
-    ],)],)
 
 ACE_CHECK_LACKS_FUNCS(readv writev)
 
@@ -6494,7 +6472,7 @@ dnl FIXME!!!
 dnl The following is a kludge until the netdb reentrant function
 dnl number of arguments is handled.
 case "$host" in
-  *linux*) AC_DEFINE([ACE_LACKS_NETDB_REENTRANT_FUNCTIONS]);;
+  *linux* | *freebsd*) AC_DEFINE([ACE_LACKS_NETDB_REENTRANT_FUNCTIONS]);;
   *) ;;
 esac
 
@@ -7118,7 +7096,7 @@ the generated ace/config.h file and the following information:
 
   ACE 'configure' Script Information
   ==================================
-  [RCS] translit([$Id: configure.ac 91345 2010-08-12 16:20:20Z shuston $], [$"])
+  [RCS] translit([$Id: configure.ac 92183 2010-10-08 08:44:15Z olli $], [$"])
 
 
   ACE Version:        ACE_VERSION
@@ -7221,12 +7199,6 @@ dnl AC_SUBST(LIBOBJS)
 dnl Force CXXFLAGS to be substituted in Makefiles that don't "need" them.
 AC_SUBST([CXXFLAGS])
 
-dnl Precompute the absolute pathname of the ACE tests directory so
-dnl that we can avoid using GNU Make extensions in the ACE tests
-dnl Makefile.
-ACE_TESTS_DIR=`pwd`/tests
-AC_SUBST([ACE_TESTS_DIR])
-
 dnl
 dnl SECTION 16: AC_CONFIG_FILES([FILE...])
 dnl
@@ -7241,6 +7213,12 @@ dnl   ace/Makefile
 AC_CONFIG_FILES([
   Makefile
   ace/Makefile
+  ace/ETCL/Makefile
+  ace/Monitor_Control/Makefile
+  ace/QoS/Makefile
+  ace/SSL/Makefile
+  bin/Makefile
+  bin/PerlACE/Makefile
 ])
 
 dnl Note that the "ACE_VERSION" in the message below is an M4 macro

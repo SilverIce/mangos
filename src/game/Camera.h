@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005-2010 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2005-2011 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -81,7 +81,9 @@ class MANGOS_DLL_SPEC ViewPoint
 {
     friend class Camera;
 
-    std::list<Camera*> m_cameras;
+    typedef std::list<Camera*> CameraList;
+
+    CameraList m_cameras;
     GridType * m_grid;
 
     void Attach(Camera* c) { m_cameras.push_back(c); }
@@ -91,7 +93,7 @@ class MANGOS_DLL_SPEC ViewPoint
     {
         if (!m_cameras.empty())
         {
-            for(std::list<Camera*>::iterator itr = m_cameras.begin(); itr != m_cameras.end();)
+            for(CameraList::iterator itr = m_cameras.begin(); itr != m_cameras.end();)
             {
                 Camera *c = *(itr++);
                 (c->*handler)();

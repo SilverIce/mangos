@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005-2010 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2005-2011 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -187,7 +187,8 @@ struct CreatureEventAI_Action
         // ACTION_T_SET_FACTION                             = 2
         struct
         {
-            uint32 factionId;                               // faction or 0 for default)
+            uint32 factionId;                               // faction id or 0 to restore default faction
+            uint32 factionFlags;                            // flags will restore default faction at evade and/or respawn
         } set_faction;
         // ACTION_T_MORPH_TO_ENTRY_OR_MODEL                 = 3
         struct
@@ -608,7 +609,6 @@ class MANGOS_DLL_SPEC CreatureEventAI : public CreatureAI
         inline Unit* GetTargetByType(uint32 Target, Unit* pActionInvoker);
 
         void DoScriptText(int32 textEntry, WorldObject* pSource, Unit* target);
-        void DoMeleeAttackIfReady();
         bool CanCast(Unit* Target, SpellEntry const *Spell, bool Triggered);
 
         bool SpawnedEventConditionsCheck(CreatureEventAI_Event const& event);

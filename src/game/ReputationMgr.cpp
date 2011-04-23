@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005-2010 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2005-2011 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -489,8 +489,10 @@ void ReputationMgr::LoadFromDB(QueryResult *result)
 
                 // reset changed flag if values similar to saved in DB
                 if(faction->Flags==dbFactionFlags)
+                {
                     faction->needSend = false;
                     faction->needSave = false;
+                }
             }
         }
         while( result->NextRow() );
@@ -501,12 +503,18 @@ void ReputationMgr::LoadFromDB(QueryResult *result)
 
 void ReputationMgr::SaveToDB()
 {
+    static SqlStatementID delRep ;
+    static SqlStatementID insRep ;
+
+    SqlStatement stmtDel = CharacterDatabase.CreateStatement(delRep, "DELETE FROM character_reputation WHERE guid = ? AND faction=?");
+    SqlStatement stmtIns = CharacterDatabase.CreateStatement(insRep, "INSERT INTO character_reputation (guid,faction,standing,flags) VALUES (?, ?, ?, ?)");
+
     for(FactionStateList::iterator itr = m_factions.begin(); itr != m_factions.end(); ++itr)
     {
         if (itr->second.needSave)
         {
-            CharacterDatabase.PExecute("DELETE FROM character_reputation WHERE guid = '%u' AND faction='%u'", m_player->GetGUIDLow(), itr->second.ID);
-            CharacterDatabase.PExecute("INSERT INTO character_reputation (guid,faction,standing,flags) VALUES ('%u', '%u', '%i', '%u')", m_player->GetGUIDLow(), itr->second.ID, itr->second.Standing, itr->second.Flags);
+            stmtDel.PExecute(m_player->GetGUIDLow(), itr->second.ID);
+            stmtIns.PExecute(m_player->GetGUIDLow(), itr->second.ID, itr->second.Standing, itr->second.Flags);
             itr->second.needSave = false;
         }
     }

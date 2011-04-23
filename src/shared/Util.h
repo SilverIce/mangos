@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005-2010 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2005-2011 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -256,6 +256,16 @@ inline bool isEastAsianString(std::wstring wstr, bool numericOrSpace)
         if(!isEastAsianCharacter(wstr[i]) && (!numericOrSpace || !isNumericOrSpace(wstr[i])))
             return false;
     return true;
+}
+
+inline void strToUpper(std::string& str)
+{
+    std::transform( str.begin(), str.end(), str.begin(), toupper );
+}
+
+inline void strToLower(std::string& str)
+{
+    std::transform( str.begin(), str.end(), str.begin(), tolower );
 }
 
 inline wchar_t wcharToUpper(wchar_t wchar)

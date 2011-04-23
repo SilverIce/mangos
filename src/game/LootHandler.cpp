@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005-2010 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2005-2011 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -83,6 +83,7 @@ void WorldSession::HandleAutostoreLootItemOpcode( WorldPacket & recv_data )
             break;
         }
         case HIGHGUID_UNIT:
+        case HIGHGUID_VEHICLE:
         {
             Creature* pCreature = GetPlayer()->GetMap()->GetCreature(lguid);
 
@@ -216,6 +217,7 @@ void WorldSession::HandleLootMoneyOpcode( WorldPacket & /*recv_data*/ )
             break;
         }
         case HIGHGUID_UNIT:
+        case HIGHGUID_VEHICLE:
         {
             Creature* pCreature = GetPlayer()->GetMap()->GetCreature(guid);
 
@@ -448,7 +450,7 @@ void WorldSession::DoLootRelease(ObjectGuid lguid)
                 // normal persistence loot
                 default:
                 {
-                    // must be destroyed only if no loot 
+                    // must be destroyed only if no loot
                     if (pItem->loot.isLooted())
                     {
                         pItem->SetLootState(ITEM_LOOT_REMOVED);
@@ -460,6 +462,7 @@ void WorldSession::DoLootRelease(ObjectGuid lguid)
             return;                                         // item can be looted only single player
         }
         case HIGHGUID_UNIT:
+        case HIGHGUID_VEHICLE:
         {
             Creature* pCreature = GetPlayer()->GetMap()->GetCreature(lguid);
 
@@ -520,7 +523,7 @@ void WorldSession::HandleLootMasterGiveOpcode( WorldPacket & recv_data )
 
     Loot *pLoot = NULL;
 
-    if(lootguid.IsCreature())
+    if (lootguid.IsCreatureOrVehicle())
     {
         Creature *pCreature = GetPlayer()->GetMap()->GetCreature(lootguid);
         if(!pCreature)
@@ -528,7 +531,7 @@ void WorldSession::HandleLootMasterGiveOpcode( WorldPacket & recv_data )
 
         pLoot = &pCreature->loot;
     }
-    else if(lootguid.IsGameobject())
+    else if(lootguid.IsGameObject())
     {
         GameObject *pGO = GetPlayer()->GetMap()->GetGameObject(lootguid);
         if(!pGO)

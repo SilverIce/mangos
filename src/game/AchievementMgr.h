@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005-2010 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2005-2011 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,6 +24,7 @@
 #include "DBCEnums.h"
 #include "DBCStores.h"
 #include "SharedDefines.h"
+#include "ObjectGuid.h"
 
 #include <map>
 #include <string>
@@ -37,8 +38,8 @@ typedef std::map<uint32,time_t>                       AchievementCriteriaFailTim
 
 struct CriteriaProgress
 {
-    uint32 counter;
     time_t date;
+    uint32 counter;
     bool changed;
     bool timedCriteriaFailed;
 };
@@ -65,9 +66,11 @@ enum AchievementCriteriaRequirementType
     ACHIEVEMENT_CRITERIA_REQUIRE_BG_LOSS_TEAM_SCORE  = 17,  // min_score      max_score     player's team win bg and opposition team have team score in range
     ACHIEVEMENT_CRITERIA_REQUIRE_INSTANCE_SCRIPT     = 18,  // 0              0             maker instance script call for check current criteria requirements fit
     ACHIEVEMENT_CRITERIA_REQUIRE_S_EQUIPPED_ITEM_LVL = 19,  // item_level     item_quality  fir equipped item in slot `misc1` to item level and quality
+    ACHIEVEMENT_CRITERIA_REQUIRE_NTH_BIRTHDAY        = 20,  // N                            login on day of N-th Birthday
+    ACHIEVEMENT_CRITERIA_REQUIRE_KNOWN_TITLE         = 21,  // title_id                     known (pvp) title, values from dbc
 };
 
-#define MAX_ACHIEVEMENT_CRITERIA_REQUIREMENT_TYPE      20   // maximum value in AchievementCriteriaRequirementType enum
+#define MAX_ACHIEVEMENT_CRITERIA_REQUIREMENT_TYPE      22   // maximum value in AchievementCriteriaRequirementType enum
 
 class Player;
 class Unit;
@@ -165,6 +168,16 @@ struct AchievementCriteriaRequirement
             uint32 item_level;
             uint32 item_quality;
         } equipped_item;
+        // ACHIEVEMENT_CRITERIA_REQUIRE_NTH_BIRTHDAY      = 20
+        struct
+        {
+            uint32 nth_birthday;
+        } birthday_login;
+        // ACHIEVEMENT_CRITERIA_REQUIRE_KNOWN_TITLE       = 21
+        struct
+        {
+            uint32 title_id;
+        } known_title;
         // ...
         struct
         {
@@ -247,7 +260,7 @@ class AchievementMgr
         ~AchievementMgr();
 
         void Reset();
-        static void DeleteFromDB(uint32 lowguid);
+        static void DeleteFromDB(ObjectGuid guid);
         void LoadFromDB(QueryResult *achievementResult, QueryResult *criteriaResult);
         void SaveToDB();
         void ResetAchievementCriteria(AchievementCriteriaTypes type, uint32 miscvalue1=0, uint32 miscvalue2=0);

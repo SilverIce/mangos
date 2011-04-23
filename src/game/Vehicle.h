@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005-2010 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2005-2011 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,36 +25,15 @@
 #include "Unit.h"
 #include "SharedDefines.h"
 
-class Vehicle : public Creature
+struct VehicleEntry;
+
+class VehicleInfo
 {
+        VehicleEntry const* m_vehicleEntry;
     public:
-        explicit Vehicle();
-        virtual ~Vehicle();
+        explicit VehicleInfo(VehicleEntry const* entry);
 
-        void AddToWorld();
-        void RemoveFromWorld();
-
-        bool Create (uint32 guidlow, Map *map, uint32 Entry, uint32 vehicleId, Team team);
-
-        void SetDeathState(DeathState s);                   // overwrite virtual Creature::SetDeathState and Unit::SetDeathState
-        void Update(uint32 diff);                           // overwrite virtual Creature::Update and Unit::Update
-
-        uint32 GetVehicleId() { return m_vehicleId; }
-        void SetVehicleId(uint32 vehicleid) { m_vehicleId = vehicleid; }
-
-        void Dismiss();
-
-    protected:
-        uint32 m_vehicleId;
-
-    private:
-        void SaveToDB(uint32, uint8)                        // overwrited of Creature::SaveToDB     - don't must be called
-        {
-            MANGOS_ASSERT(false);
-        }
-        void DeleteFromDB()                                 // overwrited of Creature::DeleteFromDB - don't must be called
-        {
-            MANGOS_ASSERT(false);
-        }
+        VehicleEntry const* GetEntry() const { return m_vehicleEntry; }
 };
+
 #endif

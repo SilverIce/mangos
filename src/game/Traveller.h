@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005-2010 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2005-2011 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -75,7 +75,7 @@ inline float Traveller<Creature>::Speed()
 {
     if(i_traveller.HasSplineFlag(SPLINEFLAG_WALKMODE))
         return i_traveller.GetSpeed(MOVE_WALK);
-    else if(i_traveller.HasSplineFlag(SPLINEFLAG_UNKNOWN7))
+    else if(i_traveller.HasSplineFlag(SPLINEFLAG_FLYING))
         return i_traveller.GetSpeed(MOVE_FLIGHT);
     else
         return i_traveller.GetSpeed(MOVE_RUN);

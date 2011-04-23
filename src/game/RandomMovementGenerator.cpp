@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005-2010 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2005-2011 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -100,12 +100,12 @@ RandomMovementGenerator<Creature>::_setRandomLocation(Creature &creature)
     if (is_air_ok)
     {
         i_nextMoveTime.Reset(i_destinationHolder.GetTotalTravelTime());
-        creature.AddSplineFlag(SPLINEFLAG_UNKNOWN7);
+        creature.AddSplineFlag(SPLINEFLAG_FLYING);
     }
     //else if (is_water_ok)                                 // Swimming mode to be done with more than this check
     else
     {
-        i_nextMoveTime.Reset(urand(500+i_destinationHolder.GetTotalTravelTime(), 10000+i_destinationHolder.GetTotalTravelTime()));
+        i_nextMoveTime.Reset(i_destinationHolder.GetTotalTravelTime() + urand(500, 10000));
         creature.AddSplineFlag(SPLINEFLAG_WALKMODE);
     }
 }
@@ -117,7 +117,7 @@ void RandomMovementGenerator<Creature>::Initialize(Creature &creature)
         return;
 
     if (creature.CanFly())
-        creature.AddSplineFlag(SPLINEFLAG_UNKNOWN7);
+        creature.AddSplineFlag(SPLINEFLAG_FLYING);
     else
         creature.AddSplineFlag(SPLINEFLAG_WALKMODE);
 
@@ -171,7 +171,7 @@ bool RandomMovementGenerator<Creature>::Update(Creature &creature, const uint32 
         if (i_nextMoveTime.Passed())
         {
             if (creature.CanFly())
-                creature.AddSplineFlag(SPLINEFLAG_UNKNOWN7);
+                creature.AddSplineFlag(SPLINEFLAG_FLYING);
             else
                 creature.AddSplineFlag(SPLINEFLAG_WALKMODE);
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005-2010 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2005-2011 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -36,7 +36,7 @@ void ArenaTeamMember::ModifyPersonalRating(Player* plr, int32 mod, uint32 slot)
 ArenaTeam::ArenaTeam()
 {
     m_TeamId              = 0;
-    m_Type                = 0;
+    m_Type                = ARENA_TYPE_NONE;
     m_BackgroundColor     = 0;                              // background
     m_EmblemStyle         = 0;                              // icon
     m_EmblemColor         = 0;                              // icon color
@@ -66,8 +66,10 @@ ArenaTeam::~ArenaTeam()
 
 }
 
-bool ArenaTeam::Create(ObjectGuid captainGuid, uint32 type, std::string arenaTeamName)
+bool ArenaTeam::Create(ObjectGuid captainGuid, ArenaType type, std::string arenaTeamName)
 {
+    if (!IsArenaTypeValid(type))
+        return false;
     if (!sObjectMgr.GetPlayer(captainGuid))                 // player not exist
         return false;
     if (sObjectMgr.GetArenaTeamByName(arenaTeamName))       // arena team with this name already exist
@@ -105,7 +107,7 @@ bool ArenaTeam::AddMember(ObjectGuid playerGuid)
     uint8 plClass;
 
     // arena team is full (can't have more than type * 2 players!)
-    if (GetMembersSize() >= GetType() * 2)
+    if (GetMembersSize() >= GetMaxMembersSize())
         return false;
 
     Player *pl = sObjectMgr.GetPlayer(playerGuid);
@@ -197,7 +199,11 @@ bool ArenaTeam::LoadArenaTeamFromDB(QueryResult *arenaTeamDataResult)
     m_TeamId             = fields[0].GetUInt32();
     m_Name               = fields[1].GetCppString();
     m_CaptainGuid        = ObjectGuid(HIGHGUID_PLAYER, fields[2].GetUInt32());
-    m_Type               = fields[3].GetUInt32();
+    m_Type               = ArenaType(fields[3].GetUInt32());
+
+    if (!IsArenaTypeValid(m_Type))
+        return false;
+
     m_BackgroundColor    = fields[4].GetUInt32();
     m_EmblemStyle        = fields[5].GetUInt32();
     m_EmblemColor        = fields[6].GetUInt32();
@@ -257,6 +263,11 @@ bool ArenaTeam::LoadMembersFromDB(QueryResult *arenaTeamMembersResult)
             DelMember(newmember.guid);
             continue;
         }
+
+        // arena team can't be > 2 * arenatype (2 for 2x2, 3 for 3x3, 5 for 5x5)
+        if (GetMembersSize() >= GetMaxMembersSize())
+            return false;
+
         if (newmember.guid == GetCaptainGuid())
             captainPresentInTeam = true;
 
@@ -517,13 +528,13 @@ void ArenaTeam::BroadcastEvent(ArenaTeamEvents event, ObjectGuid guid, char cons
     DEBUG_LOG("WORLD: Sent SMSG_ARENA_TEAM_EVENT");
 }
 
-uint8 ArenaTeam::GetSlotByType( uint32 type )
+uint8 ArenaTeam::GetSlotByType(ArenaType type )
 {
     switch(type)
     {
-        case ARENA_TEAM_2v2: return 0;
-        case ARENA_TEAM_3v3: return 1;
-        case ARENA_TEAM_5v5: return 2;
+        case ARENA_TYPE_2v2: return 0;
+        case ARENA_TYPE_3v3: return 1;
+        case ARENA_TYPE_5v5: return 2;
         default:
             break;
     }
@@ -547,15 +558,21 @@ uint32 ArenaTeam::GetPoints(uint32 MemberRating)
 
     uint32 rating = MemberRating + 150 < m_stats.rating ? MemberRating : m_stats.rating;
 
-    if(rating <= 1500)
+    if (rating <= 1500)
+    {
+        // As of Season 6 and later, all teams below 1500 rating will earn points as if they were a 1500 rated team
+        if (sWorld.getConfig(CONFIG_UINT32_ARENA_SEASON_ID) >= 6)
+            rating = 1500;
+
         points = (float)rating * 0.22f + 14.0f;
+    }
     else
         points = 1511.26f / (1.0f + 1639.28f * exp(-0.00412f * (float)rating));
 
     // type penalties for <5v5 teams
-    if(m_Type == ARENA_TEAM_2v2)
+    if (m_Type == ARENA_TYPE_2v2)
         points *= 0.76f;
-    else if(m_Type == ARENA_TEAM_3v3)
+    else if(m_Type == ARENA_TYPE_3v3)
         points *= 0.88f;
 
     return (uint32) points;
