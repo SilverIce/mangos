@@ -37,7 +37,7 @@ template<> struct BoundsTrait<const  ModelInstance_Overriden*> {
     static void getBounds(const ModelInstance_Overriden* g, G3D::AABox& out) { out = g->getBounds();}
 };
 
-#define log(str, ...) printf(str##"\n",__VA_ARGS__)
+#define log(str, ...) printf((str"\n"),__VA_ARGS__)
 
 int valuesPerNode = 5, numMeanSplits = 3;
 

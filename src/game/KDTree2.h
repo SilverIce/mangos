@@ -12,7 +12,7 @@
   All rights reserved.
   */
 
-#include "g3d\kdtree.h"
+#include <G3D/KDtree.h>
 
 namespace G3D
 {
