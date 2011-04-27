@@ -22,6 +22,7 @@
 #include <G3D/Vector3.h>
 #include <G3D/Matrix3.h>
 #include <map>
+#include <set>
 
 #include "ModelInstance.h"
 #include "WorldModel.h"
