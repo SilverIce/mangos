@@ -90,6 +90,15 @@ bool FileExists(const char * file)
     return false;
 }
 
+void strToLower(char* str)
+{
+    while(*str)
+    {
+        *str=tolower(*str);
+        ++str;
+    }
+}
+
 // copied from contrib/extractor/System.cpp
 void ReadLiquidTypeTableDBC()
 {
