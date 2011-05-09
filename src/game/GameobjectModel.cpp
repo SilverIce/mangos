@@ -26,13 +26,17 @@
 #include "GameobjectModel.h"
 #include "DBCStores.h"
 
+using G3D::Vector3;
+using G3D::Ray;
+using G3D::AABox;
+
 struct GameobjectModelData
 {
-    GameobjectModelData(const std::string& name_, const G3D::AABox& box) :
+    GameobjectModelData(const std::string& name_, const AABox& box) :
         name(name_), bound(box) {}
 
     std::string name;
-    G3D::AABox bound;
+    AABox bound;
 };
 
 typedef UNORDERED_MAP<uint32, GameobjectModelData> ModelList;
@@ -64,7 +68,7 @@ void LoadGameObjectModelList()
 
         model_list.insert
         (
-            ModelList::value_type( displayId, GameobjectModelData(std::string(buff,name_length),G3D::AABox(v1,v2)) )
+            ModelList::value_type( displayId, GameobjectModelData(std::string(buff,name_length),AABox(v1,v2)) )
         );
     }
     fclose(model_list_file);
@@ -96,20 +100,19 @@ bool ModelInstance_Overriden::initialize(const GameObject & go, const GameObject
         return false;
 
     name = it->second.name;
-    flags = VMAP::MOD_M2;
-    adtId = 0;
-    ID = 0;
+    //flags = VMAP::MOD_M2;
+    //adtId = 0;
+    //ID = 0;
     iPos = Vector3(go.GetPositionX(),go.GetPositionY(),go.GetPositionZ());
     phasemask = go.GetPhaseMask();
-
-    iRot = Vector3(0, go.GetOrientation()*180.f/G3D::pi(), 0);
     iScale = go.GetObjectScale();
     iInvScale = 1.f/iScale;
-    G3D::Matrix3 iRotation = G3D::Matrix3::fromEulerAnglesZYX(G3D::toRadians(iRot.y),G3D::toRadians(iRot.x),G3D::toRadians(iRot.z));
+
+    G3D::Matrix3 iRotation = G3D::Matrix3::fromEulerAnglesZYX(go.GetOrientation(), 0, 0);
     iInvRot = iRotation.inverse();
     // transform bounding box:
-    mdl_box = G3D::AABox(mdl_box.low() * iScale, mdl_box.high() * iScale);
-    G3D::AABox rotated_bounds;
+    mdl_box = AABox(mdl_box.low() * iScale, mdl_box.high() * iScale);
+    AABox rotated_bounds;
     for (int i = 0; i < 8; ++i)
         rotated_bounds.merge(iRotation * mdl_box.corner(i));
 
@@ -132,4 +135,26 @@ ModelInstance_Overriden* ModelInstance_Overriden::construct(const GameObject & g
     }
 
     return mdl;
+}
+
+bool ModelInstance_Overriden::intersectRay(const G3D::Ray& ray, float& MaxDist, bool StopAtFirstHit, uint32 ph_mask) const
+{
+    if (!(phasemask & ph_mask))
+        return false;
+
+    float time = pRay.intersectionTime(iBound);
+    if (time == G3D::inf())
+        return false;
+
+    // child bounds are defined in object space:
+    Vector3 p = iInvRot * (ray.origin() - iPos) * iInvScale;
+    Ray modRay(p, iInvRot * ray.direction());
+    float distance = MaxDist * iInvScale;
+    bool hit = iModel->IntersectRay(modRay, distance, StopAtFirstHit);
+    if(hit)
+    {
+        distance *= iScale;
+        MaxDist = distance;
+    }
+    return hit;
 }

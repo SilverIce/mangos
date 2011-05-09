@@ -18,33 +18,49 @@
 
 #pragma once
 
-#include "ModelInstance.h"
+#include <G3D/Matrix3.h>
+#include <G3D/Vector3.h>
+#include <G3D/AABox.h>
+#include <G3D/Ray.h>
 
-using G3D::Vector3;
+#include "Platform/Define.h"
 
-class ModelInstance_Overriden : public VMAP::ModelInstance
+namespace VMAP
+{
+    class WorldModel;
+}
+
+class GameObject;
+struct GameObjectDisplayInfoEntry;
+
+class ModelInstance_Overriden /*, public Intersectable*/
 {
     uint32 phasemask;
+    G3D::AABox iBound;
+    G3D::Matrix3 iInvRot;
+    G3D::Vector3 iPos;
+    //G3D::Vector3 iRot;
+    float iInvScale;
+    float iScale;
+    VMAP::WorldModel *iModel;
 
-    ModelInstance_Overriden() : phasemask(0) {}
-    bool initialize(const class GameObject & go, const struct GameObjectDisplayInfoEntry& info);
+    ModelInstance_Overriden() : phasemask(0), iModel(NULL) {}
+    bool initialize(const GameObject & go, const GameObjectDisplayInfoEntry& info);
 
 public:
+    std::string name;
+
+    const G3D::AABox& getBounds() const { return iBound; }
 
     ~ModelInstance_Overriden();
 
-    const Vector3& getPosition() const { return iPos;}
+    const G3D::Vector3& getPosition() const { return iPos;}
 
     /**	Enables\disables collision. */
     void disable() { phasemask = 0;}
     void enable(uint32 ph_mask) { phasemask = ph_mask;}
 
-    bool intersectRay(const G3D::Ray& pRay, float& pMaxDist, bool pStopAtFirstHit, uint32 ph_mask) const
-    {
-        if (phasemask & ph_mask)
-            return ModelInstance::intersectRay(pRay, pMaxDist, pStopAtFirstHit);
-        return false;
-    }
+    bool intersectRay(const G3D::Ray& Ray, float& MaxDist, bool StopAtFirstHit, uint32 ph_mask) const;
 
-    static ModelInstance_Overriden* construct(const class GameObject & go);
+    static ModelInstance_Overriden* construct(const GameObject & go);
 };
