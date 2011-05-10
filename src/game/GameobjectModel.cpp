@@ -142,7 +142,7 @@ bool ModelInstance_Overriden::intersectRay(const G3D::Ray& ray, float& MaxDist, 
     if (!(phasemask & ph_mask))
         return false;
 
-    float time = pRay.intersectionTime(iBound);
+    float time = ray.intersectionTime(iBound);
     if (time == G3D::inf())
         return false;
 

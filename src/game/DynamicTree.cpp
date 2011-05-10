@@ -22,15 +22,14 @@
 #include "GameobjectModel.h"
 #include "Log.h"
 
-using VMAP::ModelInstance;
 using G3D::Ray;
 
 template<> struct HashTrait<const  ModelInstance_Overriden*>{
-    static size_t hashCode(const ModelInstance* g) { return (size_t)(void*)g; }
+    static size_t hashCode(const ModelInstance_Overriden* g) { return (size_t)(void*)g; }
 };
 
 template<> struct PositionTrait<const  ModelInstance_Overriden*> {
-    static void getPosition(const ModelInstance* g, Vector3& p) { p = g->iPos; }
+    static void getPosition(const ModelInstance_Overriden* g, Vector3& p) { p = g->getPosition(); }
 };
 
 template<> struct BoundsTrait<const  ModelInstance_Overriden*> {
