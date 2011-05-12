@@ -21,7 +21,7 @@ struct NodeCreator{
 template<class T,
 class Node,
 class NodeCreatorFunc = NodeCreator<Node>,
-/*class BoundsFunc = BoundsTrait<T>,*/
+    /*class BoundsFunc = BoundsTrait<T>,*/
 class PositionFunc = PositionTrait<T>
 >
 class RegularGrid2D
@@ -32,8 +32,9 @@ public:
         CELL_LAST = CELL_NUMBER - 1,
         TREE_SIZE = CELL_NUMBER*CELL_NUMBER,
     };
-    #define CELL_SIZE double(533.3333333333333333333)
-    #define HGRID_MAP_SIZE (CELL_SIZE * CELL_NUMBER)
+    #define CELL_SIZE       float(533.33333)
+    #define CELL_SIZE_INV   float(1/CELL_SIZE)
+    #define HGRID_MAP_SIZE  (CELL_SIZE * CELL_NUMBER)
 
     typedef Array<const T*> MemberArray;
     typedef G3D::Table<const T*, Node*> MemberTable;
@@ -81,13 +82,17 @@ public:
     struct Cell
     {
         int x, y;
+        bool operator == (const Cell& c2) const { return x == c2.x && y == c2.y;}
+
+        static Cell ComputeCell(float fx, float fy)
+        {
+            Cell c = {fx * CELL_SIZE_INV + (CELL_NUMBER/2), fy * CELL_SIZE_INV + (CELL_NUMBER/2)};
+            return c;
+        }
+
+        bool isValid() const { return x >= 0 && x < CELL_NUMBER && y >= 0 && y < CELL_NUMBER;}
     };
 
-    static Cell ComputeCell(float fx, float fy)
-    {
-        Cell c = {fx / CELL_SIZE + (CELL_NUMBER/2), fy / CELL_SIZE + (CELL_NUMBER/2)};
-        return c;
-    }
 
     Node& getGridFor(float fx, float fy)
     {
@@ -106,62 +111,93 @@ public:
     template<typename RayCallback>
     void intersectRay(const Ray& ray, RayCallback& intersectCallback, float max_dist)
     {
-        float v = (float)CELL_SIZE;
+        intersectRay(ray, intersectCallback, max_dist, ray.origin() + ray.direction() * max_dist);
+    }
 
-        float kx = ray.direction().x, bx = ray.origin().x;
-        float ky = ray.direction().y, by = ray.origin().y;
+    template<typename RayCallback>
+    void intersectRay(const Ray& ray, RayCallback& intersectCallback, float max_dist, const Vector3& end)
+    {
+        Cell cell = Cell::ComputeCell(ray.origin().x, ray.origin().y);
+        if (!cell.isValid())
+            return;
 
-        float dt;
-        if (fabs(kx) > fabs(ky))
+        Cell last_cell = Cell::ComputeCell(end.x, end.y);
+
+        if (cell == last_cell)
         {
-            if (G3D::fuzzyNe(ky,0))
-                dt = v / ky * 1.00001;
-            else
-                dt = v / kx * 1.00001;
-        }
-        else
-        {
-            if (G3D::fuzzyNe(kx,0))
-                dt = v / kx * 1.00001;
-            else
-                dt = v / ky * 1.00001;
-        }
-
-        int i = 0;
-        int N = ceilf(max_dist / fabs(dt));
-
-        // precomputed vars:
-        float beg_x = bx/v + CELL_NUMBER/2;
-        float beg_y = by/v + CELL_NUMBER/2;
-        if (N == 1) // optimize most common case
-        {
-            int x = int(beg_x);
-            int y = int(beg_y);
-            float enter_dist = max_dist;
-            if (Node * node = nodes[x][y])
-                node->intersectRay(ray, intersectCallback, enter_dist);
+            if (Node * node = nodes[cell.x][cell.y])
+                node->intersectRay(ray, intersectCallback, max_dist);
             return;
         }
 
-        // precomputed vars:
-        float dx = dt * kx / v;
-        float dy = dt * ky / v;
+        float voxel = (float)CELL_SIZE;
+        float kx_inv = ray.invDirection().x, bx = ray.origin().x;
+        float ky_inv = ray.invDirection().y, by = ray.origin().y;
+
+        int stepX, stepY;
+        float tMaxX, tMaxY; 
+        if (kx_inv >= 0)
+        {
+            stepX = 1;
+            float x_border = (cell.x+1) * voxel;
+            tMaxX = (x_border - bx) * kx_inv;
+        }
+        else
+        {
+            stepX = -1;
+            float x_border = (cell.x-1) * voxel;
+            tMaxX = (x_border - bx) * kx_inv;
+        }
+
+        if (ky_inv >= 0)
+        {
+            stepY = 1;
+            float y_border = (cell.y+1) * voxel;
+            tMaxY = (y_border - by) * ky_inv;
+        }
+        else
+        {
+            stepY = -1;
+            float y_border = (cell.y-1) * voxel;
+            tMaxY = (y_border - by) * ky_inv;
+        }
+
+        //int Cycles = std::max((int)ceilf(max_dist/tMaxX),(int)ceilf(max_dist/tMaxY));
+        //int i = 0;
+
+        float tDeltaX = voxel * fabs(kx_inv);
+        float tDeltaY = voxel * fabs(ky_inv);
         do
         {
-            int x = int(beg_x);
-            int y = int(beg_y);
-            if (Node * node = nodes[x][y])
+            if (Node * node = nodes[cell.x][cell.y])
             {
-                float enter_dist = max_dist;
-                node->intersectRay(ray, intersectCallback, enter_dist);
-                if (intersectCallback.didHit())
-                    return;
+                float enterdist = max_dist;
+                node->intersectRay(ray, intersectCallback, enterdist);
             }
+            if (cell == last_cell)
+                break;
+            if(tMaxX < tMaxY)
+            {
+                tMaxX += tDeltaX;
+                cell.x += stepX;
+            }
+            else
+            {
+                tMaxY += tDeltaY;
+                cell.y += stepY;
+            }
+            //++i;
+        } while (cell.isValid())
+    }
 
-            beg_x += dx;
-            beg_y += dy;
-            ++i;
-        } while (i < N);
+    template<typename IsectCallback>
+    void intersectPoint(const Vector3& p, IsectCallback& intersectCallback)
+    {
+        Cell c = ComputeCell(p.x, p.y);
+        if (!cell.isValid())
+            return;
+        if (Node * node = nodes[c.x][c.y])
+            node->intersectPoint(p, intersectCallback);
     }
 };
 
