@@ -459,14 +459,8 @@ void MotionMaster::UpdateFinalDistanceToTarget(float fDistance)
         top()->UpdateFinalDistance(fDistance);
 }
 
-void MotionMaster::OnSplineDone()
+void MotionMaster::OnEvent(const Movement::OnEventArgs& args)
 {
     if (!empty())
-        top()->OnSplineDone(*m_owner);
-}
-
-void MotionMaster::OnEvent(int eventId, int data)
-{
-    if (!empty())
-        top()->OnEvent(*m_owner,eventId,data);
+        top()->OnEvent(*m_owner, args);
 }

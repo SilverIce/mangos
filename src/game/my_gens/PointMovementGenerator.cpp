@@ -24,7 +24,7 @@
 #include "World.h"
 #include "Movement/UnitMovement.h"
 
-extern void GeneratePath(const Map*, G3D::Vector3, const G3D::Vector3&, std::vector<G3D::Vector3>&);
+extern void GeneratePath(const WorldObject*, G3D::Vector3, const G3D::Vector3&, std::vector<G3D::Vector3>&, bool isFlight = false);
 
 //----- Point Movement Generator
 template<class T>
@@ -36,20 +36,10 @@ void PointMovementGenerator<T>::Initialize(T &unit)
     using namespace Movement;
 
     UnitMovement& state = *unit.movement;
-
-    MoveSplineInit init(state);
-    if (state.HasMode(MoveModeLevitation) || state.HasMode(MoveModeFly))
-    {
-        init.SetFly().MoveTo( Vector3(i_x,i_y,i_z) );
-    }
-    else
-    {
-        PointsArray path;
-        GeneratePath(unit.GetMap(),state.GetPosition3(),Vector3(i_x,i_y,i_z), path);
-        init.MovebyPath(path);
-    }
-
+    MoveCommonInit init(state);
+    GeneratePath(&unit,state.GetPosition3(),Vector3(i_x,i_y,i_z), init.Path(), state.IsFlying());
     init.Launch();
+    mySpline = state.MoveSplineId();
 }
 
 template<class T>
@@ -76,9 +66,6 @@ void PointMovementGenerator<T>::Reset(T &unit)
 template<class T>
 bool PointMovementGenerator<T>::Update(T &unit, const uint32 &diff)
 {
-    if(!&unit)
-        return false;
-
     if(unit.hasUnitState(UNIT_STAT_CAN_NOT_MOVE))
     {
         unit.clearUnitState(UNIT_STAT_ROAMING_MOVE);
@@ -86,35 +73,28 @@ bool PointMovementGenerator<T>::Update(T &unit, const uint32 &diff)
     }
 
     unit.addUnitState(UNIT_STAT_ROAMING_MOVE);
-
-    if (!IsActive(unit))                                // force stop processing (movement can move out active zone with cleanup movegens list)
-        return true;                                    // not expire now, but already lost
-
     return !arrived;
 }
 
-template<>
-void PointMovementGenerator<Player>::OnSplineDone( Unit& unit )
+template<class T>
+void PointMovementGenerator<T>::OnEvent(Unit& unit, const Movement::OnEventArgs& args)
 {
-    unit.clearUnitState(UNIT_STAT_MOVING);
-    arrived = true;
+    if (mySpline != args.splineId)
+    {
+        return;
+    }
+
+    if (args.isArrived())
+    {
+        arrived = true;
+        unit.clearUnitState(UNIT_STAT_MOVING);
+        if (unit.GetTypeId() == TYPEID_UNIT)
+            MovementInform((Creature&)unit);
+    }
 }
 
-template<>
-void PointMovementGenerator<Creature>::OnSplineDone( Unit& unit )
-{
-    unit.clearUnitState(UNIT_STAT_MOVING);
-    MovementInform((Creature&)unit);
-    arrived = true;
-}
-
-template<>
-void PointMovementGenerator<Player>::MovementInform(Player&)
-{
-}
-
-template <>
-void PointMovementGenerator<Creature>::MovementInform(Creature &unit)
+template <class T>
+void PointMovementGenerator<T>::MovementInform(Creature &unit)
 {
     if (unit.AI())
         unit.AI()->MovementInform(POINT_MOTION_TYPE, id);

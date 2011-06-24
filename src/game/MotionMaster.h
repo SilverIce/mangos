@@ -58,7 +58,7 @@ enum MMCleanFlag
     MMCF_RESET  = 2                                         // Flag if need top()->Reset()
 };
 
-class MANGOS_DLL_SPEC MotionMaster : private std::stack<MovementGenerator *>, public Movement::IListener2
+class MANGOS_DLL_SPEC MotionMaster : private std::stack<MovementGenerator *>, public Movement::IListener
 {
     private:
         typedef std::stack<MovementGenerator *> Impl;
@@ -116,9 +116,10 @@ class MANGOS_DLL_SPEC MotionMaster : private std::stack<MovementGenerator *>, pu
         // will only work in MMgens where we have a target (TARGETED_MOTION_TYPE)
         void UpdateFinalDistanceToTarget(float fDistance);
 
+        class MotionMasterImpl * impl;
+
         bool GetDestination(float &x, float &y, float &z);
-        void OnSplineDone();
-        void OnEvent(int,int);
+        void OnEvent(const Movement::OnEventArgs& args);
     private:
         void Mutate(MovementGenerator *m);                  // use Move* functions instead
 

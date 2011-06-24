@@ -101,7 +101,7 @@ void ConfusedMovementGenerator<T>::Reset(T &unit)
 template<class T>
 bool ConfusedMovementGenerator<T>::Update(T &unit, const uint32 &diff)
 {
-    if(!&unit)	// wtf? oO
+    if(!&unit)    // wtf? oO
         return true;
 
     // ignore in case other no reaction state
@@ -126,20 +126,28 @@ bool ConfusedMovementGenerator<T>::Update(T &unit, const uint32 &diff)
             dest.z = i_waypoints[i_nextMove][2];
 
             UnitMovement& state = *unit.movement;
-            MoveSplineInit init(state);
-            if (state.HasMode(MoveModeLevitation) || state.HasMode(MoveModeFly))
-                init.SetFly();
-            init.SetWalk(true).MoveTo(dest).Launch();
+            MoveCommonInit init(state);
+            init.MoveTo(dest);
+            init.Launch();
+            mySpline = state.MoveSplineId();
         }
     }
     return true;
 }
 
 template<class T>
-void ConfusedMovementGenerator<T>::OnSplineDone( Unit& )
+void ConfusedMovementGenerator<T>::OnEvent(Unit& unit, const Movement::OnEventArgs& args)
 {
-    i_nextMove = urand(1,MAX_CONF_WAYPOINTS);
-    i_nextMoveTime.Reset(urand(0, 1500));     // TODO: check the minimum reset time, should be probably higher
+    if (mySpline != args.splineId)
+    {
+        return;
+    }
+
+    if (args.isArrived())
+    {
+        i_nextMove = urand(1,MAX_CONF_WAYPOINTS);
+        i_nextMoveTime.Reset(urand(0, 1500));     // TODO: check the minimum reset time, should be probably higher
+    }
 }
 
 template<>

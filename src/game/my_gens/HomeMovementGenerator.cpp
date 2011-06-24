@@ -23,7 +23,7 @@
 #include "WorldPacket.h"
 #include "Movement/UnitMovement.h"
 
-extern void GeneratePath(const Map*, G3D::Vector3, const G3D::Vector3&, std::vector<G3D::Vector3>&);
+extern void GeneratePath(const WorldObject*, G3D::Vector3, const G3D::Vector3&, std::vector<G3D::Vector3>&, bool);
 
 void
 HomeMovementGenerator<Creature>::Initialize(Creature & owner)
@@ -54,37 +54,31 @@ HomeMovementGenerator<Creature>::_setTargetLocation(Creature & owner)
 
         using namespace Movement;
         UnitMovement& state = *owner.movement;
-        MoveSplineInit init(state);
-        if (state.HasMode(MoveModeLevitation) || state.HasMode(MoveModeFly))
-        {
-            init.SetFly().MoveTo(Vector3(x, y, z));
-        }
-        else
-        {
-            PointsArray path;
-            GeneratePath(owner.GetMap(),state.GetPosition3(),Vector3(x,y,z),path);
-            init.MovebyPath(path);
-        }
-
+        MoveCommonInit init(state);
         if (isRespawnMove)
             init.SetFacing(o);
-        
+        GeneratePath(&owner,state.GetPosition3(),Vector3(x,y,z), init.Path(), state.IsFlying());
         init.Launch();
+        mySpline = state.MoveSplineId();
     }
 
     owner.clearUnitState(UNIT_STAT_ALL_STATE);
 }
 
-bool
-HomeMovementGenerator<Creature>::Update(Creature &owner, const uint32& time_diff)
+bool HomeMovementGenerator<Creature>::Update(Creature &owner, const uint32& time_diff)
 {
+    if (arrived)
+        ((Creature&)owner).AI()->JustReachedHome();
     return !arrived;
 }
 
-
-void HomeMovementGenerator<Creature>::OnSplineDone( Unit& owner )
+void HomeMovementGenerator<Creature>::OnEvent(Unit& unit, const Movement::OnEventArgs& args)
 {
-    ((Creature&)owner).AI()->JustReachedHome();
-    arrived = true;
+    if (mySpline != args.splineId)
+    {
+        return;
+    }
+
+    arrived = args.isArrived();
 }
 

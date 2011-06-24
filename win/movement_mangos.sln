@@ -46,9 +46,6 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "tbbmalloc", "VC90\tbbmalloc
 	EndProjectSection
 EndProject
 Global
-	GlobalSection(TestCaseManagementSettings) = postSolution
-		CategoryFile = Movement.vsmdi
-	EndGlobalSection
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug_NoPCH|Win32 = Debug_NoPCH|Win32
 		Debug_NoPCH|x64 = Debug_NoPCH|x64
@@ -153,16 +150,13 @@ Global
 		{803F488E-4C5A-4866-8D5C-1E6C03C007C2}.Release|x64.Build.0 = Release|Win32
 		{BD537C9A-FECA-1BAD-6757-8A6300006755}.Debug_NoPCH|Win32.ActiveCfg = Debug_NoPCH|Win32
 		{BD537C9A-FECA-1BAD-6757-8A6300006755}.Debug_NoPCH|Win32.Build.0 = Debug_NoPCH|Win32
-		{BD537C9A-FECA-1BAD-6757-8A6300006755}.Debug_NoPCH|x64.ActiveCfg = Debug_NoPCH|x64
-		{BD537C9A-FECA-1BAD-6757-8A6300006755}.Debug_NoPCH|x64.Build.0 = Debug_NoPCH|x64
+		{BD537C9A-FECA-1BAD-6757-8A6300006755}.Debug_NoPCH|x64.ActiveCfg = Debug_NoPCH|Win32
 		{BD537C9A-FECA-1BAD-6757-8A6300006755}.Debug|Win32.ActiveCfg = Debug|Win32
 		{BD537C9A-FECA-1BAD-6757-8A6300006755}.Debug|Win32.Build.0 = Debug|Win32
-		{BD537C9A-FECA-1BAD-6757-8A6300006755}.Debug|x64.ActiveCfg = Debug|x64
-		{BD537C9A-FECA-1BAD-6757-8A6300006755}.Debug|x64.Build.0 = Debug|x64
+		{BD537C9A-FECA-1BAD-6757-8A6300006755}.Debug|x64.ActiveCfg = Debug|Win32
 		{BD537C9A-FECA-1BAD-6757-8A6300006755}.Release|Win32.ActiveCfg = Release|Win32
 		{BD537C9A-FECA-1BAD-6757-8A6300006755}.Release|Win32.Build.0 = Release|Win32
-		{BD537C9A-FECA-1BAD-6757-8A6300006755}.Release|x64.ActiveCfg = Release|x64
-		{BD537C9A-FECA-1BAD-6757-8A6300006755}.Release|x64.Build.0 = Release|x64
+		{BD537C9A-FECA-1BAD-6757-8A6300006755}.Release|x64.ActiveCfg = Release|Win32
 		{F62787DD-1327-448B-9818-030062BCFAA5}.Debug_NoPCH|Win32.ActiveCfg = Debug_NoPCH|Win32
 		{F62787DD-1327-448B-9818-030062BCFAA5}.Debug_NoPCH|Win32.Build.0 = Debug_NoPCH|Win32
 		{F62787DD-1327-448B-9818-030062BCFAA5}.Debug_NoPCH|x64.ActiveCfg = Debug_NoPCH|x64

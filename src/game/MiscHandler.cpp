@@ -39,6 +39,7 @@
 #include "Pet.h"
 #include "SocialMgr.h"
 #include "DBCEnums.h"
+#include "Movement/UnitMovement.h"
 
 void WorldSession::HandleRepopRequestOpcode( WorldPacket & recv_data )
 {
@@ -322,10 +323,7 @@ void WorldSession::HandleLogoutCancelOpcode( WorldPacket & /*recv_data*/ )
     if(GetPlayer()->CanFreeMove())
     {
         //!we can move again
-        data.Initialize( SMSG_FORCE_MOVE_UNROOT, 8 );       // guess size
-        data << GetPlayer()->GetPackGUID();
-        data << uint32(0);
-        SendPacket( &data );
+        GetPlayer()->movement->ApplyRootMode(false);
 
         //! Stand Up
         GetPlayer()->SetStandState(UNIT_STAND_STATE_STAND);

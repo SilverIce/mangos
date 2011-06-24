@@ -54,7 +54,6 @@ class MANGOS_DLL_SPEC TargetedMovementGeneratorMedium
             return false;
         }
 
-        void OnSplineDone(Unit&);
         void unitSpeedChanged() { i_recalculateTravel=true; }
         void UpdateFinalDistance(float fDistance);
 

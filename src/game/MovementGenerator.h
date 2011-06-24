@@ -49,8 +49,7 @@ class MANGOS_DLL_SPEC MovementGenerator
 
         virtual void unitSpeedChanged() { }
 
-        virtual void OnSplineDone(Unit& ) {}
-        virtual void OnEvent(Unit&, int eventId, int data) {}
+        virtual void OnEvent(Unit&, const Movement::OnEventArgs& args) {}
 
         virtual void UpdateFinalDistance(float /*fDistance*/) { }
 

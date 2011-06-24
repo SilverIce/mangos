@@ -736,66 +736,30 @@ Map::CreatureRelocation(Creature *creature, float x, float y, float z, float ang
     MANGOS_ASSERT(CheckGridIntegrity(creature,true));
 }
 
+/*
+They want to relocate creature:
+allow move to loaded grid
+and don't allow move to unloaded -> move it to respawn position
+
+My idea is: calls to Map class shouldn't cause deep calls, there shouldn't be any calls to motion generators and other shit
+*/
+
 bool Map::CreatureCellRelocation(Creature *c, Cell new_cell)
 {
-    Cell const& old_cell = c->GetCurrentCell();
-    if(!old_cell.DiffGrid(new_cell) )                       // in same grid
-    {
-        // if in same cell then none do
-        if(old_cell.DiffCell(new_cell))
-        {
-            DEBUG_FILTER_LOG(LOG_FILTER_CREATURE_MOVES, "Creature (GUID: %u Entry: %u) moved in grid[%u,%u] from cell[%u,%u] to cell[%u,%u].", c->GetGUIDLow(), c->GetEntry(), old_cell.GridX(), old_cell.GridY(), old_cell.CellX(), old_cell.CellY(), new_cell.CellX(), new_cell.CellY());
-
-            RemoveFromGrid(c,getNGrid(old_cell.GridX(), old_cell.GridY()),old_cell);
-
-            NGridType* new_grid = getNGrid(new_cell.GridX(), new_cell.GridY());
-            AddToGrid(c,new_grid,new_cell);
-
-            c->GetViewPoint().Event_GridChanged( &(*new_grid)(new_cell.CellX(),new_cell.CellY()) );
-        }
-        else
-        {
-            DEBUG_FILTER_LOG(LOG_FILTER_CREATURE_MOVES, "Creature (GUID: %u Entry: %u) move in same grid[%u,%u]cell[%u,%u].", c->GetGUIDLow(), c->GetEntry(), old_cell.GridX(), old_cell.GridY(), old_cell.CellX(), old_cell.CellY());
-        }
-
-        return true;
-    }
-
-    // in diff. grids but active creature
-    if(c->isActiveObject())
-    {
+    if (c->isActiveObject())
         EnsureGridLoadedAtEnter(new_cell);
+    else
+        EnsureGridCreated(new_cell.gridPair());
 
-        DEBUG_FILTER_LOG(LOG_FILTER_CREATURE_MOVES, "Active creature (GUID: %u Entry: %u) moved from grid[%u,%u]cell[%u,%u] to grid[%u,%u]cell[%u,%u].", c->GetGUIDLow(), c->GetEntry(), old_cell.GridX(), old_cell.GridY(), old_cell.CellX(), old_cell.CellY(), new_cell.GridX(), new_cell.GridY(), new_cell.CellX(), new_cell.CellY());
-
-        RemoveFromGrid(c,getNGrid(old_cell.GridX(), old_cell.GridY()),old_cell);
-
+    Cell const& old_cell = c->GetCurrentCell();
+    if (old_cell != new_cell)                       // in same grid
+    {
+        RemoveFromGrid(c, getNGrid(old_cell.GridX(),old_cell.GridY()),old_cell);
         NGridType* new_grid = getNGrid(new_cell.GridX(), new_cell.GridY());
         AddToGrid(c,new_grid,new_cell);
         c->GetViewPoint().Event_GridChanged( &(*new_grid)(new_cell.CellX(),new_cell.CellY()) );
-
-        return true;
     }
-
-    // in diff. loaded grid normal creature
-    if(loaded(GridPair(new_cell.GridX(), new_cell.GridY())))
-    {
-        DEBUG_FILTER_LOG(LOG_FILTER_CREATURE_MOVES, "Creature (GUID: %u Entry: %u) moved from grid[%u,%u]cell[%u,%u] to grid[%u,%u]cell[%u,%u].", c->GetGUIDLow(), c->GetEntry(), old_cell.GridX(), old_cell.GridY(), old_cell.CellX(), old_cell.CellY(), new_cell.GridX(), new_cell.GridY(), new_cell.CellX(), new_cell.CellY());
-
-        RemoveFromGrid(c,getNGrid(old_cell.GridX(), old_cell.GridY()),old_cell);
-        {
-            EnsureGridCreated(GridPair(new_cell.GridX(), new_cell.GridY()));
-            NGridType* new_grid = getNGrid(new_cell.GridX(), new_cell.GridY());
-            AddToGrid(c,new_grid,new_cell);
-            c->GetViewPoint().Event_GridChanged( &(*new_grid)(new_cell.CellX(),new_cell.CellY()) );
-        }
-
-        return true;
-    }
-
-    // fail to move: normal creature attempt move to unloaded grid
-    DEBUG_FILTER_LOG(LOG_FILTER_CREATURE_MOVES, "Creature (GUID: %u Entry: %u) attempt move from grid[%u,%u]cell[%u,%u] to unloaded grid[%u,%u]cell[%u,%u].", c->GetGUIDLow(), c->GetEntry(), old_cell.GridX(), old_cell.GridY(), old_cell.CellX(), old_cell.CellY(), new_cell.GridX(), new_cell.GridY(), new_cell.CellX(), new_cell.CellY());
-    return false;
+    return true;
 }
 
 bool Map::CreatureRespawnRelocation(Creature *c)

@@ -1794,7 +1794,10 @@ void Spell::EffectDummy(SpellEffectIndex eff_idx)
 
                         float speed = 20; //TODO: find correct value
                         using namespace Movement;
-                        MoveSplineInit(*unitTarget->movement).MoveTo(pTargetDummy->GetLocation()).SetVelocity(speed).Launch();
+                        MoveSplineInit init(*unitTarget->movement);
+                        init.MoveTo(pTargetDummy->GetLocation());
+                        init.SetVelocity(speed);
+                        init.Launch();
 
                         // Add state to temporarily prevent follow
                         unitTarget->addUnitState(UNIT_STAT_ROOT);
@@ -4688,7 +4691,6 @@ void Spell::EffectDistract(SpellEffectIndex /*eff_idx*/)
     unitTarget->clearUnitState(UNIT_STAT_MOVING);
 
     Movement::MoveSplineInit init(*unitTarget->movement);
-    init.MoveTo(unitTarget->GetLocation());
     init.SetFacing(angle);
     init.Launch();
 
@@ -7917,7 +7919,7 @@ void Spell::EffectSkinning(SpellEffectIndex /*eff_idx*/)
     ((Player*)m_caster)->UpdateGatherSkill(skill, skillValue, reqValue, creature->IsElite() ? 2 : 1 );
 }
 
-extern void GeneratePath(const Map*, G3D::Vector3, const G3D::Vector3&, std::vector<G3D::Vector3>&);
+extern void GeneratePath(const WorldObject*, G3D::Vector3, const G3D::Vector3&, std::vector<G3D::Vector3>&, bool isFlight = false);
 
 void Spell::EffectCharge(SpellEffectIndex /*eff_idx*/)
 {
@@ -7933,11 +7935,12 @@ void Spell::EffectCharge(SpellEffectIndex /*eff_idx*/)
         unitTarget->StopMoving();
 
     {
-        using namespace Movement;
-        PointsArray path;
-        GeneratePath(m_caster->GetMap(),m_caster->GetLocation(),Vector3(x,y,z),path);
         float speed = 24.f; // TODO: find correct speed
-        MoveSplineInit(*m_caster->movement).MovebyPath(path).SetVelocity(speed).Launch();
+        using namespace Movement;
+        MoveCommonInit init(*m_caster->movement);
+        GeneratePath(m_caster,m_caster->GetLocation(),Vector3(x,y,z),init.Path());
+        init.SetVelocity(speed);
+        init.Launch();
     }
 
     // TODO: trigger attack on arrive, not now
@@ -7964,11 +7967,12 @@ void Spell::EffectCharge2(SpellEffectIndex /*eff_idx*/)
         return;
 
     {
-        using namespace Movement;
-        PointsArray path;
-        GeneratePath(m_caster->GetMap(),m_caster->GetLocation(),Vector3(x,y,z),path);
         float speed = 24.f; // TODO: find correct speed
-        MoveSplineInit(*m_caster->movement).MovebyPath(path).SetVelocity(speed).Launch();
+        using namespace Movement;
+        MoveCommonInit init(*m_caster->movement);
+        GeneratePath(m_caster,m_caster->GetLocation(),Vector3(x,y,z), init.Path());
+        init.SetVelocity(speed);
+        init.Launch();
     }
 
     // TODO: trigger attack on arrive, not now

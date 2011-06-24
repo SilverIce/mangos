@@ -60,10 +60,9 @@
 #include "SocialMgr.h"
 #include "AchievementMgr.h"
 #include "Mail.h"
-#include "Movement/MovementBase.h"
+#include "Movement/UnitMovement.h"
 
 #include <cmath>
-#include "Movement/UnitMovement.h"
 
 #define ZONE_UPDATE_INTERVAL (1*IN_MILLISECONDS)
 
@@ -675,7 +674,6 @@ bool Player::Create( uint32 guidlow, const std::string& name, uint8 race, uint8 
         m_items[i] = NULL;
 
     SetLocationMapId(info->mapId);
-    InitMovement(this, Location(info->positionX,info->positionY,info->positionZ, info->orientation));
 
     SetMap(sMapMgr.CreateMap(info->mapId, this));
 
@@ -2014,21 +2012,12 @@ void Player::ProcessDelayedOperations()
     m_DelayedOperations = 0;
 }
 
-Movement::MoveMode mmode = Movement::MoveModeLevitation;
-
 void Player::AddToWorld()
 {
     ///- Do not add/remove the player from the object storage
     ///- It will crash when updating the ObjectAccessor
     ///- The player should only be added when logging in
     Unit::AddToWorld();
-    SetDisplayId(16251);
-
-    using namespace Movement;
-    movement->ApplyMoveMode( MoveModeFly, true);
-    movement->ApplyMoveMode( MoveModeHover, true);
-    movement->ApplyMoveMode( MoveModeCanFly, true);
-    movement->SetSpeed(Movement::SpeedFlight,21.f);
 
     for(int i = PLAYER_SLOT_START; i < PLAYER_SLOT_END; ++i)
     {
@@ -4434,17 +4423,14 @@ void Player::SetMovement(PlayerMovementType pType)
     WorldPacket data;
     switch(pType)
     {
-        case MOVE_ROOT:       data.Initialize(SMSG_FORCE_MOVE_ROOT,   GetPackGUID().size()+4); break;
-        case MOVE_UNROOT:     data.Initialize(SMSG_FORCE_MOVE_UNROOT, GetPackGUID().size()+4); break;
-        case MOVE_WATER_WALK: data.Initialize(SMSG_MOVE_WATER_WALK,   GetPackGUID().size()+4); break;
-        case MOVE_LAND_WALK:  data.Initialize(SMSG_MOVE_LAND_WALK,    GetPackGUID().size()+4); break;
+        case MOVE_ROOT:       movement->ApplyRootMode(true); break;
+        case MOVE_UNROOT:     movement->ApplyRootMode(false); break;
+        case MOVE_WATER_WALK: movement->ApplyWaterWalkMode(true); break;
+        case MOVE_LAND_WALK:  movement->ApplyWaterWalkMode(false); break;
         default:
             sLog.outError("Player::SetMovement: Unsupported move type (%d), data not sent to client.",pType);
             return;
     }
-    data << GetPackGUID();
-    data << uint32(0);
-    GetSession()->SendPacket( &data );
 }
 
 /* Preconditions:
@@ -15670,7 +15656,7 @@ bool Player::LoadFromDB(ObjectGuid guid, SqlQueryHolder *holder )
 
     _LoadGlyphs(holder->GetResult(PLAYER_LOGIN_QUERY_LOADGLYPHS));
 
-    _LoadAuras(holder->GetResult(PLAYER_LOGIN_QUERY_LOADAURAS), time_diff);
+    //_LoadAuras(holder->GetResult(PLAYER_LOGIN_QUERY_LOADAURAS), time_diff);
     ApplyGlyphs(true);
 
     // add ghost flag (must be after aura load: PLAYER_FLAGS_GHOST set in aura)
@@ -22536,6 +22522,7 @@ void Player::ResetTimeSync()
 
 void Player::SendTimeSync()
 {
+    return;
     WorldPacket data(SMSG_TIME_SYNC_REQ, 4);
     data << uint32(m_timeSyncCounter++);
     GetSession()->SendPacket(&data);

@@ -291,75 +291,73 @@ bool ChatHandler::HandleServerMotdCommand(char* /*args*/)
     return true;
 }
 
-extern void print_movement(const Movement::UnitMovement& st, std::string& str );
-
 bool ChatHandler::HandlePrintMovementState(char* args)
 {
-    Unit* u = getSelectedUnit();
-    if (!u)
+    Unit* unit_target = getSelectedUnit();
+    if (!unit_target)
         return false;
 
     char * p = ExtractArg(&args);
     if (!p)
         return false;
 
-    Movement::UnitMovement& mov = *u->movement;
+    Movement::UnitMovement& mov_target = *unit_target->movement;
 
     if (!strcmp(p, "print"))
     {
-        std::string str;
-        print_movement(mov, str);
-        PSendSysMessage("Movement state of unit: %s", u->GetName());
-        PSendSysMessage(str.c_str());
+        PSendSysMessage("Movement state of unit: %s", unit_target->GetName());
+        PSendSysMessage(mov_target.ToString().c_str());
     }
 
     else if (!strcmp(p, "toggle_points"))
     {
-        if (mov.dbg_flags & 0x1)
-            mov.dbg_flags &= ~0x1;
+        if (mov_target.dbg_flags & 0x1)
+            mov_target.dbg_flags &= ~0x1;
         else
-            mov.dbg_flags |= 0x1;
-        PSendSysMessage("Position visualization for %s turned %s", u->GetName(), (mov.dbg_flags & 0x1 ? "on":"off"));
+            mov_target.dbg_flags |= 0x1;
+        PSendSysMessage("Position visualization for %s turned %s", unit_target->GetName(), (mov_target.dbg_flags & 0x1 ? "on":"off"));
     }
 
     else if (!strcmp(p, "board"))
     {
         Player* pl = m_session->GetPlayer();
+        Movement::UnitMovement& my_mover = *pl->GetMover()->movement;
 
-        pl->GetCamera().SetView(u);
-        mov.Board(*pl->movement, Location(), -1);
-        pl->SetMover(u);
-        pl->SetClientControl(u, 1);
-        u->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PLAYER_CONTROLLED);
-
-        //MoveSplineInit(*u->movement).MoveTo(m_session->GetPlayer()->GetVector3()).SetFly().SetAnimation((AnimType)anim,0).Launch();
+        if (!my_mover.IsBoarded())
+        {
+            pl->GetCamera().SetView(unit_target);
+            mov_target.Board(my_mover, Location(), 0);
+            pl->SetMover(unit_target);
+            pl->SetClientControl(unit_target, 1);
+            unit_target->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PLAYER_CONTROLLED);
+        }
+        else
+        {
+            pl->SetMover(NULL);
+            pl->SetClientControl(pl, 1);
+            my_mover.Unboard();
+            //unit_target->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PLAYER_CONTROLLED);
+            pl->GetCamera().ResetView();
+        }
     }
 
     else if (!strcmp(p, "fall"))
     {
-        Movement::Location loc = u->GetLocation();
-        loc.z = u->GetTerrain()->GetHeight(u->GetPositionX(),u->GetPositionY(),u->GetPositionZ());
-        Movement::MoveSplineInit(mov).MoveTo(loc).SetFall().Launch();
+        Movement::Location loc = unit_target->GetLocation();
+        loc.z = unit_target->GetTerrain()->GetHeight(unit_target->GetPositionX(),unit_target->GetPositionY(),unit_target->GetPositionZ());
+        Movement::MoveSplineInit init(mov_target);
+        init.MoveTo(loc);
+        init.SetFall();
+        init.Launch();
     }
 
-    else if (!strcmp(p, "unk"))
+    else if (!strcmp(p, "hght"))
     {
-        char* valStr = ExtractLiteralArg(&args);
-        if (!valStr)
+        float value;
+        if (!ExtractFloat(&args, value))
             return false;
 
-        uint32 mask;
-        if (!ExtractUInt32Base(&valStr, mask, 16))
-            return false;
-
-        struct toggle_unk{
-            uint32 mask;
-            toggle_unk(uint32 m) : mask(m) {}
-            void operator()(Movement::MoveSplineInitArgs& args) { args.flags |= mask;}
-        };
-
-        Movement::Location loc = m_session->GetPlayer()->GetLocation();
-        (Movement::MoveSplineInit(mov).MoveTo(loc) << toggle_unk(mask)).Launch();
+        mov_target.SetCollisionHeight(value);
     }
     else
         return false;

@@ -69,7 +69,8 @@ class MANGOS_DLL_SPEC WaypointMovementGenerator<Creature>
 public PathMovementBase<Creature, WaypointPath const*>
 {
     public:
-        WaypointMovementGenerator(Creature &) : current_path_index(0), b_Stopped(false), i_stopTimer(0) {}
+        WaypointMovementGenerator(Creature &) :
+          current_path_index(0), mySpline(0), b_Stopped(false), is_cyclic(false), interrupted(false), i_stopTimer(0) {}
 
         ~WaypointMovementGenerator() { i_path = NULL; }
         void Initialize(Creature &u);
@@ -95,8 +96,7 @@ public PathMovementBase<Creature, WaypointPath const*>
         }
 
         bool GetResetPosition(Creature&, float& x, float& y, float& z);
-        void OnSplineDone(Unit&);
-        void OnEvent(Unit&, int eventId, int data);
+        void OnEvent(Unit&, const Movement::OnEventArgs& args);
 
     private:
 
@@ -109,19 +109,17 @@ public PathMovementBase<Creature, WaypointPath const*>
         };
 
         void continueMove(Unit &u, uint32 node_index = 0);
-        void processNodeScripts(Creature& u, int32 pointId);
+        void processPoint(Creature& u, int32 pointId);
 
         std::vector<Node> node_indexes;
-        struct Pos
-        {
-            float x, y, z;
-        } reset_position;
+        std::list<int32> OnArrived;
+        Position reset_position;
+        ShortTimeTracker i_stopTimer;
         uint32 current_path_index;
+        uint32 mySpline;
         bool is_cyclic;
         bool b_Stopped;
-        std::list<int32> OnArrived;
-
-        ShortTimeTracker i_stopTimer;
+        bool interrupted;
 };
 
 /** FlightPathMovementGenerator generates movement of the player for the paths
@@ -136,6 +134,7 @@ public PathMovementBase<Player,TaxiPathNodeList const*>
         {
             i_path = &pathnodes;
             current_node = startNode;
+            mySpline = 0;
         }
         void Initialize(Player &);
         void Finalize(Player &);
@@ -150,8 +149,9 @@ public PathMovementBase<Player,TaxiPathNodeList const*>
         void SetCurrentNodeAfterTeleport();
         void SkipCurrentNode() { ++current_node; }
         void DoEventIfAny(Unit& player, uint32 node, bool departure);
-        void OnEvent(Unit&, int eventId, int data);
+        void OnEvent(Unit&, const Movement::OnEventArgs& args);
     private:
         std::list<int32> OnArrived;
+        uint32 mySpline;
 };
 #endif

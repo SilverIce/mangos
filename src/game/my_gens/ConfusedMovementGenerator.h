@@ -36,7 +36,7 @@ class MANGOS_DLL_SPEC ConfusedMovementGenerator
         void Reset(T &);
         bool Update(T &, const uint32 &);
 
-        void OnSplineDone(Unit&);
+        void OnEvent(Unit& unit, const Movement::OnEventArgs& args);
 
         MovementGeneratorType GetMovementGeneratorType() const { return CONFUSED_MOTION_TYPE; }
     private:
@@ -44,5 +44,6 @@ class MANGOS_DLL_SPEC ConfusedMovementGenerator
         TimeTracker i_nextMoveTime;
         float i_waypoints[MAX_CONF_WAYPOINTS+1][3];
         uint32 i_nextMove;
+        uint32 mySpline;
 };
 #endif

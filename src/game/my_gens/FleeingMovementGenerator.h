@@ -34,7 +34,7 @@ class MANGOS_DLL_SPEC FleeingMovementGenerator
         void Reset(T &);
         bool Update(T &, const uint32 &);
 
-        void OnSplineDone(Unit&);
+        void OnEvent(Unit& unit, const Movement::OnEventArgs& args);
 
         MovementGeneratorType GetMovementGeneratorType() const { return FLEEING_MOTION_TYPE; }
 
@@ -57,6 +57,7 @@ class MANGOS_DLL_SPEC FleeingMovementGenerator
         uint64 i_frightGUID;
         TimeTracker i_nextCheckTime;
 
+        uint32 mySpline;
         bool arrived;
 };
 

@@ -45,6 +45,7 @@
 #include "GridNotifiersImpl.h"
 #include "Vehicle.h"
 #include "CellImpl.h"
+#include "Movement/UnitMovement.h"
 
 #define NULL_AURA_SLOT 0xFF
 
@@ -3002,14 +3003,7 @@ void Aura::HandleAuraWaterWalk(bool apply, bool Real)
     if(!Real)
         return;
 
-    WorldPacket data;
-    if(apply)
-        data.Initialize(SMSG_MOVE_WATER_WALK, 8+4);
-    else
-        data.Initialize(SMSG_MOVE_LAND_WALK, 8+4);
-    data << GetTarget()->GetPackGUID();
-    data << uint32(0);
-    GetTarget()->SendMessageToSet(&data, true);
+    GetTarget()->movement->ApplyWaterWalkMode(apply);
 }
 
 void Aura::HandleAuraFeatherFall(bool apply, bool Real)
@@ -3038,14 +3032,7 @@ void Aura::HandleAuraHover(bool apply, bool Real)
     if(!Real)
         return;
 
-    WorldPacket data;
-    if(apply)
-        data.Initialize(SMSG_MOVE_SET_HOVER, 8+4);
-    else
-        data.Initialize(SMSG_MOVE_UNSET_HOVER, 8+4);
-    data << GetTarget()->GetPackGUID();
-    data << uint32(0);
-    GetTarget()->SendMessageToSet(&data, true);
+    GetTarget()->movement->ApplyHoverMode(apply);
 }
 
 void Aura::HandleWaterBreathing(bool /*apply*/, bool /*Real*/)
@@ -4168,18 +4155,16 @@ void Aura::HandleAuraModStun(bool apply, bool Real)
         target->CastStop(target->GetObjectGuid() == GetCasterGuid() ? GetId() : 0);
 
         // Creature specific
-        if(target->GetTypeId() != TYPEID_PLAYER)
-            target->StopMoving();
-        else
+        //if(target->GetTypeId() != TYPEID_PLAYER)
+        //    target->StopMoving();
+        //else
         {
             ((Player*)target)->m_movementInfo.SetMovementFlags(MOVEFLAG_NONE);
             target->SetStandState(UNIT_STAND_STATE_STAND);// in 1.5 client
         }
 
-        WorldPacket data(SMSG_FORCE_MOVE_ROOT, 8);
-        data << target->GetPackGUID();
-        data << uint32(0);
-        target->SendMessageToSet(&data, true);
+        target->StopMoving();
+        target->movement->ApplyRootMode(true);
 
         // Summon the Naj'entus Spine GameObject on target if spell is Impaling Spine
         if(GetId() == 39837)
@@ -4234,10 +4219,7 @@ void Aura::HandleAuraModStun(bool apply, bool Real)
             if(target->getVictim() && target->isAlive())
                 target->SetTarget(target->getVictim());
 
-            WorldPacket data(SMSG_FORCE_MOVE_UNROOT, 8+4);
-            data << target->GetPackGUID();
-            data << uint32(0);
-            target->SendMessageToSet(&data, true);
+            target->movement->ApplyRootMode(true);
         }
 
         // Wyvern Sting
@@ -4452,18 +4434,12 @@ void Aura::HandleAuraModRoot(bool apply, bool Real)
         target->ResetTarget();
 
         //Save last orientation
-        if( target->getVictim() )
-            target->SetOrientation(target->GetAngle(target->getVictim()));
+        //if( target->getVictim() )
+            //target->SetOrientation(target->GetAngle(target->getVictim()));
 
         if(target->GetTypeId() == TYPEID_PLAYER)
         {
-            WorldPacket data(SMSG_FORCE_MOVE_ROOT, 10);
-            data << target->GetPackGUID();
-            data << (uint32)2;
-            target->SendMessageToSet(&data, true);
-
-            //Clear unit movement flags
-            ((Player*)target)->m_movementInfo.SetMovementFlags(MOVEFLAG_NONE);
+            target->movement->ApplyRootMode(true);
         }
         else
             target->StopMoving();
@@ -4501,16 +4477,10 @@ void Aura::HandleAuraModRoot(bool apply, bool Real)
 
         if(!target->hasUnitState(UNIT_STAT_STUNNED))      // prevent allow move if have also stun effect
         {
-            if(target->getVictim() && target->isAlive())
+            if (target->getVictim() && target->isAlive())
                 target->SetTarget(target->getVictim());
 
-            if(target->GetTypeId() == TYPEID_PLAYER)
-            {
-                WorldPacket data(SMSG_FORCE_MOVE_UNROOT, 10);
-                data << target->GetPackGUID();
-                data << (uint32)2;
-                target->SendMessageToSet(&data, true);
-            }
+            target->movement->ApplyRootMode(false);
         }
     }
 }
@@ -4669,14 +4639,8 @@ void Aura::HandleAuraModIncreaseFlightSpeed(bool apply, bool Real)
     // Enable Fly mode for flying mounts
     if (m_modifier.m_auraname == SPELL_AURA_MOD_FLIGHT_SPEED_MOUNTED)
     {
-        WorldPacket data;
-        if(apply)
-            data.Initialize(SMSG_MOVE_SET_CAN_FLY, 12);
-        else
-            data.Initialize(SMSG_MOVE_UNSET_CAN_FLY, 12);
-        data << target->GetPackGUID();
-        data << uint32(0);                                      // unknown
-        target->SendMessageToSet(&data, true);
+        // Hm.. it's HandleAuraModIncreaseFlightSpeed function, so why it applies fly mode?
+        target->movement->ApplyMoveMode(Movement::MoveModeCanFly, apply);
 
         //Players on flying mounts must be immune to polymorph
         if (target->GetTypeId()==TYPEID_PLAYER)

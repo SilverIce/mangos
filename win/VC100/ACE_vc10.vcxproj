@@ -160,6 +160,9 @@
       <WarningLevel>Level3</WarningLevel>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <DisableSpecificWarnings>4355;4244;4267;%(DisableSpecificWarnings)</DisableSpecificWarnings>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <PrecompiledHeaderFile>ace_pch.h</PrecompiledHeaderFile>
+      <ForcedIncludeFiles>ace_pch.h</ForcedIncludeFiles>
     </ClCompile>
     <ResourceCompile>
       <PreprocessorDefinitions>_DEBUG;_CRT_SECURE_NO_WARNINGS;_CRT_SECURE_NO_DEPRECATE;_CRT_NONSTDC_NO_DEPRECATE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
@@ -234,6 +237,9 @@
       <RuntimeTypeInfo>true</RuntimeTypeInfo>
       <WarningLevel>Level3</WarningLevel>
       <DisableSpecificWarnings>4355;4244;4267;%(DisableSpecificWarnings)</DisableSpecificWarnings>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <PrecompiledHeaderFile>ace_pch.h</PrecompiledHeaderFile>
+      <ForcedIncludeFiles>ace_pch.h</ForcedIncludeFiles>
     </ClCompile>
     <ResourceCompile>
       <PreprocessorDefinitions>NDEBUG;_CRT_SECURE_NO_WARNINGS;_CRT_SECURE_NO_DEPRECATE;_CRT_NONSTDC_NO_DEPRECATE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
@@ -312,6 +318,9 @@
       <WarningLevel>Level3</WarningLevel>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <DisableSpecificWarnings>4355;4244;4267;%(DisableSpecificWarnings)</DisableSpecificWarnings>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <PrecompiledHeaderFile>ace_pch.h</PrecompiledHeaderFile>
+      <ForcedIncludeFiles>ace_pch.h</ForcedIncludeFiles>
     </ClCompile>
     <ResourceCompile>
       <PreprocessorDefinitions>_DEBUG;_CRT_SECURE_NO_WARNINGS;_CRT_SECURE_NO_DEPRECATE;_CRT_NONSTDC_NO_DEPRECATE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
@@ -689,7 +698,17 @@
     <ClCompile Include="..\..\dep\ACE_wrappers\ace\ATM_QoS.cpp" />
     <ClCompile Include="..\..\dep\ACE_wrappers\ace\ATM_Stream.cpp" />
     <ClCompile Include="..\..\dep\ACE_wrappers\ace\Atomic_Op.cpp" />
-    <ClCompile Include="..\..\dep\ACE_wrappers\ace\Atomic_Op_Sparc.c" />
+    <ClCompile Include="..\..\dep\ACE_wrappers\ace\Atomic_Op_Sparc.c">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
+      <ForcedIncludeFiles Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+      </ForcedIncludeFiles>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
+      <ForcedIncludeFiles Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+      </ForcedIncludeFiles>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug_NoPCH|Win32'">NotUsing</PrecompiledHeader>
+      <ForcedIncludeFiles Condition="'$(Configuration)|$(Platform)'=='Debug_NoPCH|Win32'">
+      </ForcedIncludeFiles>
+    </ClCompile>
     <ClCompile Include="..\..\dep\ACE_wrappers\ace\Auto_Event.cpp" />
     <ClCompile Include="..\..\dep\ACE_wrappers\ace\Barrier.cpp" />
     <ClCompile Include="..\..\dep\ACE_wrappers\ace\Base_Thread_Adapter.cpp" />
@@ -883,7 +902,17 @@
     <ClCompile Include="..\..\dep\ACE_wrappers\ace\Registry_Name_Space.cpp" />
     <ClCompile Include="..\..\dep\ACE_wrappers\ace\Remote_Name_Space.cpp" />
     <ClCompile Include="..\..\dep\ACE_wrappers\ace\Remote_Tokens.cpp" />
-    <ClCompile Include="..\..\dep\ACE_wrappers\ace\Rtems_init.c" />
+    <ClCompile Include="..\..\dep\ACE_wrappers\ace\Rtems_init.c">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
+      <ForcedIncludeFiles Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+      </ForcedIncludeFiles>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
+      <ForcedIncludeFiles Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+      </ForcedIncludeFiles>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug_NoPCH|Win32'">NotUsing</PrecompiledHeader>
+      <ForcedIncludeFiles Condition="'$(Configuration)|$(Platform)'=='Debug_NoPCH|Win32'">
+      </ForcedIncludeFiles>
+    </ClCompile>
     <ClCompile Include="..\..\dep\ACE_wrappers\ace\RW_Mutex.cpp" />
     <ClCompile Include="..\..\dep\ACE_wrappers\ace\RW_Process_Mutex.cpp" />
     <ClCompile Include="..\..\dep\ACE_wrappers\ace\RW_Thread_Mutex.cpp" />
@@ -977,6 +1006,11 @@
     <ClCompile Include="..\..\dep\ACE_wrappers\ace\WIN32_Proactor.cpp" />
     <ClCompile Include="..\..\dep\ACE_wrappers\ace\XML_Svc_Conf.cpp" />
     <ClCompile Include="..\..\dep\ACE_wrappers\ace\XTI_ATM_Mcast.cpp" />
+    <ClCompile Include="..\..\dep\ACE_wrappers\ace_pch.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug_NoPCH|Win32'">Create</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\dep\ACE_wrappers\ace\Acceptor.h" />
@@ -1577,6 +1611,7 @@
     <ClInclude Include="..\..\dep\ACE_wrappers\ace\WIN32_Proactor.h" />
     <ClInclude Include="..\..\dep\ACE_wrappers\ace\XML_Svc_Conf.h" />
     <ClInclude Include="..\..\dep\ACE_wrappers\ace\XTI_ATM_Mcast.h" />
+    <ClInclude Include="..\..\dep\ACE_wrappers\ace_pch.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

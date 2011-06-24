@@ -58,6 +58,17 @@ void FillPath(const Path& p, InPath & v, uint32 start_idx = 0, uint32 last_idx =
     }
 }
 
+template<typename Path, typename InPath>
+void FillCyclicPath(const Path& p, InPath & v, uint32 start_idx = 0)
+{
+    for (uint32 i = 0; i < p.size(); ++i)
+    {
+        uint32 Idx = (start_idx++) % p.size();
+        const Path::value_type& node = p[Idx];
+        v.push_back(Vector3(node.x, node.y, node.z));
+    }
+}
+
 template<typename T, typename P, typename InPath>
 void FillPath(const Path<T,P>& p, InPath & v, uint32 start_idx = 0, uint32 last_idx = 0)
 {
@@ -106,7 +117,7 @@ bool WaypointMovementGenerator<Creature>::LoadPath(Creature &c)
     }
 
     // ignore some nonsense paths
-	// TODO: it should be handled in waypoint manager, not here
+    // TODO: it should be handled in waypoint manager, not here
     if (i_path->size() < 2)
     {
         return false;
@@ -114,9 +125,9 @@ bool WaypointMovementGenerator<Creature>::LoadPath(Creature &c)
 
     // analyzes path: splits path into nodes, detects cyclic path case
     {
-        // TODO: info about path type (linear\catmullrom) should be stored in db,
+        // TODO: info about path type (linear\catmullrom\cyclic) should be stored in db,
         // it shouldn't be determined here
-        bool isLinear = !c.movement->HasMode(Movement::MoveModeLevitation) && !c.movement->HasMode(Movement::MoveModeFly);
+        bool isLinear = !c.movement->IsFlying();
 
         uint32 last = i_path->size() - 1 ;
 
@@ -125,7 +136,7 @@ bool WaypointMovementGenerator<Creature>::LoadPath(Creature &c)
 
         float length = 0.f;
         for (uint32 i = 1, j = 0; i <= last; ++i, ++j)
-        {            
+        {
             const WaypointNode& node = i_path->at(i);
             //if (isLinear)
             //{
@@ -160,36 +171,44 @@ void WaypointMovementGenerator<Creature>::continueMove( Unit &u, uint32 /*node_i
 
     uint32 last = node_indexes[current_node].lastIdx;
     //uint32 first = std::min(node_indexes[current_node].firstIdx /*+ node_index*/, last);
-    uint32 first =  std::min(current_path_index, last);
+    uint32 first = current_path_index;
 
     using namespace Movement;
     PointsArray path;
-    FillPath(*i_path, path, first, last);
+    if (is_cyclic)
+        FillCyclicPath(*i_path, path, first);
+    else
+        FillPath(*i_path, path, first, last);
 
     UnitMovement& state = *u.movement;
-    MoveSplineInit init(*u.movement);
-    if (state.HasMode(MoveModeLevitation) || state.HasMode(MoveModeFly))
+    MoveSplineInit init(state);
+    // i shouldn't do it, but currently we have no flight speed in DB
+    if (state.IsFlying())
+        init.SetVelocity(12.f);
+
+    if ((path.front() - state.GetPosition3()).squaredLength() > 4.f)
     {
-        init.SetVelocity(10.f).SetFly().SetWalk(false);
+        // TODO: home movement generator should do this, not me
+        init.MoveTo(path.front());
     }
     else
     {
-        init.SetWalk(true);
+        if (is_cyclic)
+            init.SetCyclic();
+        if (state.IsFlying())
+            init.SetFly();
+        init.MovebyPath(path,first);
     }
-
-    if (is_cyclic)
-        init.SetCyclic();
-
-    init.MovebyPath(path, first, true).Launch();
+    init.SetWalk(true);
+    init.Launch(); 
+    mySpline = state.MoveSplineId();
 }
 
 void WaypointMovementGenerator<Creature>::Initialize( Creature &u )
 {
     //u.StopMoving();
     if (LoadPath(u))
-    {
         continueMove(u);
-    }
 }
 
 void WaypointMovementGenerator<Creature>::Finalize(Creature &creature)
@@ -201,15 +220,17 @@ void WaypointMovementGenerator<Creature>::Interrupt(Creature &creature)
 {
     // currently Interrupt called twice - as a result, reset position became wrong at second call
     // Temporary solution:
-    if (creature.hasUnitState(UNIT_STAT_ROAMING|UNIT_STAT_ROAMING_MOVE))
-    {
-        reset_position = (Pos&)creature.movement->GetPosition3();
-        creature.clearUnitState(UNIT_STAT_ROAMING|UNIT_STAT_ROAMING_MOVE);
-    }
+    if (interrupted)
+        return;
+
+    interrupted = true;
+    reset_position = (Position&)creature.movement->GetPosition3();
+    creature.clearUnitState(UNIT_STAT_ROAMING|UNIT_STAT_ROAMING_MOVE);
 }
 
 void WaypointMovementGenerator<Creature>::Reset(Creature &u)
 {
+    interrupted = false;
     b_Stopped = false;
     continueMove(u);
 }
@@ -231,7 +252,7 @@ bool WaypointMovementGenerator<Creature>::Update(Creature &creature, const uint3
     {
         int point = OnArrived.front();
         OnArrived.pop_front();
-        processNodeScripts(creature, point);
+        processPoint(creature, point);
     }
 
     if (IsPaused())
@@ -243,47 +264,53 @@ bool WaypointMovementGenerator<Creature>::Update(Creature &creature, const uint3
             continueMove(creature);
         }
     }
-    else if (creature.IsStopped())
+    else
     {
-        PauseMovement(15000); // 15 seconds
+        if (creature.IsStopped())
+            PauseMovement(15000); // 15 seconds
     }
 
     return true;
 }
 
-void WaypointMovementGenerator<Creature>::OnSplineDone(Unit& u)
+void WaypointMovementGenerator<Creature>::OnEvent(Unit&, const Movement::OnEventArgs& args)
 {
-}
-
-void WaypointMovementGenerator<Creature>::OnEvent(Unit& u, int eventId, int data)
-{
-    if (eventId == 1)
+    if (mySpline != args.splineId)
     {
-        OnArrived.push_back(data);
+        return;
     }
-    else if (eventId == 0)
+
+    if (args.isPointDone())
     {
-        if ((++current_node) >= node_indexes.size())
-            current_node = 0;
+        current_path_index = args.data;
+        OnArrived.push_back(args.data);
+    }
+    else if (args.isArrived())
+    {
+        current_node = (++current_node) % node_indexes.size();
+        current_path_index = node_indexes[current_node].firstIdx;
         OnArrived.push_back(-10);
     }
 }
 
-void WaypointMovementGenerator<Creature>::processNodeScripts(Creature& creature, int32 pointId)
+void WaypointMovementGenerator<Creature>::processPoint(Creature& creature, int32 pointId)
 {
     if (!i_path || i_path->size() < 2)
         return;
    
-    if (pointId == -10)// current dirty way of OnArrived even processing
+    if (pointId == -10)// current dirty way of OnArrived event processing
     {
         if (!IsPaused())
+        {
+            //current_path_index = node_indexes[current_node].firstIdx;
             continueMove(creature);
+        }
         return;
     }
-    else
-        current_path_index = pointId;
+    //else
+    //    current_path_index = pointId;
 
-    return;
+    //return;
 
     const WaypointNode& node = i_path->at(pointId);
 
@@ -420,6 +447,8 @@ void FlightPathMovementGenerator::Reset(Player & player)
     init.SetVelocity(30.f);
     init.SetFly();
     init.Launch();
+
+    mySpline = player.movement->MoveSplineId();
 }
 
 bool FlightPathMovementGenerator::Update(Player &player, const uint32 &diff)
@@ -473,15 +502,20 @@ void FlightPathMovementGenerator::DoEventIfAny(Unit& player, uint32 nodeId, bool
     }
 }
 
-void FlightPathMovementGenerator::OnEvent(Unit& u, int eventId, int data)
+void FlightPathMovementGenerator::OnEvent(Unit&, const Movement::OnEventArgs& args)
 {
-    if (eventId == 1)
+    if (mySpline != args.splineId)
     {
-        MANGOS_ASSERT(data >= 0 && data < i_path->size());
-        OnArrived.push_back(data);
-        current_node = data;
+        return;
     }
-    else if (eventId == 0)
+
+    if (args.isPointDone())
+    {
+        MANGOS_ASSERT(args.data >= 0 && args.data < i_path->size());
+        OnArrived.push_back(args.data);
+        current_node = args.data;
+    }
+    else if (args.isArrived())
     {
         OnArrived.push_back(-10);
     }

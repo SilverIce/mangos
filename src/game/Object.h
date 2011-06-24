@@ -149,7 +149,7 @@ class MANGOS_DLL_SPEC Object
 
         void SetObjectScale(float newScale);
 
-        uint8 GetTypeId() const { return m_objectTypeId; }
+        TypeID GetTypeId() const { return (TypeID)m_objectTypeId; }
         bool isType(uint16 mask) const { return (mask & m_objectType); }
 
         virtual void BuildCreateUpdateBlockForPlayer( UpdateData *data, Player *target ) const;
@@ -576,8 +576,8 @@ class MANGOS_DLL_SPEC WorldObject : public Object
 
         bool isActiveObject() const { return m_isActiveObject || m_viewPoint.hasViewers(); }
 
-		const G3D::Vector3& GetVector3() const { return (G3D::Vector3&)m_positionX; }
-		const Movement::Location& GetLocation() const { return (Movement::Location&)m_positionX; }
+        const G3D::Vector3& GetVector3() const { return (G3D::Vector3&)m_positionX; }
+        const Movement::Location& GetLocation() const { return (Movement::Location&)m_positionX; }
 
         ViewPoint& GetViewPoint() { return m_viewPoint; }
 

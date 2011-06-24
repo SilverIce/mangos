@@ -20,6 +20,9 @@
       <UniqueIdentifier>{92603191-13a9-43e7-b4f7-76cc63b2911d}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;cnt;rtf;gif;jpg;jpeg;jpe</Extensions>
     </Filter>
+    <Filter Include="pch">
+      <UniqueIdentifier>{611a9fdd-4109-41ec-9693-a62e8d9e5445}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\dep\ACE_wrappers\ace\ACE.cpp">
@@ -942,6 +945,9 @@
     </ClCompile>
     <ClCompile Include="..\..\dep\ACE_wrappers\ace\XTI_ATM_Mcast.cpp">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\dep\ACE_wrappers\ace_pch.cpp">
+      <Filter>pch</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -2738,6 +2744,9 @@
     </ClInclude>
     <ClInclude Include="..\..\dep\ACE_wrappers\ace\XTI_ATM_Mcast.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\dep\ACE_wrappers\ace_pch.h">
+      <Filter>pch</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

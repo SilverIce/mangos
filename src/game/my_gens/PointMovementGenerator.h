@@ -36,16 +36,17 @@ class MANGOS_DLL_SPEC PointMovementGenerator
         void Reset(T &unit);
         bool Update(T &, const uint32 &diff);
 
-        void MovementInform(T &);
+        void MovementInform(Creature &);
 
         MovementGeneratorType GetMovementGeneratorType() const { return POINT_MOTION_TYPE; }
 
-        void OnSplineDone(Unit&);
-        bool GetDestination(float& x, float& y, float& z) const { x=i_x; y=i_y; z=i_z; return true; }
+        void OnEvent(Unit& unit, const Movement::OnEventArgs& args);
+        bool GetDestination(float& x, float& y, float& z) const { return false; }
     private:
+        float i_x, i_y, i_z;
         uint32 id;
-        float i_x,i_y,i_z;
         bool arrived;
+        uint32 mySpline;
 };
 
 class MANGOS_DLL_SPEC AssistanceMovementGenerator

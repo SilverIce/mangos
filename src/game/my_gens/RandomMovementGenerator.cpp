@@ -23,7 +23,7 @@
 #include "Util.h"
 #include "Movement/UnitMovement.h"
 
-extern void GeneratePath(const Map*, G3D::Vector3, const G3D::Vector3&, std::vector<G3D::Vector3>&);
+extern void GeneratePath(const WorldObject*, G3D::Vector3, const G3D::Vector3&, std::vector<G3D::Vector3>&, bool isFlight = false);
 
 using G3D::Vector3;
 
@@ -105,51 +105,35 @@ template<>
 void
 RandomMovementGenerator<Creature>::_setRandomLocation(Creature &creature)
 {
-    Vector3 v;
-    Movement::PointsArray path;
     uint32 points_count = urand(RANDOM_POINTS_MIN, RANDOM_POINTS_MAX);
-    for (uint32 i = 0; i < points_count; ++i)
-    {
-        if (!GenerateCoord(creature, v))
-            return;
-        path.push_back(v);
-    }
-    
+  
     {
         using namespace Movement;
-
-        MoveSplineInit init(*creature.movement);
-        if (creature.movement->HasMode(MoveModeLevitation) || creature.movement->HasMode(MoveModeFly))
+        UnitMovement& mov = *creature.movement;
+        MoveCommonInit init(mov);
+        init.Path().push_back(Vector3());
+        for (int i = 0; i < points_count; ++i)
         {
-            init.SetFly();
-            // walk mode - 75% chance, hovever not offlike
-            init.SetWalk(urand(0,3));
+            Vector3 v;
+            if (GenerateCoord(creature, v))
+                init.Path().push_back(v);
         }
-        else
-        {
-            // walk mode - 90% chance, hovever not offlike
-            init.SetWalk(urand(0,9));
-        }
-        init.MovebyPath(path);
         init.Launch();
+        mySpline = mov.MoveSplineId();
     }
 
     creature.addUnitState(UNIT_STAT_ROAMING_MOVE);
 }
 
 template<class T>
-void RandomMovementGenerator<T>::OnSplineDone( Unit& unit )
+void RandomMovementGenerator<T>::OnEvent(Unit& unit, const Movement::OnEventArgs& args)
 {
-    using namespace Movement;
-    if (unit.movement->HasMode(MoveModeLevitation)||unit.movement->HasMode(MoveModeFly))
+    if (mySpline != args.splineId)
     {
-        i_nextMoveTime.Reset(10000);
+        return;
     }
-    //else if (is_water_ok)                                 // Swimming mode to be done with more than this check
-    else
-    {
+    if (args.isArrived())
         i_nextMoveTime.Reset(urand(500,10000));
-    }
 }
 
 template<>
@@ -158,6 +142,7 @@ void RandomMovementGenerator<Creature>::Initialize(Creature &creature)
     if (!creature.isAlive())
         return;
 
+    creature.movement->ApplyWalkMode(true);
     creature.addUnitState(UNIT_STAT_ROAMING|UNIT_STAT_ROAMING_MOVE);
     _setRandomLocation(creature);
 }
@@ -171,12 +156,13 @@ void RandomMovementGenerator<Creature>::Reset(Creature &creature)
 template<>
 void RandomMovementGenerator<Creature>::Interrupt(Creature &creature)
 {
-    creature.clearUnitState(UNIT_STAT_ROAMING|UNIT_STAT_ROAMING_MOVE);
+    Finalize(creature);
 }
 
 template<>
 void RandomMovementGenerator<Creature>::Finalize(Creature &creature)
 {
+    creature.movement->ApplyWalkMode(false);
     creature.clearUnitState(UNIT_STAT_ROAMING|UNIT_STAT_ROAMING_MOVE);
 }
 

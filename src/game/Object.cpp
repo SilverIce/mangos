@@ -33,8 +33,6 @@
 #include "MapManager.h"
 #include "Log.h"
 #include "Transports.h"
-#include "TargetedMovementGenerator.h"
-#include "WaypointMovementGenerator.h"
 #include "VMapFactory.h"
 #include "CellImpl.h"
 #include "GridNotifiers.h"
@@ -43,8 +41,12 @@
 #include "ObjectPosSelector.h"
 
 #include "TemporarySummon.h"
-#include "Movement/UnitMovement.h"
 #include "Totem.h"
+#include "WorldSession.h"
+
+#include "Movement/UnitMovement.h"
+//#include "Movement/ClientMovement.h"
+#include "Movement/packet_builder.h"
 
 using Movement::MovementBase;
 using Movement::MovementBase;
@@ -57,52 +59,64 @@ namespace Movement{
 
 inline void InitUnitMovement(Unit * owner, const Location& loc)
 {
-    mov_assert(owner->isType(TYPEMASK_UNIT));
+    MANGOS_ASSERT(owner->isType(TYPEMASK_UNIT));
     owner->Relocate(loc.x,loc.y,loc.z,loc.orientation);
 
     if (!owner->movement)
         owner->movement = new Movement::UnitMovement(*owner);
 
-    owner->movement->Initialize(Movement::MovControlServer, loc, Movement::sMoveUpdater);
+    owner->movement->Initialize(loc, Movement::sMoveUpdater);
 }
 
 template<class T> inline void InitGameobjectMovement(T * owner, const Location& loc)
 {
-    mov_assert(owner->isType(TYPEMASK_GAMEOBJECT | TYPEMASK_DYNAMICOBJECT));
+    MANGOS_ASSERT(owner->isType(TYPEMASK_GAMEOBJECT | TYPEMASK_DYNAMICOBJECT | TYPEMASK_CORPSE));
     owner->Relocate(loc.x,loc.y,loc.z,loc.orientation);
 
     if (!owner->movement)
-        owner->movement = new Movement::GameobjectMovement(*owner);
-    owner->movement->SetPosition(loc);
+        owner->movement = new Movement::StationaryMovObject(*owner);
+    owner->movement->SetGlobalPosition(loc);
 }
 
 template<class T> void InitMovement(T * owner, const Location& loc)
 {
-    mov_assert(!owner->isType(TYPEMASK_UNIT));
+    MANGOS_ASSERT(!owner->isType(TYPEMASK_UNIT));
     owner->Relocate(loc.x,loc.y,loc.z,loc.orientation);
 
     if (!owner->movement)
-        owner->movement = new Movement::MovementBase(*owner);
+        owner->movement = new Movement::MovementBase(owner);
 
-    owner->movement->SetPosition(loc);
+    owner->movement->SetGlobalPosition(loc);
 }
 
-template void InitMovement(Corpse * owner, const Location& loc);
-
+template<> void InitMovement(Corpse * owner, const Location& loc) {InitGameobjectMovement(owner,loc);}
 template<> void InitMovement(GameObject * owner, const Location& loc) {InitGameobjectMovement(owner,loc);}
 template<> void InitMovement(DynamicObject * owner, const Location& loc) {InitGameobjectMovement(owner,loc);}
 
 template<> void InitMovement(Transport * owner, const Location& loc)
 {
-    mov_assert(owner->isType(TYPEMASK_GAMEOBJECT | TYPEMASK_DYNAMICOBJECT));
+    MANGOS_ASSERT(owner->isType(TYPEMASK_GAMEOBJECT));
     owner->Relocate(loc.x,loc.y,loc.z,loc.orientation);
 
     if (!owner->movement)
     {
         owner->movement = new Movement::MO_Transport(*owner);
-        owner->movement->SetPosition(loc);
+        owner->movement->SetGlobalPosition(loc);
         owner->movement->SetUpdater(Movement::sMoveUpdater);
     }
+}
+
+template<> void InitMovement(Player * owner, const Location& loc)
+{
+    MANGOS_ASSERT(owner->isType(TYPEMASK_PLAYER));
+    owner->Relocate(loc.x,loc.y,loc.z,loc.orientation);
+
+    if (!owner->movement)
+    {
+        owner->movement = new Movement::UnitMovement(*owner);
+    }
+
+    owner->movement->Initialize(loc, Movement::sMoveUpdater);
 }
 
 template<> void InitMovement(Unit * owner, const Location& loc) { InitUnitMovement(owner,loc);}
@@ -111,7 +125,6 @@ template<> void InitMovement(TemporarySummon * owner, const Location& loc) { Ini
 template<> void InitMovement(Pet * owner, const Location& loc) { InitUnitMovement(owner,loc);}
 template<> void InitMovement(Totem * owner, const Location& loc) { InitUnitMovement(owner,loc);}
 template<> void InitMovement(Vehicle * owner, const Location& loc) { InitUnitMovement(owner,loc);}
-template<> void InitMovement(Player * owner, const Location& loc) { InitUnitMovement(owner,loc);}
 
 // Actually movement should be initialized BEFORE aura loading
 // but with current ugly code (we have ~40 places in code where unit creation called)
@@ -357,6 +370,23 @@ void Object::BuildMovementUpdate(ByteBuffer * data, uint16 updateFlags) const
                 }
             }
         }
+        /*switch(GetTypeId())
+        {
+        case TYPEID_GAMEOBJECT:
+            if (((GameObject*)this)->IsTransport())
+                Movement::PacketBuilder::FullUpdate(*((Transport*)this)->movement,*data);
+            else
+                Movement::PacketBuilder::FullUpdate(*((GameObject*)this)->movement,*data);
+            break;
+        case TYPEID_DYNAMICOBJECT:
+            Movement::PacketBuilder::FullUpdate(*((DynamicObject*)this)->movement,*data);
+            break;
+        case TYPEID_CORPSE:
+            Movement::PacketBuilder::FullUpdate(*((Corpse*)this)->movement,*data);
+            break;
+        default:    // items, etc
+            break;
+        }*/
     }
 
     // 0x8
@@ -440,7 +470,7 @@ void Object::BuildMovementUpdate(ByteBuffer * data, uint16 updateFlags) const
     // 0x200
     if(updateFlags & UPDATEFLAG_ROTATION)
     {
-        *data << uint64(((GameObject*)this)->GetRotation());
+        *data << int64(((GameObject*)this)->GetRotation());
     }
 }
 

@@ -26,10 +26,8 @@
 
 #include <cmath>
 #include "Movement/UnitMovement.h"
-#include "Movement/MoveSpline.h"
 
-extern void GeneratePath(const Map*, G3D::Vector3, const G3D::Vector3&, std::vector<G3D::Vector3>&);
-
+extern void GeneratePath(const WorldObject*, G3D::Vector3, const G3D::Vector3&, std::vector<G3D::Vector3>&, bool isFlight = false);
 using G3D::Vector3;
 
 template<class V>
@@ -46,11 +44,21 @@ inline void polar_offset(V& vec, V& direction, float dist)
     vec.y += v.y * dist;
 }
 
-static uint32 pos_recalc_time = 800;
-static uint32 pos_assumption_time = 1300;
+static float pos_recalc_time = 0.8f;
+static float assumption_time_additive_follow = 1.f;
+static float assumption_time_additive_chase = 0.f;
+
+inline int intervalComparison (float x, float lowerBound, float upperBound)
+{
+    if (x < lowerBound) return -1;
+    if (x > upperBound) return +1;
+    return 0;
+}
+
 
 // 5 yards -- bounding1 + bounding2
 // L yards -- X
+/*
 template<class T>
 bool ChaseMovementGenerator<T>::compute_dest(const Unit& in_owner, const Unit& in_target, float i_angle, float i_offset, Vector3& out_dest)
 {
@@ -58,30 +66,74 @@ bool ChaseMovementGenerator<T>::compute_dest(const Unit& in_owner, const Unit& i
     UnitMovement& me = *in_owner.movement;
     UnitMovement& target = *in_target.movement;
 
-    Vector3 final_pos = me.move_spline.FinalDestination();
-    Vector3 new_dest = target.AssumePosition(me.SplineEnabled() ? me.move_spline.timeElapsed() : 0);
+    Vector3 offset = target.GetGlobalPosition() - me.GetGlobalPosition();
+    float distance = offset.length();
 
-    float distance = (final_pos - new_dest).length();
+    float allowed_dist = in_target.GetFloatValue(UNIT_FIELD_COMBATREACH)+in_owner.GetFloatValue(UNIT_FIELD_COMBATREACH)+CONTACT_DISTANCE;
+    if (distance <= allowed_dist)
+        return false;
 
-    //float allowed_dist = (in_target.GetFloatValue(UNIT_FIELD_COMBATREACH)+in_owner.GetFloatValue(UNIT_FIELD_COMBATREACH)+CONTACT_DISTANCE)*distance/ATTACK_DISTANCE;
+    Vector3 unitOffset = offset / distance;
+
+    Vector3 me_dir(me.direction()), target_dir(target.direction());
+    // how parallel are the paths of "this" and the quarry
+    // (1 means parallel, 0 is pependicular, -1 is anti-parallel)
+    float parallelness = me_dir.dot(target_dir);
+    // how "forward" is the direction to the quarry
+    // (1 means dead ahead, 0 is directly to the side, -1 is straight back)
+    float forwardness = me_dir.dot (unitOffset);
+    int f = intervalComparison (forwardness,  -0.707f, 0.707f);
+    int p = intervalComparison (parallelness, -0.707f, 0.707f);
+    const float time_factors[3][3] = 
+    {
+        {2, 2, 0.5f},        // -1
+        {4, 0.8f, 1},        //  0
+        {4, 1.8f, 0.85f},     // +1
+    };  // -1, 0, 1
+    float timeFactor = time_factors[f+1][p+1];
+
+    float directTravelTime = distance / me.GetCurrentSpeed();
+
+    float time = std::min(directTravelTime * timeFactor, 10.f);
+    Vector3 future_pos = target.GetGlobalPosition() + (time * target.GetCurrentSpeed()) * target_dir;
+
+    //polar_offset(new_dest, atan2(new_dest), allowed_dist);
+    future_pos = future_pos + (me.GetGlobalPosition()-future_pos).fastDirection() * allowed_dist;
+
+    if (!MaNGOS::IsValidMapCoord(future_pos.x,future_pos.y))
+        return false;
+
+    out_dest = future_pos;
+    return true;
+}*/
+
+template<class T>
+bool ChaseMovementGenerator<T>::compute_dest(const Unit& in_owner, const Unit& in_target, float i_angle, float i_offset, Vector3& out_dest)
+{
+    using namespace Movement;
+    UnitMovement& me = *in_owner.movement;
+    UnitMovement& target = *in_target.movement;
+
+    Vector3 target_velocity = target.direction() * target.GetCurrentSpeed();
+
+    float move_time = me.MoveSplineTimeElapsed()*0.001f + assumption_time_additive_chase;
+    Vector3 target_future = target.GetGlobalPosition() + move_time * target_velocity;
+
+    float distance = (target_future - me.MoveSplineDest()).length();
     float allowed_dist = in_target.GetFloatValue(UNIT_FIELD_COMBATREACH)+in_owner.GetFloatValue(UNIT_FIELD_COMBATREACH)+CONTACT_DISTANCE;
 
     if (distance <= allowed_dist )
         return false;
 
-    Movement::uint32 move_time = SecToMS((me.GetPosition3()-target.GetPosition3()).length() / me.GetCurrentSpeed());
-    new_dest = target.AssumePosition(move_time);
+    move_time = (me.GetGlobalPosition()-target.GetGlobalPosition()).length() / me.GetCurrentSpeed() + assumption_time_additive_chase;
+    target_future = target.GetGlobalPosition() + move_time * target_velocity;
+    target_future += (me.GetGlobalPosition()-target_future).fastDirection() * allowed_dist;
 
-    //polar_offset(new_dest, atan2(new_dest), allowed_dist);
-    new_dest = new_dest + (me.GetPosition3()-new_dest).fastDirection() * allowed_dist;
-
-    if (!MaNGOS::IsValidMapCoord(new_dest.x,new_dest.y))
+    if (!MaNGOS::IsValidMapCoord(target_future.x,target_future.y))
         return false;
-
-    out_dest = new_dest;
+    out_dest = target_future;
     return true;
 }
-
 // Follow movement specialization:
 template<class T>
 bool FollowMovementGenerator<T>::compute_dest(const Unit& in_owner, const Unit& in_target, float i_angle, float i_offset, Vector3& out_dest)
@@ -90,58 +142,25 @@ bool FollowMovementGenerator<T>::compute_dest(const Unit& in_owner, const Unit& 
     UnitMovement& me = *in_owner.movement;
     UnitMovement& target = *in_target.movement;
 
-    Vector3 final_pos = me.move_spline.FinalDestination();
-    Location new_dest = target.AssumePosition(me.SplineEnabled() ? me.move_spline.timeElapsed() : 0);
+    float move_time = me.MoveSplineTimeElapsed()*0.001f + assumption_time_additive_follow;
+    Vector3 target_velocity = target.direction() * target.GetCurrentSpeed();
+    Vector3 target_future = target.GetGlobalPosition() + move_time * target_velocity;
 
-    float distance = (final_pos - new_dest).length();
-
-    //float allowed_dist = (in_target.GetFloatValue(UNIT_FIELD_COMBATREACH)+in_owner.GetFloatValue(UNIT_FIELD_COMBATREACH)+CONTACT_DISTANCE)*distance/ATTACK_DISTANCE;
+    float distance = (target_future - me.MoveSplineDest()).length();
     float allowed_dist = in_target.GetFloatValue(UNIT_FIELD_COMBATREACH)+in_owner.GetFloatValue(UNIT_FIELD_COMBATREACH)+CONTACT_DISTANCE;
 
     if (distance <= allowed_dist )
         return false;
 
-    Movement::uint32 move_time = SecToMS((me.GetPosition3()-target.GetPosition3()).length() / me.GetCurrentSpeed());
-    new_dest = target.AssumePosition(move_time);
+    move_time = (me.GetGlobalPosition()-target.GetGlobalPosition()).length() / me.GetCurrentSpeed() + assumption_time_additive_follow;
+    target_future = target.GetGlobalPosition() + move_time * target_velocity;
+    target_future += (me.GetGlobalPosition()-target_future).fastDirection() * allowed_dist * 0.8f;
 
-    polar_offset(new_dest, new_dest.orientation + i_angle, allowed_dist*0.8f);
-
-    if (!MaNGOS::IsValidMapCoord(new_dest.x,new_dest.y))
+    if (!MaNGOS::IsValidMapCoord(target_future.x,target_future.y))
         return false;
-
-    out_dest = new_dest;
+    out_dest = target_future;
     return true;
 }
-/*
-template<class D>
-bool compute_dest(const Unit& in_owner, const Unit& in_target, float i_angle, float i_offset, Vector3& out_dest, FollowMovementGenerator<D>* t = NULL)
-{
-    using namespace Movement;
-    MovementState& state = *in_owner.movement;
-    MovementState& state2 = *in_target.movement;
-
-    float allowed_dist = in_target.GetFloatValue(UNIT_FIELD_BOUNDINGRADIUS) + in_owner.GetFloatValue(UNIT_FIELD_BOUNDINGRADIUS) + CONTACT_DISTANCE;
-
-    Vector3 my_pos = state.GetPosition3();
-    Vector4 new_dest = state2.AssumePosition(pos_recalc_time);
-
-    float distance = (my_pos - (Vector3&)new_dest).squaredLength();
-
-    if (distance <= allowed_dist*allowed_dist )
-        return false;
-
-    polar_offset(new_dest, allowed_dist*0.8, new_dest.w + i_angle);
-
-    MaNGOS::NormalizeMapCoord(new_dest.x);
-    MaNGOS::NormalizeMapCoord(new_dest.y);
-    float z = in_owner.GetTerrain()->GetHeight(new_dest.x,new_dest.y,new_dest.z+4,true);
-    if (z > INVALID_HEIGHT)
-        new_dest.z = z;
-
-    out_dest = (Vector3&)new_dest;
-
-    return true;
-}*/
 
 //-----------------------------------------------//
 template<class T, typename D>
@@ -157,34 +176,14 @@ void TargetedMovementGeneratorMedium<T,D>::_moveToTarget(T &owner)
     arrived = false;
     {
         using namespace Movement;
-        UnitMovement& me = *owner.movement;
-        MoveSplineInit init(me);
-        if (me.HasMode(MoveModeLevitation) || me.HasMode(MoveModeFly))
-        {
-            init.SetFly();
-            init.MoveTo(new_dest);
-        }
-        else
-        {
-            float z = owner.GetTerrain()->GetHeight(new_dest.x,new_dest.y,new_dest.z+2,true);
-            if (z > INVALID_HEIGHT)
-                new_dest.z = z;
-
-            PointsArray path;
-            GeneratePath(owner.GetMap(),me.GetPosition3(),new_dest, path);
-            init.MovebyPath(path);
-        }
-        init.SetWalk(D::use_walk_mode(i_target.getTarget()));
-        init/*.SetFacing(*i_target->movement)*/.Launch();
+        UnitMovement& mov = *owner.movement;
+        MoveCommonInit init(mov);
+        GeneratePath(&owner,mov.GetPosition3(),new_dest, init.Path(), mov.IsFlying());
+        //init.SetWalk(D::use_walk_mode(i_target.getTarget()));
+        init.Launch();
     }
 
     D::_addUnitStateMove(owner);
-}
-
-template<class T, typename D>
-void TargetedMovementGeneratorMedium<T, D>::OnSplineDone( Unit& owner )
-{
-    arrived = true;
 }
 
 template<>

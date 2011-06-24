@@ -45,7 +45,6 @@
 #include "GridNotifiersImpl.h"
 #include "CellImpl.h"
 #include "Path.h"
-#include "Traveller.h"
 #include "VMapFactory.h"
 #include "MovementGenerator.h"
 
@@ -8258,7 +8257,7 @@ void Unit::SetSpeedRate(UnitMoveType mtype, float rate, bool forced)
     // Update speed only on change
     if (m_speed_rate[mtype] != rate)
     {
-        //propagateSpeedChange();
+        GetMotionMaster()->propagateSpeedChange();
 
         if (GetTypeId() == TYPEID_PLAYER && forced)
         {
@@ -9254,30 +9253,25 @@ public:
 
     bool Execute(uint64, uint32)
     {
-        Movement::Location pos = m_owner.movement->GetGlobalPosition();
-
-        if (m_owner.GetLocation() != pos && MaNGOS::IsValidMapCoord(pos.x,pos.y,pos.z))
+        if (m_owner.movement->IsMoving() && m_owner.movement->dbg_flags & 0x1)
         {
-            if (m_owner.GetTypeId() == TYPEID_UNIT)
-                m_owner.GetMap()->CreatureRelocation((Creature*)&m_owner,pos.x,pos.y,pos.z,pos.orientation);
-            else
-                m_owner.GetMap()->PlayerRelocation((Player*)&m_owner,pos.x,pos.y,pos.z,pos.orientation);
-
-            if (m_owner.movement->dbg_flags & 0x1)
-            {
-                if (Creature * c = m_owner.SummonCreature(1, pos.x,pos.y,pos.z,pos.orientation, TEMPSUMMON_TIMED_DESPAWN, 600))
-                    c->SetDisplayId(m_owner.GetDisplayId());
-            }
+            const Location& pos = m_owner.GetLocation();
+            if (Creature * c = m_owner.SummonCreature(1, pos.x,pos.y,pos.z,pos.orientation, TEMPSUMMON_TIMED_DESPAWN, 600))
+                c->SetDisplayId(m_owner.GetDisplayId());
         }
 
-        m_owner.m_Events.AddEvent(new PositionSyncEvent(m_owner), m_owner.m_Events.CalculateTime(UpdateDelay));
-        return true;
+        m_owner.m_Events.AddEvent(this, m_owner.m_Events.CalculateTime(UpdateDelay));
+        return false;
     }
 
 private:
 
     Unit& m_owner;
 };
+
+namespace Movement{
+    extern MoveUpdater sMoveUpdater;
+}
 
 void Unit::AddToWorld()
 {
@@ -9287,6 +9281,7 @@ void Unit::AddToWorld()
             m_Events.CalculateTime(PositionSyncEvent::UpdateDelay));
         // for test
         SetFloatValue(UNIT_FIELD_HOVERHEIGHT, 1.8f);
+        movement->Initialize(GetLocation(),Movement::sMoveUpdater);
     }
 
     Object::AddToWorld();
@@ -9848,7 +9843,7 @@ void Unit::StopMoving()
 {
     clearUnitState(UNIT_STAT_MOVING);
 
-    Movement::Scketches(movement).ForceStop();
+    Movement::MoveSplineInit(*movement).Launch();
     //// send explicit stop packet
     //// player expected for correct work SPLINEFLAG_WALKMODE
     //SendMonsterMove(GetPositionX(), GetPositionY(), GetPositionZ(), SPLINETYPE_STOP, GetTypeId() == TYPEID_PLAYER ? SPLINEFLAG_WALKMODE : SPLINEFLAG_NONE, 0);
@@ -10422,26 +10417,21 @@ void Unit::SetPhaseMask(uint32 newPhaseMask, bool update)
 
 void Unit::NearTeleportTo( float x, float y, float z, float orientation, bool casting /*= false*/ )
 {
-    if(GetTypeId() == TYPEID_PLAYER)
-        ((Player*)this)->TeleportTo(GetMapId(), x, y, z, orientation, TELE_TO_NOT_LEAVE_TRANSPORT | TELE_TO_NOT_LEAVE_COMBAT | TELE_TO_NOT_UNSUMMON_PET | (casting ? TELE_TO_SPELL : 0));
-    else
-    {
-        Creature* c = (Creature*)this;
-        // Creature relocation acts like instant movement generator, so current generator expects interrupt/reset calls to react properly
-        if (!c->GetMotionMaster()->empty())
-            if (MovementGenerator *movgen = c->GetMotionMaster()->top())
-                movgen->Interrupt(*c);
+    movement->Teleport(Location(x,y,z,orientation));
 
-        GetMap()->CreatureRelocation((Creature*)this, x, y, z, orientation);
+    /**    Interrupt/Reset should be called only in case top movement generator was dropped down by the new generator, but NOT here! */
+    // Creature relocation acts like instant movement generator, so current generator expects interrupt/reset calls to react properly
+    //if (!c->GetMotionMaster()->empty())
+        //if (MovementGenerator *movgen = c->GetMotionMaster()->top())
+           // movgen->Interrupt(*c);
 
-        SendHeartBeat(false);
+    //GetMap()->CreatureRelocation((Creature*)this, x, y, z, orientation);
 
-        // finished relocation, movegen can different from top before creature relocation,
-        // but apply Reset expected to be safe in any case
-        if (!c->GetMotionMaster()->empty())
-            if (MovementGenerator *movgen = c->GetMotionMaster()->top())
-                movgen->Reset(*c);
-    }
+    // finished relocation, movegen can different from top before creature relocation,
+    // but apply Reset expected to be safe in any case
+    //if (!c->GetMotionMaster()->empty())
+        //if (MovementGenerator *movgen = c->GetMotionMaster()->top())
+            //movgen->Reset(*c);
 }
 
 struct SetPvPHelper

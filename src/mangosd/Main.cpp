@@ -78,7 +78,7 @@ extern int main(int argc, char **argv)
     //char *leak = new char[1000];                          // test leak detection
 
     ///- Command line parsing
-    char const* cfg_file = _MANGOSD_CONFIG;
+    char const* cfg_file = "E:\\Development\\links\\mangosd.conf";//_MANGOSD_CONFIG;
 
 #ifdef WIN32
     char const *options = ":c:s:";

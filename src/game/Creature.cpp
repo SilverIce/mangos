@@ -1478,10 +1478,7 @@ bool Creature::FallGround()
 
     Unit::SetDeathState(CORPSE_FALLING);
 
-    {
-        using namespace Movement;
-        MoveSplineInit(*movement).MoveTo(fall_dest).SetFall().Launch();
-    }
+    Movement::MoveFallInit(*movement,fall_dest);
     return true;
 }
 

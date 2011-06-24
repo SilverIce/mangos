@@ -47,6 +47,10 @@ class GMTicket;
 class MovementInfo;
 class WorldSession;
 
+namespace Movement{
+    class Client;
+}
+
 struct OpcodeHandler;
 
 enum AccountDataType
@@ -218,6 +222,7 @@ class MANGOS_DLL_SPEC WorldSession
         std::string const& GetRemoteAddress() { return m_Address; }
         void SetPlayer(Player *plr);
         uint8 Expansion() const { return m_expansion; }
+        Movement::Client* MoveClient() const { return moveClient;}
 
         /// Session in auth.queue currently
         void SetInQueue(bool state) { m_inQueue = state; }
@@ -830,6 +835,7 @@ class MANGOS_DLL_SPEC WorldSession
         uint32 m_GUIDLow;                                   // set logged or recently logout player (while m_playerRecentlyLogout set)
         Player *_player;
         WorldSocket *m_Socket;
+        Movement::Client * moveClient;
         std::string m_Address;
 
         AccountTypes _security;

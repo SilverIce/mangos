@@ -51,14 +51,22 @@ FleeingMovementGenerator<T>::_setTargetLocation(T &owner)
 
         using namespace Movement;
         UnitMovement& state = *owner.movement;
-        MoveSplineInit(state).MoveTo(Vector3(x,y,z)).Launch();
+        MoveCommonInit init(state);
+        init.MoveTo(Vector3(x,y,z));
+        init.Launch();
+        mySpline = state.MoveSplineId();
     }
 }
 
 template<class T>
-void FleeingMovementGenerator<T>::OnSplineDone( Unit& )
+void FleeingMovementGenerator<T>::OnEvent(Unit& unit, const Movement::OnEventArgs& args)
 {
-    arrived = true;
+    if (mySpline != args.splineId)
+    {
+        return;
+    }
+
+    arrived = args.isArrived();
 }
 
 template<class T>

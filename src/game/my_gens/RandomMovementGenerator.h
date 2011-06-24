@@ -36,12 +36,13 @@ class MANGOS_DLL_SPEC RandomMovementGenerator
         bool Update(T &, const uint32 &);
         MovementGeneratorType GetMovementGeneratorType() const { return RANDOM_MOTION_TYPE; }
 
-        void OnSplineDone(Unit&);
+        void OnEvent(Unit& unit, const Movement::OnEventArgs& args);
         bool GetResetPosition(T&, float& x, float& y, float& z);
     private:
         ShortTimeTracker i_nextMoveTime;
 
         uint32 i_nextMove;
+        uint32 mySpline;
 };
 
 #endif

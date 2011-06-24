@@ -4,9 +4,6 @@
     <Filter Include="World/Handlers">
       <UniqueIdentifier>{d75ae330-80de-4aaf-8274-ae85f49dbcd9}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Motion generators">
-      <UniqueIdentifier>{7ade1743-efdc-47a9-86a5-77ab3ad233a5}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Object">
       <UniqueIdentifier>{1ea64f0d-ee7e-492e-8516-2f2c5be80a2a}</UniqueIdentifier>
     </Filter>
@@ -24,6 +21,21 @@
     </Filter>
     <Filter Include="vmaps">
       <UniqueIdentifier>{948284d3-9d89-4609-8cdd-28a213edb53e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Motion generators">
+      <UniqueIdentifier>{3d8e44c2-738b-476c-95fa-9af5db37942b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Movement">
+      <UniqueIdentifier>{db6a886a-a217-4040-abde-83038c4b529a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Movement\common">
+      <UniqueIdentifier>{6f15e557-2d7e-47e4-b7c9-ecd4850e3cdf}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Movement\SplineMovement">
+      <UniqueIdentifier>{a8d71cc6-318c-4167-bac5-23fbaf198f21}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Movement\PacketBuilder">
+      <UniqueIdentifier>{d57a3dfd-7e66-4747-b6dd-adc60da574b0}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -246,39 +258,6 @@
     <ClCompile Include="..\..\src\game\World.cpp">
       <Filter>World/Handlers</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\src\game\ConfusedMovementGenerator.cpp">
-      <Filter>Motion generators</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\src\game\DestinationHolder.cpp">
-      <Filter>Motion generators</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\src\game\FleeingMovementGenerator.cpp">
-      <Filter>Motion generators</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\src\game\HomeMovementGenerator.cpp">
-      <Filter>Motion generators</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\src\game\IdleMovementGenerator.cpp">
-      <Filter>Motion generators</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\src\game\MotionMaster.cpp">
-      <Filter>Motion generators</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\src\game\MovementGenerator.cpp">
-      <Filter>Motion generators</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\src\game\PointMovementGenerator.cpp">
-      <Filter>Motion generators</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\src\game\RandomMovementGenerator.cpp">
-      <Filter>Motion generators</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\src\game\TargetedMovementGenerator.cpp">
-      <Filter>Motion generators</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\src\game\WaypointMovementGenerator.cpp">
-      <Filter>Motion generators</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\src\game\AggressorAI.cpp">
       <Filter>Object</Filter>
     </ClCompile>
@@ -475,6 +454,72 @@
     <ClCompile Include="..\..\src\game\vmap\WorldModel.cpp">
       <Filter>vmaps</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\src\game\my_gens\ConfusedMovementGenerator.cpp">
+      <Filter>Motion generators</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\game\my_gens\FleeingMovementGenerator.cpp">
+      <Filter>Motion generators</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\game\my_gens\HomeMovementGenerator.cpp">
+      <Filter>Motion generators</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\game\my_gens\IdleMovementGenerator.cpp">
+      <Filter>Motion generators</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\game\my_gens\PointMovementGenerator.cpp">
+      <Filter>Motion generators</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\game\my_gens\RandomMovementGenerator.cpp">
+      <Filter>Motion generators</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\game\my_gens\TargetedMovementGenerator.cpp">
+      <Filter>Motion generators</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\game\my_gens\WaypointMovementGenerator.cpp">
+      <Filter>Motion generators</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\game\Movement\Movement\ClientMovement.cpp">
+      <Filter>Movement</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\game\Movement\Movement\MovementBase.cpp">
+      <Filter>Movement</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\game\Movement\Movement\MoveUpdater.cpp">
+      <Filter>Movement</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\game\Movement\Movement\globals.cpp">
+      <Filter>Movement\common</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\game\Movement\Movement\opcodes.cpp">
+      <Filter>Movement\common</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\game\Movement\Movement\outLog.cpp">
+      <Filter>Movement\common</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\game\Movement\Movement\spline.cpp">
+      <Filter>Movement\SplineMovement</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\game\Movement\Movement\MoveSpline.cpp">
+      <Filter>Movement\SplineMovement</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\game\Movement\Movement\MoveSplineInit.cpp">
+      <Filter>Movement\SplineMovement</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\game\Movement\Movement\UnitMovement.cpp">
+      <Filter>Movement</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\game\Movement\Movement\util.cpp">
+      <Filter>Movement</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\game\Movement\Movement\packet_builder.cpp">
+      <Filter>Movement\PacketBuilder</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\game\MotionMaster.cpp">
+      <Filter>Motion generators</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\game\MovementGenerator.cpp">
+      <Filter>Motion generators</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\src\game\AccountMgr.h">
@@ -632,45 +677,6 @@
     </ClInclude>
     <ClInclude Include="..\..\src\game\World.h">
       <Filter>World/Handlers</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\game\ConfusedMovementGenerator.h">
-      <Filter>Motion generators</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\game\DestinationHolder.h">
-      <Filter>Motion generators</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\game\DestinationHolderImp.h">
-      <Filter>Motion generators</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\game\FleeingMovementGenerator.h">
-      <Filter>Motion generators</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\game\HomeMovementGenerator.h">
-      <Filter>Motion generators</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\game\IdleMovementGenerator.h">
-      <Filter>Motion generators</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\game\MotionMaster.h">
-      <Filter>Motion generators</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\game\MovementGenerator.h">
-      <Filter>Motion generators</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\game\PointMovementGenerator.h">
-      <Filter>Motion generators</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\game\RandomMovementGenerator.h">
-      <Filter>Motion generators</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\game\TargetedMovementGenerator.h">
-      <Filter>Motion generators</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\game\Traveller.h">
-      <Filter>Motion generators</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\game\WaypointMovementGenerator.h">
-      <Filter>Motion generators</Filter>
     </ClInclude>
     <ClInclude Include="..\..\src\game\AggressorAI.h">
       <Filter>Object</Filter>
@@ -900,6 +906,99 @@
     </ClInclude>
     <ClInclude Include="..\..\src\game\vmap\WorldModel.h">
       <Filter>vmaps</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\game\my_gens\ConfusedMovementGenerator.h">
+      <Filter>Motion generators</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\game\my_gens\FleeingMovementGenerator.h">
+      <Filter>Motion generators</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\game\my_gens\HomeMovementGenerator.h">
+      <Filter>Motion generators</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\game\my_gens\IdleMovementGenerator.h">
+      <Filter>Motion generators</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\game\my_gens\PointMovementGenerator.h">
+      <Filter>Motion generators</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\game\my_gens\RandomMovementGenerator.h">
+      <Filter>Motion generators</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\game\my_gens\TargetedMovementGenerator.h">
+      <Filter>Motion generators</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\game\my_gens\WaypointMovementGenerator.h">
+      <Filter>Motion generators</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\game\Movement\Movement\ClientMovement.h">
+      <Filter>Movement</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\game\Movement\Movement\ClientMoveStatus.h">
+      <Filter>Movement</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\game\Movement\Movement\MoveListener.h">
+      <Filter>Movement</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\game\Movement\Movement\movement_lib.h">
+      <Filter>Movement</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\game\Movement\Movement\MovementBase.h">
+      <Filter>Movement</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\game\Movement\Movement\MoveUpdater.h">
+      <Filter>Movement</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\game\Movement\Movement\research.h">
+      <Filter>Movement</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\game\Movement\Movement\LinkedList.h">
+      <Filter>Movement\common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\game\Movement\Movement\Location.h">
+      <Filter>Movement\common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\game\Movement\Movement\opcodes.h">
+      <Filter>Movement\common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\game\Movement\Movement\typedefs.h">
+      <Filter>Movement\common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\game\Movement\Movement\spline.impl.h">
+      <Filter>Movement\SplineMovement</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\game\Movement\Movement\spline.h">
+      <Filter>Movement\SplineMovement</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\game\Movement\Movement\MoveSplineFlag.h">
+      <Filter>Movement\SplineMovement</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\game\Movement\Movement\MoveSplineInit.h">
+      <Filter>Movement\SplineMovement</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\game\Movement\Movement\MoveSplineInitArgs.h">
+      <Filter>Movement\SplineMovement</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\game\Movement\Movement\mov_constants.h">
+      <Filter>Movement\common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\game\Movement\Movement\UnitMoveFlags.h">
+      <Filter>Movement</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\game\Movement\Movement\UnitMovement.h">
+      <Filter>Movement</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\game\Movement\Movement\ByteBufferExtensions.h">
+      <Filter>Movement\PacketBuilder</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\game\Movement\Movement\packet_builder.h">
+      <Filter>Movement\PacketBuilder</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\game\MotionMaster.h">
+      <Filter>Motion generators</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\game\MovementGenerator.h">
+      <Filter>Motion generators</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
