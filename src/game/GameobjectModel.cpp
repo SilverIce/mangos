@@ -35,8 +35,8 @@ struct GameobjectModelData
     GameobjectModelData(const std::string& name_, const AABox& box) :
         name(name_), bound(box) {}
 
-    std::string name;
     AABox bound;
+    std::string name;
 };
 
 typedef UNORDERED_MAP<uint32, GameobjectModelData> ModelList;

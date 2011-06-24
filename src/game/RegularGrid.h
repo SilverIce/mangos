@@ -36,7 +36,6 @@ public:
     #define CELL_SIZE_INV   float(1/CELL_SIZE)
     #define HGRID_MAP_SIZE  (CELL_SIZE * CELL_NUMBER)
 
-    typedef Array<const T*> MemberArray;
     typedef G3D::Table<const T*, Node*> MemberTable;
 
     MemberTable memberTable;
@@ -96,7 +95,7 @@ public:
 
     Node& getGridFor(float fx, float fy)
     {
-        Cell c = ComputeCell(fx, fy);
+        Cell c = Cell::ComputeCell(fx, fy);
         return getGrid(c.x, c.y);
     }
 
@@ -115,7 +114,7 @@ public:
     }
 
     template<typename RayCallback>
-    void intersectRay(const Ray& ray, RayCallback& intersectCallback, float max_dist, const Vector3& end)
+    void intersectRay(const Ray& ray, RayCallback& intersectCallback, float& max_dist, const Vector3& end)
     {
         Cell cell = Cell::ComputeCell(ray.origin().x, ray.origin().y);
         if (!cell.isValid())
@@ -171,8 +170,8 @@ public:
         {
             if (Node * node = nodes[cell.x][cell.y])
             {
-                float enterdist = max_dist;
-                node->intersectRay(ray, intersectCallback, enterdist);
+                //float enterdist = max_dist;
+                node->intersectRay(ray, intersectCallback, max_dist);
             }
             if (cell == last_cell)
                 break;
@@ -187,13 +186,13 @@ public:
                 cell.y += stepY;
             }
             //++i;
-        } while (cell.isValid())
+        } while (cell.isValid());
     }
 
     template<typename IsectCallback>
     void intersectPoint(const Vector3& p, IsectCallback& intersectCallback)
     {
-        Cell c = ComputeCell(p.x, p.y);
+        Cell c = Cell::ComputeCell(p.x, p.y);
         if (!cell.isValid())
             return;
         if (Node * node = nodes[c.x][c.y])
