@@ -25,6 +25,7 @@
 #include "World.h"
 #include "GameobjectModel.h"
 #include "DBCStores.h"
+#include "Creature.h"
 
 using G3D::Vector3;
 using G3D::Ray;
@@ -117,6 +118,19 @@ bool ModelInstance_Overriden::initialize(const GameObject & go, const GameObject
         rotated_bounds.merge(iRotation * mdl_box.corner(i));
 
     this->iBound = rotated_bounds + iPos;
+
+#ifdef SPAWN_CORNERS
+    // test:
+    for (int i = 0; i < 8; ++i)
+    {
+        Vector3 pos(iBound.corner(i));
+        if (Creature * c = const_cast<GameObject&>(go).SummonCreature(24440, pos.x, pos.y, pos.z, 0, TEMPSUMMON_MANUAL_DESPAWN, 0))
+        {
+            c->setFaction(35);
+            c->SetObjectScale(0.1f);
+        }
+    }
+#endif
 
     return true;
 }
