@@ -10,5 +10,6 @@
 #include "SQLStorages.h"
 #include "Opcodes.h"
 #include "SharedDefines.h"
+#include "GuildMgr.h"
 #include "ObjectMgr.h"
 #include "ScriptMgr.h"

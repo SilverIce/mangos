@@ -75,6 +75,12 @@ class TerrainInfo;
 
 typedef UNORDERED_MAP<Player*, UpdateData> UpdateDataMapType;
 
+struct Position
+{
+    Position() : x(0.0f), y(0.0f), z(0.0f), o(0.0f) {}
+    float x, y, z, o;
+};
+
 struct WorldLocation
 {
     uint32 mapid;
@@ -124,7 +130,7 @@ class MANGOS_DLL_SPEC Object
             m_inWorld = true;
 
             // synchronize values mirror with values array (changes will send in updatecreate opcode any way
-            ClearUpdateMask(false);                         // false - we can't have update dat in update queue before adding to world
+            ClearUpdateMask(false);                         // false - we can't have update data in update queue before adding to world
         }
         virtual void RemoveFromWorld()
         {
@@ -134,7 +140,6 @@ class MANGOS_DLL_SPEC Object
         }
 
         ObjectGuid const& GetObjectGuid() const { return GetGuidValue(OBJECT_FIELD_GUID); }
-        const uint64& GetGUID() const { return GetUInt64Value(OBJECT_FIELD_GUID); }
         uint32 GetGUIDLow() const { return GetObjectGuid().GetCounter(); }
         PackedGuid const& GetPackGUID() const { return m_PackGUID; }
         std::string GetGuidStr() const { return GetObjectGuid().GetString(); }
@@ -150,7 +155,7 @@ class MANGOS_DLL_SPEC Object
         void SetObjectScale(float newScale);
 
         TypeID GetTypeId() const { return (TypeID)m_objectTypeId; }
-        bool isType(uint16 mask) const { return (mask & m_objectType); }
+        bool isType(TypeMask mask) const { return (mask & m_objectType); }
 
         virtual void BuildCreateUpdateBlockForPlayer( UpdateData *data, Player *target ) const;
         void SendCreateUpdateToPlayer(Player* player);
@@ -160,6 +165,7 @@ class MANGOS_DLL_SPEC Object
         virtual void RemoveFromClientUpdateList();
         virtual void BuildUpdateData(UpdateDataMapType& update_players);
         void MarkForClientUpdate();
+        void SendForcedObjectUpdate();
 
         void BuildValuesUpdateBlockForPlayer( UpdateData *data, Player *target ) const;
         void BuildOutOfRangeUpdateBlock( UpdateData *data ) const;
@@ -427,7 +433,7 @@ class MANGOS_DLL_SPEC WorldObject : public Object
 
         virtual ~WorldObject ( );
 
-        virtual void Update ( uint32 /*update_diff*/, uint32 /*time_diff*/ ) {}
+        virtual void Update(uint32 /*update_diff*/, uint32 /*time_diff*/) {}
 
         void _Create( uint32 guidlow, HighGuid guidhigh, uint32 phaseMask);
 
@@ -436,14 +442,14 @@ class MANGOS_DLL_SPEC WorldObject : public Object
 
         void SetOrientation(float orientation);
 
-        float GetPositionX( ) const { return m_positionX; }
-        float GetPositionY( ) const { return m_positionY; }
-        float GetPositionZ( ) const { return m_positionZ; }
+        float GetPositionX( ) const { return m_position.x; }
+        float GetPositionY( ) const { return m_position.y; }
+        float GetPositionZ( ) const { return m_position.z; }
         void GetPosition( float &x, float &y, float &z ) const
-            { x = m_positionX; y = m_positionY; z = m_positionZ; }
+            { x = m_position.x; y = m_position.y; z = m_position.z; }
         void GetPosition( WorldLocation &loc ) const
             { loc.mapid = m_mapId; GetPosition(loc.coord_x, loc.coord_y, loc.coord_z); loc.orientation = GetOrientation(); }
-        float GetOrientation( ) const { return m_orientation; }
+        float GetOrientation( ) const { return m_position.o; }
         void GetNearPoint2D( float &x, float &y, float distance, float absAngle) const;
         void GetNearPoint(WorldObject const* searcher, float &x, float &y, float &z, float searcher_bounding_radius, float distance2d, float absAngle) const;
         void GetClosePoint(float &x, float &y, float &z, float bounding_radius, float distance2d = 0, float angle = 0, const WorldObject* obj = NULL ) const
@@ -537,13 +543,13 @@ class MANGOS_DLL_SPEC WorldObject : public Object
         void MonsterTextEmote(int32 textId, Unit* target, bool IsBossEmote = false);
         void MonsterWhisper(int32 textId, Unit* receiver, bool IsBossWhisper = false);
         void MonsterYellToZone(int32 textId, uint32 language, Unit* target);
-        void BuildMonsterChat(WorldPacket *data, uint8 msgtype, char const* text, uint32 language, char const* name, ObjectGuid targetGuid, char const* targetName) const;
+        static void BuildMonsterChat(WorldPacket *data, ObjectGuid senderGuid, uint8 msgtype, char const* text, uint32 language, char const* name, ObjectGuid targetGuid, char const* targetName);
 
         void PlayDistanceSound(uint32 sound_id, Player* target = NULL);
         void PlayDirectSound(uint32 sound_id, Player* target = NULL);
 
-        void SendObjectDeSpawnAnim(uint64 guid);
-        void SendGameObjectCustomAnim(uint64 guid);
+        void SendObjectDeSpawnAnim(ObjectGuid guid);
+        void SendGameObjectCustomAnim(ObjectGuid guid);
 
         virtual bool IsHostileTo(Unit const* unit) const =0;
         virtual bool IsFriendlyTo(Unit const* unit) const =0;
@@ -553,6 +559,7 @@ class MANGOS_DLL_SPEC WorldObject : public Object
         void AddObjectToRemoveList();
 
         void UpdateObjectVisibility();
+        virtual void UpdateVisibilityAndView();             // update visibility for object and object for all around
 
         // main visibility check function in normal case (ignore grey zone distance check)
         bool isVisibleFor(Player const* u, WorldObject const* viewPoint) const { return isVisibleForInState(u,viewPoint,false); }
@@ -581,6 +588,8 @@ class MANGOS_DLL_SPEC WorldObject : public Object
 
         ViewPoint& GetViewPoint() { return m_viewPoint; }
 
+        // ASSERT print helper
+        bool PrintCoordinatesError(float x, float y, float z, char const* descr) const;
     protected:
         explicit WorldObject();
 
@@ -600,10 +609,7 @@ class MANGOS_DLL_SPEC WorldObject : public Object
         uint32 m_InstanceId;                                // in map copy with instance id
         uint32 m_phaseMask;                                 // in area phase state
 
-        float m_positionX;
-        float m_positionY;
-        float m_positionZ;
-        float m_orientation;
+        Position m_position;
 
         ViewPoint m_viewPoint;
 

@@ -582,6 +582,7 @@ enum LootState
 };
 
 class Unit;
+struct GameObjectDisplayInfoEntry;
 
 // 5 sec for bobber catch
 #define FISHING_BOBBER_READY_TIME 5
@@ -600,14 +601,14 @@ class MANGOS_DLL_SPEC GameObject : public WorldObject
         void RemoveFromWorld();
 
         bool Create(uint32 guidlow, uint32 name_id, Map *map, uint32 phaseMask, float x, float y, float z, float ang, float rotation0, float rotation1, float rotation2, float rotation3, uint8 animprogress, GOState go_state);
-        void Update(uint32 update_diff, uint32 p_time);
+        void Update(uint32 update_diff, uint32 p_time) override;
         GameObjectInfo const* GetGOInfo() const;
 
         bool IsTransport() const;
 
         bool HasStaticDBSpawnData() const;                  // listed in `gameobject` table and have fixed in DB guid
 
-        // z_rot, y_rot, x_rot - rotation angles around z, y and x axises
+        // z_rot, y_rot, x_rot - rotation angles around z, y and x axes
         void SetRotationAngles(float z_rot, float y_rot, float x_rot);
         int64 GetRotation() const { return m_rotation; }
 
@@ -674,6 +675,8 @@ class MANGOS_DLL_SPEC GameObject : public WorldObject
         void SetGoArtKit(uint8 artkit) { SetByteValue(GAMEOBJECT_BYTES_1, 2, artkit); }
         uint8 GetGoAnimProgress() const { return GetByteValue(GAMEOBJECT_BYTES_1, 3); }
         void SetGoAnimProgress(uint8 animprogress) { SetByteValue(GAMEOBJECT_BYTES_1, 3, animprogress); }
+        uint32 GetDisplayId() const { return GetUInt32Value(GAMEOBJECT_DISPLAYID); }
+        void SetDisplayId(uint32 modelId);
 
         float GetObjectBoundingRadius() const;              // overwrite WorldObject version
 
@@ -742,10 +745,11 @@ class MANGOS_DLL_SPEC GameObject : public WorldObject
         GuidsSet m_UniqueUsers;                             // all players who use item, some items activated after specific amount unique uses
 
         GameObjectInfo const* m_goInfo;
+        GameObjectDisplayInfoEntry const* m_displayInfo;
         int64 m_rotation;
     private:
-        void SetRotationQuat(float qx, float qy, float qz, float qw);
         void SwitchDoorOrButton(bool activate, bool alternative = false);
+        void SetRotationQuat(float qx, float qy, float qz, float qw);
 
         GridReference<GameObject> m_gridRef;
 };

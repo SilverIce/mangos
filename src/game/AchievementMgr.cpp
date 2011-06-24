@@ -24,6 +24,7 @@
 #include "GameEventMgr.h"
 #include "ObjectMgr.h"
 #include "Guild.h"
+#include "GuildMgr.h"
 #include "Database/DatabaseEnv.h"
 #include "World.h"
 #include "SpellMgr.h"
@@ -478,77 +479,45 @@ void AchievementMgr::DeleteFromDB(ObjectGuid guid)
 
 void AchievementMgr::SaveToDB()
 {
+    static SqlStatementID delComplAchievements ;
+    static SqlStatementID insComplAchievements ;
+    static SqlStatementID delProgress ;
+    static SqlStatementID insProgress ;
+
     if(!m_completedAchievements.empty())
     {
-        bool need_execute = false;
-        std::ostringstream ssdel;
-        std::ostringstream ssins;
+        //delete existing achievements in the loop
         for(CompletedAchievementMap::iterator iter = m_completedAchievements.begin(); iter!=m_completedAchievements.end(); ++iter)
         {
             if(!iter->second.changed)
                 continue;
 
-            /// first new/changed record prefix
-            if(!need_execute)
-            {
-                ssdel << "DELETE FROM character_achievement WHERE guid = " << GetPlayer()->GetGUIDLow() << " AND achievement IN (";
-                ssins << "INSERT INTO character_achievement (guid, achievement, date) VALUES ";
-                need_execute = true;
-            }
-            /// next new/changed record prefix
-            else
-            {
-                ssdel << ", ";
-                ssins << ", ";
-            }
-
-            // new/changed record data
-            ssdel << iter->first;
-            ssins << "("<<GetPlayer()->GetGUIDLow() << ", " << iter->first << ", " << uint64(iter->second.date) << ")";
-
             /// mark as saved in db
             iter->second.changed = false;
-        }
 
-        if(need_execute)
-            ssdel << ")";
+            SqlStatement stmt = CharacterDatabase.CreateStatement(delComplAchievements, "DELETE FROM character_achievement WHERE guid = ? AND achievement = ?");
+            stmt.PExecute(GetPlayer()->GetGUIDLow(), iter->first);
 
-        if(need_execute)
-        {
-            CharacterDatabase.Execute( ssdel.str().c_str() );
-            CharacterDatabase.Execute( ssins.str().c_str() );
+            stmt = CharacterDatabase.CreateStatement(insComplAchievements, "INSERT INTO character_achievement (guid, achievement, date) VALUES (?, ?, ?)");
+            stmt.PExecute(GetPlayer()->GetGUIDLow(), iter->first, uint64(iter->second.date));
         }
     }
 
     if(!m_criteriaProgress.empty())
     {
-        /// prepare deleting and insert
-        bool need_execute_del = false;
-        bool need_execute_ins = false;
-        std::ostringstream ssdel;
-        std::ostringstream ssins;
+        //insert achievements
         for(CriteriaProgressMap::iterator iter = m_criteriaProgress.begin(); iter!=m_criteriaProgress.end(); ++iter)
         {
             if(!iter->second.changed)
                 continue;
 
-            // deleted data (including 0 progress state)
-            {
-                /// first new/changed record prefix (for any counter value)
-                if(!need_execute_del)
-                {
-                    ssdel << "DELETE FROM character_achievement_progress WHERE guid = " << GetPlayer()->GetGUIDLow() << " AND criteria IN (";
-                    need_execute_del = true;
-                }
-                /// next new/changed record prefix
-                else
-                    ssdel << ", ";
+            /// mark as updated in db
+            iter->second.changed = false;
 
-                // new/changed record data
-                ssdel << iter->first;
-            }
+            // new/changed record data
+            SqlStatement stmt = CharacterDatabase.CreateStatement(delProgress, "DELETE FROM character_achievement_progress WHERE guid = ? AND criteria = ?");
+            stmt.PExecute(GetPlayer()->GetGUIDLow(), iter->first);
 
-            // store data only for real progress, exceptions are timedCriterias, they are also stored for counter == 0
             bool needSave = iter->second.counter != 0;
             if (!needSave)
             {
@@ -558,39 +527,18 @@ void AchievementMgr::SaveToDB()
 
             if (needSave)
             {
-                /// first new/changed record prefix
-                if(!need_execute_ins)
-                {
-                    ssins << "INSERT INTO character_achievement_progress (guid, criteria, counter, date) VALUES ";
-                    need_execute_ins = true;
-                }
-                /// next new/changed record prefix
-                else
-                    ssins << ", ";
-
-                // new/changed record data
-                ssins << "(" << GetPlayer()->GetGUIDLow() << ", " << iter->first << ", " << iter->second.counter << ", " << iter->second.date << ")";
+                stmt = CharacterDatabase.CreateStatement(insProgress, "INSERT INTO character_achievement_progress (guid, criteria, counter, date) VALUES (?, ?, ?, ?)");
+                stmt.PExecute(GetPlayer()->GetGUIDLow(), iter->first, iter->second.counter, uint64(iter->second.date));
             }
-
-            /// mark as updated in db
-            iter->second.changed = false;
-        }
-
-        if(need_execute_del)                                // DELETE ... IN (.... _)_
-            ssdel << ")";
-
-        if(need_execute_del || need_execute_ins)
-        {
-            if(need_execute_del)
-                CharacterDatabase.Execute( ssdel.str().c_str() );
-            if(need_execute_ins)
-                CharacterDatabase.Execute( ssins.str().c_str() );
         }
     }
 }
 
 void AchievementMgr::LoadFromDB(QueryResult *achievementResult, QueryResult *criteriaResult)
 {
+    // Note: this code called before any character data loading so don't must triggering any events req. inventory/etc
+    // all like cases must be happens in CheckAllAchievementCriteria called after character data load
+
     if(achievementResult)
     {
         do
@@ -673,7 +621,7 @@ void AchievementMgr::SendAchievementEarned(AchievementEntry const* achievement)
 
     DEBUG_FILTER_LOG(LOG_FILTER_ACHIEVEMENT_UPDATES, "AchievementMgr::SendAchievementEarned(%u)", achievement->ID);
 
-    if(Guild* guild = sObjectMgr.GetGuildById(GetPlayer()->GetGuildId()))
+    if (Guild* guild = sGuildMgr.GetGuildById(GetPlayer()->GetGuildId()))
     {
         MaNGOS::AchievementChatBuilder say_builder(*GetPlayer(), CHAT_MSG_GUILD_ACHIEVEMENT, LANG_ACHIEVEMENT_EARNED,achievement->ID);
         MaNGOS::LocalizedPacketDo<MaNGOS::AchievementChatBuilder> say_do(say_builder);
@@ -1325,7 +1273,7 @@ void AchievementMgr::UpdateAchievementCriteria(AchievementCriteriaTypes type, ui
                 break;
             case ACHIEVEMENT_CRITERIA_TYPE_LOOT_TYPE:
             {
-                // miscvalue1=loot_type (note: 0 = LOOT_CORSPE and then it ignored)
+                // miscvalue1=loot_type (note: 0 = LOOT_CORPSE and then it ignored)
                 // miscvalue2=count of item loot
                 if (!miscvalue1 || !miscvalue2)
                     continue;
@@ -2267,9 +2215,9 @@ AchievementCriteriaEntryList const& AchievementGlobalMgr::GetAchievementCriteria
 
 void AchievementGlobalMgr::LoadAchievementCriteriaList()
 {
-    if(sAchievementCriteriaStore.GetNumRows()==0)
+    if (sAchievementCriteriaStore.GetNumRows()==0)
     {
-        barGoLink bar(1);
+        BarGoLink bar(1);
         bar.step();
 
         sLog.outString();
@@ -2277,7 +2225,7 @@ void AchievementGlobalMgr::LoadAchievementCriteriaList()
         return;
     }
 
-    barGoLink bar( sAchievementCriteriaStore.GetNumRows() );
+    BarGoLink bar(sAchievementCriteriaStore.GetNumRows());
     for (uint32 entryId = 0; entryId < sAchievementCriteriaStore.GetNumRows(); ++entryId)
     {
         bar.step();
@@ -2300,7 +2248,7 @@ void AchievementGlobalMgr::LoadAchievementReferenceList()
 {
     if(sAchievementStore.GetNumRows()==0)
     {
-        barGoLink bar(1);
+        BarGoLink bar(1);
         bar.step();
 
         sLog.outString();
@@ -2309,13 +2257,13 @@ void AchievementGlobalMgr::LoadAchievementReferenceList()
     }
 
     uint32 count = 0;
-    barGoLink bar( sAchievementStore.GetNumRows() );
+    BarGoLink bar(sAchievementStore.GetNumRows());
     for (uint32 entryId = 0; entryId < sAchievementStore.GetNumRows(); ++entryId)
     {
         bar.step();
 
         AchievementEntry const* achievement = sAchievementStore.LookupEntry(entryId);
-        if(!achievement || !achievement->refAchievement)
+        if (!achievement || !achievement->refAchievement)
             continue;
 
         m_AchievementListByReferencedId[achievement->refAchievement].push_back(achievement);
@@ -2323,7 +2271,7 @@ void AchievementGlobalMgr::LoadAchievementReferenceList()
     }
 
     sLog.outString();
-    sLog.outString(">> Loaded %u achievement references.",count);
+    sLog.outString(">> Loaded %u achievement references.", count);
 }
 
 void AchievementGlobalMgr::LoadAchievementCriteriaRequirements()
@@ -2332,9 +2280,9 @@ void AchievementGlobalMgr::LoadAchievementCriteriaRequirements()
 
     QueryResult *result = WorldDatabase.Query("SELECT criteria_id, type, value1, value2 FROM achievement_criteria_requirement");
 
-    if(!result)
+    if (!result)
     {
-        barGoLink bar(1);
+        BarGoLink bar(1);
         bar.step();
 
         sLog.outString();
@@ -2344,7 +2292,7 @@ void AchievementGlobalMgr::LoadAchievementCriteriaRequirements()
 
     uint32 count = 0;
     uint32 disabled_count = 0;
-    barGoLink bar((int)result->GetRowCount());
+    BarGoLink bar(result->GetRowCount());
     do
     {
         bar.step();
@@ -2461,9 +2409,9 @@ void AchievementGlobalMgr::LoadCompletedAchievements()
 {
     QueryResult *result = CharacterDatabase.Query("SELECT achievement FROM character_achievement GROUP BY achievement");
 
-    if(!result)
+    if (!result)
     {
-        barGoLink bar(1);
+        BarGoLink bar(1);
         bar.step();
 
         sLog.outString();
@@ -2471,14 +2419,14 @@ void AchievementGlobalMgr::LoadCompletedAchievements()
         return;
     }
 
-    barGoLink bar((int)result->GetRowCount());
+    BarGoLink bar(result->GetRowCount());
     do
     {
         bar.step();
         Field *fields = result->Fetch();
 
         uint32 achievement_id = fields[0].GetUInt32();
-        if(!sAchievementStore.LookupEntry(achievement_id))
+        if (!sAchievementStore.LookupEntry(achievement_id))
         {
             // we will remove nonexistent achievement for all characters
             sLog.outError("Nonexistent achievement %u data removed from table `character_achievement`.",achievement_id);
@@ -2502,9 +2450,9 @@ void AchievementGlobalMgr::LoadRewards()
     //                                                0      1       2        3        4     5       6        7
     QueryResult *result = WorldDatabase.Query("SELECT entry, gender, title_A, title_H, item, sender, subject, text FROM achievement_reward");
 
-    if(!result)
+    if (!result)
     {
-        barGoLink bar(1);
+        BarGoLink bar(1);
 
         bar.step();
 
@@ -2514,7 +2462,7 @@ void AchievementGlobalMgr::LoadRewards()
     }
 
     uint32 count = 0;
-    barGoLink bar((int)result->GetRowCount());
+    BarGoLink bar(result->GetRowCount());
 
     do
     {
@@ -2633,9 +2581,9 @@ void AchievementGlobalMgr::LoadRewardLocales()
 
     QueryResult *result = WorldDatabase.Query("SELECT entry,gender,subject_loc1,text_loc1,subject_loc2,text_loc2,subject_loc3,text_loc3,subject_loc4,text_loc4,subject_loc5,text_loc5,subject_loc6,text_loc6,subject_loc7,text_loc7,subject_loc8,text_loc8 FROM locales_achievement_reward");
 
-    if(!result)
+    if (!result)
     {
-        barGoLink bar(1);
+        BarGoLink bar(1);
 
         bar.step();
 
@@ -2644,7 +2592,7 @@ void AchievementGlobalMgr::LoadRewardLocales()
         return;
     }
 
-    barGoLink bar((int)result->GetRowCount());
+    BarGoLink bar(result->GetRowCount());
 
     do
     {
@@ -2653,7 +2601,7 @@ void AchievementGlobalMgr::LoadRewardLocales()
 
         uint32 entry = fields[0].GetUInt32();
 
-        if(m_achievementRewards.find(entry)==m_achievementRewards.end())
+        if (m_achievementRewards.find(entry)==m_achievementRewards.end())
         {
             sLog.outErrorDb( "Table `locales_achievement_reward` (Entry: %u) has locale strings for nonexistent achievement reward .", entry);
             continue;

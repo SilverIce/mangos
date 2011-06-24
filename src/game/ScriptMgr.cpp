@@ -66,7 +66,9 @@ ScriptMgr::ScriptMgr() :
     m_pOnEffectDummyCreature(NULL),
     m_pOnEffectDummyGO(NULL),
     m_pOnEffectDummyItem(NULL),
-    m_pOnAuraDummy(NULL)
+    m_pOnAuraDummy(NULL),
+
+    m_scheduledScripts(0)
 {
 }
 
@@ -77,7 +79,7 @@ ScriptMgr::~ScriptMgr()
 
 void ScriptMgr::LoadScripts(ScriptMapMap& scripts, const char* tablename)
 {
-    if (sWorld.IsScriptScheduled())                         // function don't must be called in time scripts use.
+    if (IsScriptScheduled())                                // function don't must be called in time scripts use.
         return;
 
     sLog.outString("%s :", tablename);
@@ -90,7 +92,7 @@ void ScriptMgr::LoadScripts(ScriptMapMap& scripts, const char* tablename)
 
     if (!result)
     {
-        barGoLink bar(1);
+        BarGoLink bar(1);
         bar.step();
 
         sLog.outString();
@@ -98,7 +100,7 @@ void ScriptMgr::LoadScripts(ScriptMapMap& scripts, const char* tablename)
         return;
     }
 
-    barGoLink bar((int)result->GetRowCount());
+    BarGoLink bar(result->GetRowCount());
 
     do
     {
@@ -171,6 +173,16 @@ void ScriptMgr::LoadScripts(ScriptMapMap& scripts, const char* tablename)
                 if (!sEmotesStore.LookupEntry(tmp.emote.emoteId))
                 {
                     sLog.outErrorDb("Table `%s` has invalid emote id (datalong = %u) in SCRIPT_COMMAND_EMOTE for script id %u", tablename, tmp.emote.emoteId, tmp.id);
+                    continue;
+                }
+                if (tmp.emote.creatureEntry && !ObjectMgr::GetCreatureTemplate(tmp.emote.creatureEntry))
+                {
+                    sLog.outErrorDb("Table `%s` has datalong2 = %u in SCRIPT_COMMAND_EMOTE for script id %u, but this creature_template does not exist.", tablename, tmp.emote.creatureEntry, tmp.id);
+                    continue;
+                }
+                if (tmp.emote.creatureEntry && !tmp.emote.searchRadius)
+                {
+                    sLog.outErrorDb("Table `%s` has datalong2 = %u in SCRIPT_COMMAND_EMOTE for script id %u, but search radius is too small (datalong3 = %u).", tablename, tmp.emote.creatureEntry, tmp.id, tmp.emote.searchRadius);
                     continue;
                 }
                 break;
@@ -507,6 +519,65 @@ void ScriptMgr::LoadScripts(ScriptMapMap& scripts, const char* tablename)
 
                 break;
             }
+            case SCRIPT_COMMAND_ATTACK_START:
+            {
+                if (tmp.attack.creatureEntry && !ObjectMgr::GetCreatureTemplate(tmp.attack.creatureEntry))
+                {
+                    sLog.outErrorDb("Table `%s` has datalong2 = %u in SCRIPT_COMMAND_ATTACK_START for script id %u, but this creature_template does not exist.", tablename, tmp.attack.creatureEntry, tmp.id);
+                    continue;
+                }
+                if (tmp.attack.creatureEntry && !tmp.attack.searchRadius)
+                {
+                    sLog.outErrorDb("Table `%s` has datalong2 = %u in SCRIPT_COMMAND_ATTACK_START for script id %u, but search radius is too small (datalong3 = %u).", tablename, tmp.attack.creatureEntry, tmp.id, tmp.attack.searchRadius);
+                    continue;
+                }
+                break;
+            }
+            case SCRIPT_COMMAND_GO_LOCK_STATE:
+            {
+                if (!ObjectMgr::GetGameObjectInfo(tmp.goLockState.goEntry))
+                {
+                    sLog.outErrorDb("Table `%s` has datalong2 = %u in SCRIPT_COMMAND_GO_LOCK_STATE for script id %u, but this gameobject_template does not exist.", tablename, tmp.goLockState.goEntry, tmp.id);
+                    continue;
+                }
+                if (!tmp.goLockState.searchRadius)
+                {
+                    sLog.outErrorDb("Table `%s` has invalid search radius (datalong3 = %u) in SCRIPT_COMMAND_GO_LOCK_STATE for script id %u.", tablename, tmp.goLockState.searchRadius, tmp.id);
+                    continue;
+                }
+                if (// lock(0x01) and unlock(0x02) together
+                    ((tmp.goLockState.lockState & 0x01) && (tmp.goLockState.lockState & 0x02)) ||
+                    // non-interact (0x4) and interact (0x08) together
+                    ((tmp.goLockState.lockState & 0x04) && (tmp.goLockState.lockState & 0x08)) ||
+                    // no setting
+                    !tmp.goLockState.lockState ||
+                    // invalid number
+                    tmp.goLockState.lockState >= 0x10)
+                {
+                    sLog.outErrorDb("Table `%s` has invalid lock state (datalong = %u) in SCRIPT_COMMAND_GO_LOCK_STATE for script id %u.", tablename, tmp.goLockState.lockState, tmp.id);
+                    continue;
+                }
+                break;
+            }
+            case SCRIPT_COMMAND_STAND_STATE:
+            {
+                if (tmp.standState.stand_state >= MAX_UNIT_STAND_STATE)
+                {
+                    sLog.outErrorDb("Table `%s` has invalid stand state (datalong = %u) in SCRIPT_COMMAND_STAND_STATE for script id %u", tablename, tmp.standState.stand_state, tmp.id);
+                    continue;
+                }
+                if (tmp.standState.creatureEntry && !ObjectMgr::GetCreatureTemplate(tmp.standState.creatureEntry))
+                {
+                    sLog.outErrorDb("Table `%s` has datalong2 = %u in SCRIPT_COMMAND_STAND_STATE for script id %u, but this creature_template does not exist.", tablename, tmp.standState.creatureEntry, tmp.id);
+                    continue;
+                }
+                if (tmp.standState.creatureEntry && !tmp.standState.searchRadius)
+                {
+                    sLog.outErrorDb("Table `%s` has datalong2 = %u in SCRIPT_COMMAND_STAND_STATE for script id %u, but search radius is too small (datalong3 = %u).", tablename, tmp.standState.creatureEntry, tmp.id, tmp.standState.searchRadius);
+                    continue;
+                }
+                break;
+            }
         }
 
         if (scripts.find(tmp.id) == scripts.end())
@@ -604,9 +675,25 @@ void ScriptMgr::LoadEventScripts()
 
     // Load all possible script entries from gameobjects
     for(uint32 i = 1; i < sGOStorage.MaxEntry; ++i)
+    {
         if (GameObjectInfo const* goInfo = sGOStorage.LookupEntry<GameObjectInfo>(i))
+        {
             if (uint32 eventId = goInfo->GetEventScriptId())
                 evt_scripts.insert(eventId);
+
+            if (goInfo->type == GAMEOBJECT_TYPE_CAPTURE_POINT)
+            {
+                evt_scripts.insert(goInfo->capturePoint.neutralEventID1);
+                evt_scripts.insert(goInfo->capturePoint.neutralEventID2);
+                evt_scripts.insert(goInfo->capturePoint.contestedEventID1);
+                evt_scripts.insert(goInfo->capturePoint.contestedEventID2);
+                evt_scripts.insert(goInfo->capturePoint.progressEventID1);
+                evt_scripts.insert(goInfo->capturePoint.progressEventID2);
+                evt_scripts.insert(goInfo->capturePoint.winEventID1);
+                evt_scripts.insert(goInfo->capturePoint.winEventID2);
+            }
+        }
+    }
 
     // Load all possible script entries from spells
     for(uint32 i = 1; i < sSpellStore.GetNumRows(); ++i)
@@ -644,7 +731,7 @@ void ScriptMgr::LoadEventScripts()
     {
         std::set<uint32>::const_iterator itr2 = evt_scripts.find(itr->first);
         if (itr2 == evt_scripts.end())
-            sLog.outErrorDb("Table `event_scripts` has script (Id: %u) not referring to any gameobject_template type 10 data2 field, type 3 data6 field, type 13 data 2 field or any spell effect %u or path taxi node data",
+            sLog.outErrorDb("Table `event_scripts` has script (Id: %u) not referring to any gameobject_template type 10 data2 field, type 3 data6 field, type 13 data 2 field, type 29 or any spell effect %u or path taxi node data",
                 itr->first, SPELL_EFFECT_SEND_EVENT);
     }
 }
@@ -717,7 +804,7 @@ void ScriptMgr::LoadAreaTriggerScripts()
 
     if (!result)
     {
-        barGoLink bar(1);
+        BarGoLink bar(1);
         bar.step();
 
         sLog.outString();
@@ -725,7 +812,7 @@ void ScriptMgr::LoadAreaTriggerScripts()
         return;
     }
 
-    barGoLink bar((int)result->GetRowCount());
+    BarGoLink bar(result->GetRowCount());
 
     do
     {
@@ -761,7 +848,7 @@ void ScriptMgr::LoadEventIdScripts()
 
     if (!result)
     {
-        barGoLink bar(1);
+        BarGoLink bar(1);
         bar.step();
 
         sLog.outString();
@@ -769,16 +856,32 @@ void ScriptMgr::LoadEventIdScripts()
         return;
     }
 
-    barGoLink bar((int)result->GetRowCount());
+    BarGoLink bar(result->GetRowCount());
 
     // TODO: remove duplicate code below, same way to collect event id's used in LoadEventScripts()
     std::set<uint32> evt_scripts;
 
     // Load all possible event entries from gameobjects
-    for(uint32 i = 1; i < sGOStorage.MaxEntry; ++i)
+    for (uint32 i = 1; i < sGOStorage.MaxEntry; ++i)
+    {
         if (GameObjectInfo const* goInfo = sGOStorage.LookupEntry<GameObjectInfo>(i))
+        {
             if (uint32 eventId = goInfo->GetEventScriptId())
                 evt_scripts.insert(eventId);
+
+            if (goInfo->type == GAMEOBJECT_TYPE_CAPTURE_POINT)
+            {
+                evt_scripts.insert(goInfo->capturePoint.neutralEventID1);
+                evt_scripts.insert(goInfo->capturePoint.neutralEventID2);
+                evt_scripts.insert(goInfo->capturePoint.contestedEventID1);
+                evt_scripts.insert(goInfo->capturePoint.contestedEventID2);
+                evt_scripts.insert(goInfo->capturePoint.progressEventID1);
+                evt_scripts.insert(goInfo->capturePoint.progressEventID2);
+                evt_scripts.insert(goInfo->capturePoint.winEventID1);
+                evt_scripts.insert(goInfo->capturePoint.winEventID2);
+            }
+        }
+    }
 
     // Load all possible event entries from spells
     for(uint32 i = 1; i < sSpellStore.GetNumRows(); ++i)
@@ -824,7 +927,7 @@ void ScriptMgr::LoadEventIdScripts()
 
         std::set<uint32>::const_iterator itr = evt_scripts.find(eventId);
         if (itr == evt_scripts.end())
-            sLog.outErrorDb("Table `scripted_event_id` has id %u not referring to any gameobject_template type 10 data2 field, type 3 data6 field, type 13 data 2 field or any spell effect %u or path taxi node data",
+            sLog.outErrorDb("Table `scripted_event_id` has id %u not referring to any gameobject_template type 10 data2 field, type 3 data6 field, type 13 data 2 field, type 29 or any spell effect %u or path taxi node data",
                 eventId, SPELL_EFFECT_SEND_EVENT);
 
         m_EventIdScripts[eventId] = GetScriptId(scriptName);
@@ -856,14 +959,14 @@ void ScriptMgr::LoadScriptNames()
 
     if (!result)
     {
-        barGoLink bar(1);
+        BarGoLink bar(1);
         bar.step();
         sLog.outString();
         sLog.outErrorDb(">> Loaded empty set of Script Names!");
         return;
     }
 
-    barGoLink bar((int)result->GetRowCount());
+    BarGoLink bar(result->GetRowCount());
     uint32 count = 0;
 
     do
@@ -876,7 +979,7 @@ void ScriptMgr::LoadScriptNames()
 
     std::sort(m_scriptNames.begin(), m_scriptNames.end());
     sLog.outString();
-    sLog.outString( ">> Loaded %d Script Names", count );
+    sLog.outString(">> Loaded %d Script Names", count);
 }
 
 uint32 ScriptMgr::GetScriptId(const char *name) const
@@ -1060,8 +1163,9 @@ ScriptLoadResult ScriptMgr::LoadScriptLibrary(const char* libName)
         GetScriptHookPtr((P), (N));             \
         if (!(P))                               \
         {                                       \
-            MANGOS_CLOSE_LIBRARY(m_hScriptLib); \
-            m_hScriptLib = NULL;                \
+            /* prevent call before init */      \
+            m_pOnFreeScriptLibrary = NULL;      \
+            UnloadScriptLibrary();              \
             return SCRIPT_LOAD_ERR_WRONG_API;   \
         }
 
@@ -1102,7 +1206,11 @@ ScriptLoadResult ScriptMgr::LoadScriptLibrary(const char* libName)
 #   undef GET_SCRIPT_HOOK_PTR
 
     if (strcmp(pGetMangosRevStr(), REVISION_NR) != 0)
+    {
+        m_pOnFreeScriptLibrary = NULL;                      // prevent call before init
+        UnloadScriptLibrary();
         return SCRIPT_LOAD_ERR_OUTDATED;
+    }
 
     m_pOnInitScriptLibrary();
     return SCRIPT_LOAD_OK;
@@ -1163,3 +1271,14 @@ uint32 GetScriptId(const char *name)
 {
     return sScriptMgr.GetScriptId(name);
 }
+
+char const* GetScriptName(uint32 id)
+{
+    return sScriptMgr.GetScriptName(id);
+}
+
+uint32 GetScriptIdsCount()
+{
+    return sScriptMgr.GetScriptIdsCount();
+}
+
