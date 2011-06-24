@@ -28,7 +28,7 @@ class ModelInstance_Overriden;
 
 class DynamicMapTree
 {
-    struct KDTreeTest& impl;
+    struct DynTreeImpl& impl;
 public:
 
     DynamicMapTree();
@@ -40,10 +40,9 @@ public:
     void insert(const ModelInstance_Overriden&);
     void remove(const ModelInstance_Overriden&);
     bool contains(const ModelInstance_Overriden&) const;
-    void clear();
     int size() const;
 
-    void balance(int valuesPerNode = 5, int numMeanSplits = 3);
+    void balance();
     void update(uint32 diff);
 };
 

@@ -81,11 +81,15 @@ class BIH
 {
     public:
         BIH() {};
-        template< class T, class BoundsFunc >
-        void build(const std::vector<T> &primitives, BoundsFunc &getBounds, uint32 leafSize = 3, bool printStats=false)
+        template< class BoundsFunc, class PrimArray >
+        void build(const PrimArray &primitives, BoundsFunc &getBounds, uint32 leafSize = 3, bool printStats=false)
         {
             if(primitives.size() == 0)
+            {
+                *this = BIH();
                 return;
+            }
+
             buildData dat;
             dat.maxPrims = leafSize;
             dat.numPrims = primitives.size();
