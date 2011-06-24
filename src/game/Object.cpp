@@ -70,7 +70,7 @@ inline void InitUnitMovement(Unit * owner, const Location& loc)
 
 template<class T> inline void InitGameobjectMovement(T * owner, const Location& loc)
 {
-    MANGOS_ASSERT(owner->isType(TYPEMASK_GAMEOBJECT | TYPEMASK_DYNAMICOBJECT | TYPEMASK_CORPSE));
+    MANGOS_ASSERT(owner->isType(TypeMask(TYPEMASK_GAMEOBJECT | TYPEMASK_DYNAMICOBJECT | TYPEMASK_CORPSE)));
     owner->Relocate(loc.x,loc.y,loc.z,loc.orientation);
 
     if (!owner->movement)
@@ -124,7 +124,7 @@ template<> void InitMovement(Creature * owner, const Location& loc) { InitUnitMo
 template<> void InitMovement(TemporarySummon * owner, const Location& loc) { InitUnitMovement(owner,loc);}
 template<> void InitMovement(Pet * owner, const Location& loc) { InitUnitMovement(owner,loc);}
 template<> void InitMovement(Totem * owner, const Location& loc) { InitUnitMovement(owner,loc);}
-template<> void InitMovement(Vehicle * owner, const Location& loc) { InitUnitMovement(owner,loc);}
+//template<> void InitMovement(Vehicle * owner, const Location& loc) { InitUnitMovement(owner,loc);}
 
 // Actually movement should be initialized BEFORE aura loading
 // but with current ugly code (we have ~40 places in code where unit creation called)

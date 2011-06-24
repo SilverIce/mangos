@@ -25,14 +25,16 @@
 
 extern void GeneratePath(const WorldObject*, G3D::Vector3, const G3D::Vector3&, std::vector<G3D::Vector3>&, bool);
 
-void
-HomeMovementGenerator<Creature>::Initialize(Creature & owner)
+void HomeMovementGenerator<Creature>::Initialize(Creature & owner)
 {
     _setTargetLocation(owner);
 }
 
-void
-HomeMovementGenerator<Creature>::Reset(Creature &)
+void HomeMovementGenerator<Creature>::Finalize(Creature &)
+{
+}
+
+void HomeMovementGenerator<Creature>::Reset(Creature &)
 {
 }
 

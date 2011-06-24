@@ -58,6 +58,7 @@ class MANGOS_DLL_SPEC FleeingMovementGenerator
         ObjectGuid i_frightGuid;
         TimeTracker i_nextCheckTime;
 
+        uint64 i_frightGUID;
         uint32 mySpline;
         bool arrived;
 };

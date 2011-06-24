@@ -79,7 +79,7 @@ void usage(const char *prog)
 extern int main(int argc, char **argv)
 {
     ///- Command line parsing
-    char const* cfg_file = "E:\\Development\\links\\mangosd.conf";//_MANGOSD_CONFIG;
+    char const* cfg_file = _MANGOSD_CONFIG;
 
 
     char const *options = ":c:s:";
