@@ -484,7 +484,7 @@ bool BattleGroundQueue::InviteGroupToBG(GroupQueueInfo * ginfo, BattleGround * b
             BGQueueInviteEvent* inviteEvent = new BGQueueInviteEvent(plr->GetObjectGuid(), ginfo->IsInvitedToBGInstanceGUID, bgTypeId, ginfo->arenaType, ginfo->RemoveInviteTime);
             plr->m_Events.AddEvent(inviteEvent, plr->m_Events.CalculateTime(INVITATION_REMIND_TIME));
             // create automatic remove events
-            BGQueueRemoveEvent* removeEvent = new BGQueueRemoveEvent(plr->GetGUID(), ginfo->IsInvitedToBGInstanceGUID, bgTypeId, bgQueueTypeId, ginfo->RemoveInviteTime);
+            BGQueueRemoveEvent* removeEvent = new BGQueueRemoveEvent(plr->GetObjectGuid(), ginfo->IsInvitedToBGInstanceGUID, bgTypeId, bgQueueTypeId, ginfo->RemoveInviteTime);
             plr->m_Events.AddEvent(removeEvent, plr->m_Events.CalculateTime(INVITE_ACCEPT_WAIT_TIME));
 
             WorldPacket data;
@@ -1141,12 +1141,12 @@ BattleGroundMgr::~BattleGroundMgr()
 void BattleGroundMgr::DeleteAllBattleGrounds()
 {
     // will also delete template bgs:
-    for(uint32 i = BATTLEGROUND_TYPE_NONE; i < MAX_BATTLEGROUND_TYPE_ID; i++)
+    for(uint32 i = BATTLEGROUND_TYPE_NONE; i < MAX_BATTLEGROUND_TYPE_ID; ++i)
     {
         for(BattleGroundSet::iterator itr = m_BattleGrounds[i].begin(); itr != m_BattleGrounds[i].end();)
         {
             BattleGround * bg = itr->second;
-            itr++;
+            ++itr;                                          // step from invalidate iterator pos in result element remove in ~BattleGround call
             delete bg;
         }
     }
@@ -1205,7 +1205,7 @@ void BattleGroundMgr::Update(uint32 diff)
             if (sWorld.GetGameTime() > m_NextAutoDistributionTime)
             {
                 DistributeArenaPoints();
-                m_NextAutoDistributionTime = time_t(sWorld.GetGameTime() + BATTLEGROUND_ARENA_POINT_DISTRIBUTION_DAY * sWorld.getConfig(CONFIG_UINT32_ARENA_AUTO_DISTRIBUTE_INTERVAL_DAYS));
+                m_NextAutoDistributionTime = time_t(m_NextAutoDistributionTime + BATTLEGROUND_ARENA_POINT_DISTRIBUTION_DAY * sWorld.getConfig(CONFIG_UINT32_ARENA_AUTO_DISTRIBUTE_INTERVAL_DAYS));
                 CharacterDatabase.PExecute("UPDATE saved_variables SET NextArenaPointDistributionTime = '"UI64FMTD"'", uint64(m_NextAutoDistributionTime));
             }
             m_AutoDistributionTimeChecker = 600000; // check 10 minutes
@@ -1459,13 +1459,14 @@ uint32 BattleGroundMgr::CreateClientVisibleInstanceId(BattleGroundTypeId bgTypeI
     // the following works, because std::set is default ordered with "<"
     // the optimalization would be to use as bitmask std::vector<uint32> - but that would only make code unreadable
     uint32 lastId = 0;
-    for(std::set<uint32>::iterator itr = m_ClientBattleGroundIds[bgTypeId][bracket_id].begin(); itr != m_ClientBattleGroundIds[bgTypeId][bracket_id].end();)
+    ClientBattleGroundIdSet& ids = m_ClientBattleGroundIds[bgTypeId][bracket_id];
+    for(ClientBattleGroundIdSet::const_iterator itr = ids.begin(); itr != ids.end();)
     {
         if( (++lastId) != *itr)                             //if there is a gap between the ids, we will break..
             break;
         lastId = *itr;
     }
-    m_ClientBattleGroundIds[bgTypeId][bracket_id].insert(lastId + 1);
+    ids.insert(lastId + 1);
     return lastId + 1;
 }
 
@@ -1483,9 +1484,8 @@ BattleGround * BattleGroundMgr::CreateNewBattleGround(BattleGroundTypeId bgTypeI
     //for arenas there is random map used
     if (bg_template->isArena())
     {
-        BattleGroundTypeId arenas[] = {BATTLEGROUND_NA, BATTLEGROUND_BE, BATTLEGROUND_RL};
-        uint32 arena_num = urand(0,2);
-        bgTypeId = arenas[arena_num];
+        BattleGroundTypeId arenas[] = { BATTLEGROUND_NA, BATTLEGROUND_BE, BATTLEGROUND_RL/*, BATTLEGROUND_DS, BATTLEGROUND_RV*/ };
+        bgTypeId = arenas[urand(0, countof(arenas)-1)];
         bg_template = GetBattleGroundTemplate(bgTypeId);
         if (!bg_template)
         {
@@ -1612,7 +1612,7 @@ void BattleGroundMgr::CreateInitialBattleGrounds()
 
     if (!result)
     {
-        barGoLink bar(1);
+        BarGoLink bar(1);
 
         bar.step();
 
@@ -1621,7 +1621,7 @@ void BattleGroundMgr::CreateInitialBattleGrounds()
         return;
     }
 
-    barGoLink bar((int)result->GetRowCount());
+    BarGoLink bar(result->GetRowCount());
 
     do
     {
@@ -1831,7 +1831,8 @@ void BattleGroundMgr::BuildBattleGroundListPacket(WorldPacket *data, ObjectGuid 
             if(PvPDifficultyEntry const* bracketEntry = GetBattlegroundBracketByLevel(bgTemplate->GetMapId(),plr->getLevel()))
             {
                 BattleGroundBracketId bracketId = bracketEntry->GetBracketId();
-                for(std::set<uint32>::iterator itr = m_ClientBattleGroundIds[bgTypeId][bracketId].begin(); itr != m_ClientBattleGroundIds[bgTypeId][bracketId].end();++itr)
+                ClientBattleGroundIdSet const& ids = m_ClientBattleGroundIds[bgTypeId][bracketId];
+                for(ClientBattleGroundIdSet::const_iterator itr = ids.begin(); itr != ids.end();++itr)
                 {
                     *data << uint32(*itr);
                     ++count;
@@ -1865,10 +1866,18 @@ void BattleGroundMgr::SendToBattleGround(Player *pl, uint32 instanceId, BattleGr
 
 bool BattleGroundMgr::IsArenaType(BattleGroundTypeId bgTypeId)
 {
-    return ( bgTypeId == BATTLEGROUND_AA ||
-        bgTypeId == BATTLEGROUND_BE ||
-        bgTypeId == BATTLEGROUND_NA ||
-        bgTypeId == BATTLEGROUND_RL );
+    switch(bgTypeId)
+    {
+        case BATTLEGROUND_NA:
+        case BATTLEGROUND_BE:
+        case BATTLEGROUND_RL:
+        case BATTLEGROUND_DS:
+        case BATTLEGROUND_RV:
+        case BATTLEGROUND_AA:
+            return true;
+        default:
+            return false;
+    };
 }
 
 BattleGroundQueueTypeId BattleGroundMgr::BGQueueTypeId(BattleGroundTypeId bgTypeId, ArenaType arenaType)
@@ -2016,15 +2025,15 @@ void BattleGroundMgr::LoadBattleMastersEntry()
 
     if (!result)
     {
-        barGoLink bar( 1 );
+        BarGoLink bar(1);
         bar.step();
 
         sLog.outString();
-        sLog.outString( ">> Loaded 0 battlemaster entries - table is empty!" );
+        sLog.outString(">> Loaded 0 battlemaster entries - table is empty!");
         return;
     }
 
-    barGoLink bar( (int)result->GetRowCount() );
+    BarGoLink bar(result->GetRowCount());
 
     do
     {
@@ -2037,13 +2046,13 @@ void BattleGroundMgr::LoadBattleMastersEntry()
         uint32 bgTypeId  = fields[1].GetUInt32();
         if (!sBattlemasterListStore.LookupEntry(bgTypeId))
         {
-            sLog.outErrorDb("Table `battlemaster_entry` contain entry %u for nonexistent battleground type %u, ignored.",entry,bgTypeId);
+            sLog.outErrorDb("Table `battlemaster_entry` contain entry %u for nonexistent battleground type %u, ignored.", entry, bgTypeId);
             continue;
         }
 
         mBattleMastersMap[entry] = BattleGroundTypeId(bgTypeId);
 
-    } while( result->NextRow() );
+    } while(result->NextRow());
 
     delete result;
 
@@ -2126,9 +2135,9 @@ void BattleGroundMgr::LoadBattleEventIndexes()
                                     "LEFT OUTER JOIN battleground_events AS description ON data.map = description.map "
                                         "AND data.ev1 = description.event1 AND data.ev2 = description.event2 "
                               "ORDER BY m, ev1, ev2" );
-    if(!result)
+    if (!result)
     {
-        barGoLink bar(1);
+        BarGoLink bar(1);
         bar.step();
 
         sLog.outString();
@@ -2136,7 +2145,7 @@ void BattleGroundMgr::LoadBattleEventIndexes()
         return;
     }
 
-    barGoLink bar((int)result->GetRowCount());
+    BarGoLink bar(result->GetRowCount());
 
     do
     {

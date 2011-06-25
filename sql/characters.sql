@@ -21,7 +21,7 @@
 
 DROP TABLE IF EXISTS `character_db_version`;
 CREATE TABLE `character_db_version` (
-  `required_11299_02_characters_pet_aura` bit(1) default NULL
+  `required_11620_01_characters_character_equipmentsets` bit(1) default NULL
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8 ROW_FORMAT=FIXED COMMENT='Last applied sql update to DB';
 
 --
@@ -147,6 +147,7 @@ CREATE TABLE `auction` (
   `itemowner` int(11) unsigned NOT NULL default '0',
   `buyoutprice` int(11) NOT NULL default '0',
   `time` bigint(40) NOT NULL default '0',
+  `moneyTime` bigint(40) NOT NULL default '0',
   `buyguid` int(11) unsigned NOT NULL default '0',
   `lastbid` int(11) NOT NULL default '0',
   `startbid` int(11) NOT NULL default '0',
@@ -459,25 +460,26 @@ CREATE TABLE `character_equipmentsets` (
   `setindex` tinyint(4) NOT NULL default '0',
   `name` varchar(100) NOT NULL,
   `iconname` varchar(100) NOT NULL,
-  `item0` int(11) NOT NULL default '0',
-  `item1` int(11) NOT NULL default '0',
-  `item2` int(11) NOT NULL default '0',
-  `item3` int(11) NOT NULL default '0',
-  `item4` int(11) NOT NULL default '0',
-  `item5` int(11) NOT NULL default '0',
-  `item6` int(11) NOT NULL default '0',
-  `item7` int(11) NOT NULL default '0',
-  `item8` int(11) NOT NULL default '0',
-  `item9` int(11) NOT NULL default '0',
-  `item10` int(11) NOT NULL default '0',
-  `item11` int(11) NOT NULL default '0',
-  `item12` int(11) NOT NULL default '0',
-  `item13` int(11) NOT NULL default '0',
-  `item14` int(11) NOT NULL default '0',
-  `item15` int(11) NOT NULL default '0',
-  `item16` int(11) NOT NULL default '0',
-  `item17` int(11) NOT NULL default '0',
-  `item18` int(11) NOT NULL default '0',
+  `ignore_mask` int(11) unsigned NOT NULL default '0',
+  `item0` int(11) unsigned NOT NULL default '0',
+  `item1` int(11) unsigned NOT NULL default '0',
+  `item2` int(11) unsigned NOT NULL default '0',
+  `item3` int(11) unsigned NOT NULL default '0',
+  `item4` int(11) unsigned NOT NULL default '0',
+  `item5` int(11) unsigned NOT NULL default '0',
+  `item6` int(11) unsigned NOT NULL default '0',
+  `item7` int(11) unsigned NOT NULL default '0',
+  `item8` int(11) unsigned NOT NULL default '0',
+  `item9` int(11) unsigned NOT NULL default '0',
+  `item10` int(11) unsigned NOT NULL default '0',
+  `item11` int(11) unsigned NOT NULL default '0',
+  `item12` int(11) unsigned NOT NULL default '0',
+  `item13` int(11) unsigned NOT NULL default '0',
+  `item14` int(11) unsigned NOT NULL default '0',
+  `item15` int(11) unsigned NOT NULL default '0',
+  `item16` int(11) unsigned NOT NULL default '0',
+  `item17` int(11) unsigned NOT NULL default '0',
+  `item18` int(11) unsigned NOT NULL default '0',
   PRIMARY KEY  (`setguid`),
   UNIQUE KEY `idx_set` (`guid`,`setguid`,`setindex`),
   INDEX `Idx_setindex` (`setindex`)
@@ -691,6 +693,8 @@ CREATE TABLE `character_queststatus` (
   `itemcount2` int(11) unsigned NOT NULL default '0',
   `itemcount3` int(11) unsigned NOT NULL default '0',
   `itemcount4` int(11) unsigned NOT NULL default '0',
+  `itemcount5` int(11) unsigned NOT NULL default '0',
+  `itemcount6` int(11) unsigned NOT NULL default '0',
   PRIMARY KEY  (`guid`,`quest`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 ROW_FORMAT=DYNAMIC COMMENT='Player System';
 
