@@ -296,11 +296,8 @@ void WorldSession::HandleMovementOpcodes( WorldPacket & recv_data )
 
     {
         recv_data.rpos(0);
-        using namespace Movement;
         moveClient->HandleOutcomingMessage(recv_data);
     }
-
-    movementInfo.UpdateTime(getMSTime());
 
     if (plMover)
         plMover->UpdateFallInformationIfNeed(movementInfo, opcode);

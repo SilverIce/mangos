@@ -28,30 +28,15 @@
 typedef ACE_TSS<MTRand> MTRandTSS;
 static MTRandTSS mtRand;
 
-static ACE_Time_Value g_SystemTickTime;
-static ACE_Time_Value g_SystemTickTime2;
-
-struct TTT
-{
-    TTT()
-    {
-        g_SystemTickTime = ACE_OS::gettimeofday();
-        g_SystemTickTime2 = g_SystemTickTime;
-    }
-} static init_times;
-
 uint32 WorldTimer::m_iTime = 0;
 uint32 WorldTimer::m_iPrevTime = 0;
 
 uint32 WorldTimer::tickTime() { return m_iTime; }
 uint32 WorldTimer::tickPrevTime() { return m_iPrevTime; }
 
-
-static uint32 ms_time = 0;
-// i will not use WorldTimer::tickTime() there: it looses 1-2 milliseconds at each world tick and causes position desync
 uint32 getMSTime()
 {
-    return ms_time;
+    return WorldTimer::getMSTime();
 }
 
 uint32 WorldTimer::tick()

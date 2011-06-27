@@ -1789,7 +1789,7 @@
 					>
 				</File>
 				<File
-					RelativePath="..\..\src\game\Movement\Movement\util.cpp"
+					RelativePath="..\..\src\game\util.cpp"
 					>
 				</File>
 			</Filter>
@@ -1801,7 +1801,7 @@
 					>
 				</File>
 				<File
-					RelativePath="..\..\src\game\Movement\Movement\MaNGOS_API.cpp"
+					RelativePath="..\..\src\game\MaNGOS_API.cpp"
 					>
 				</File>
 				<File
