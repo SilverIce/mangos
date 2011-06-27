@@ -311,14 +311,6 @@ void WorldSession::HandleMovementOpcodes( WorldPacket & recv_data )
        // mover->UpdateWalkMode(mover, false);
 }
 
-void WorldSession::HandleForceSpeedChangeAckOpcodes(WorldPacket &recv_data)
-{
-    uint32 opcode = recv_data.GetOpcode();
-    DEBUG_LOG("WORLD: Recvd %s (%u, 0x%X) opcode", LookupOpcodeName(opcode), opcode, opcode);
-
-    moveClient->HandleResponse(recv_data); 
-}
-
 void WorldSession::HandleSetActiveMoverOpcode(WorldPacket &recv_data)
 {
     DEBUG_LOG("WORLD: Recvd CMSG_SET_ACTIVE_MOVER");
@@ -430,18 +422,6 @@ void WorldSession::HandleMoveKnockBackAck( WorldPacket & recv_data )
     data << movementInfo.GetJumpInfo().xyspeed;
     data << movementInfo.GetJumpInfo().velocity;
     mover->SendMessageToSetExcept(&data, _player);
-}
-
-void WorldSession::HandleMoveHoverAck( WorldPacket& recv_data )
-{
-    DEBUG_LOG("CMSG_MOVE_HOVER_ACK");
-    moveClient->HandleResponse(recv_data); 
-}
-
-void WorldSession::HandleMoveWaterWalkAck(WorldPacket& recv_data)
-{
-    DEBUG_LOG("CMSG_MOVE_WATER_WALK_ACK");
-    moveClient->HandleResponse(recv_data); 
 }
 
 void WorldSession::HandleSummonResponseOpcode(WorldPacket& recv_data)
@@ -568,31 +548,7 @@ void WorldSession::HandleMoveTimeSkippedOpcode( WorldPacket & recv_data )
     moveClient->HandleMoveTimeSkipped(recv_data);
 }
 
-void WorldSession::HandleFeatherFallAck(WorldPacket &recv_data)
+void WorldSession::HandleMoveAckOpcode(WorldPacket &recv_data)
 {
-    DEBUG_LOG("WORLD: CMSG_MOVE_FEATHER_FALL_ACK");
-    moveClient->HandleResponse(recv_data); 
-}
-
-void WorldSession::HandleMoveUnRootAck(WorldPacket& recv_data)
-{
-    moveClient->HandleResponse(recv_data); 
-}
-
-void WorldSession::HandleMoveRootAck(WorldPacket& recv_data)
-{
-    moveClient->HandleResponse(recv_data); 
-}
-
-void WorldSession::HandleTimeSyncResp( WorldPacket & recv_data )
-{
-    DEBUG_LOG("CMSG_TIME_SYNC_RESP");
-    moveClient->HandleResponse(recv_data); 
-}
-
-void WorldSession::HandleMoveSetCanFlyAckOpcode( WorldPacket & recv_data )
-{
-    // fly mode on/off
-    DEBUG_LOG("WORLD: CMSG_MOVE_SET_CAN_FLY_ACK");
     moveClient->HandleResponse(recv_data); 
 }

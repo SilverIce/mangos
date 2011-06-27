@@ -418,20 +418,14 @@ class MANGOS_DLL_SPEC WorldSession
         // played time
         void HandlePlayedTime(WorldPacket& recvPacket);
 
-        // new
-        void HandleMoveUnRootAck(WorldPacket& recvPacket);
-        void HandleMoveRootAck(WorldPacket& recvPacket);
-
         // new inspect
         void HandleInspectOpcode(WorldPacket& recvPacket);
 
         // new party stats
         void HandleInspectHonorStatsOpcode(WorldPacket& recvPacket);
 
-        void HandleMoveWaterWalkAck(WorldPacket& recvPacket);
-        void HandleFeatherFallAck(WorldPacket &recv_data);
-
-        void HandleMoveHoverAck( WorldPacket & recv_data );
+        void HandleMoveAckOpcode(WorldPacket& recvPacket);
+        void HandleMoveTeleportAckOpcode(WorldPacket& recv_data);
 
         void HandleMountSpecialAnimOpcode(WorldPacket &recvdata);
 
@@ -444,10 +438,6 @@ class MANGOS_DLL_SPEC WorldSession
 
         // Knockback
         void HandleMoveKnockBackAck(WorldPacket& recvPacket);
-
-        void HandleMoveTeleportAckOpcode(WorldPacket& recvPacket);
-        void HandleForceSpeedChangeAckOpcodes( WorldPacket & recv_data );
-
         void HandlePingOpcode(WorldPacket& recvPacket);
         void HandleAuthSessionOpcode(WorldPacket& recvPacket);
         void HandleRepopRequestOpcode(WorldPacket& recvPacket);
@@ -771,7 +761,6 @@ class MANGOS_DLL_SPEC WorldSession
         void HandleFarSightOpcode(WorldPacket& recv_data);
         void HandleSetDungeonDifficultyOpcode(WorldPacket& recv_data);
         void HandleSetRaidDifficultyOpcode(WorldPacket& recv_data);
-        void HandleMoveSetCanFlyAckOpcode(WorldPacket& recv_data);
         void HandleLfgJoinOpcode(WorldPacket& recv_data);
         void HandleLfgLeaveOpcode(WorldPacket& recv_data);
         void HandleSearchLfgJoinOpcode(WorldPacket& recv_data);
@@ -779,7 +768,6 @@ class MANGOS_DLL_SPEC WorldSession
         void HandleSetLfgCommentOpcode(WorldPacket& recv_data);
         void HandleSetTitleOpcode(WorldPacket& recv_data);
         void HandleRealmSplitOpcode(WorldPacket& recv_data);
-        void HandleTimeSyncResp(WorldPacket& recv_data);
         void HandleWhoisOpcode(WorldPacket& recv_data);
         void HandleResetInstancesOpcode(WorldPacket& recv_data);
         void HandleHearthandResurrect(WorldPacket & recv_data);

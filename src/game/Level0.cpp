@@ -309,6 +309,15 @@ bool ChatHandler::HandlePrintMovementState(char* args)
         PSendSysMessage(mov_target.ToString().c_str());
     }
 
+    else if (!strcmp(p, "mode"))
+    {
+        uint32 mode;
+        bool apply;
+        if (!ExtractUInt32(&args, mode) || !ExtractOnOff(&args, apply))
+            return false;
+        mov_target.ApplyMoveMode((Movement::MoveMode)mode, apply);
+    }
+
     else if (!strcmp(p, "toggle_points"))
     {
         if (mov_target.dbg_flags & 0x1)

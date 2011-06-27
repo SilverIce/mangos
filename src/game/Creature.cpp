@@ -1277,7 +1277,7 @@ bool Creature::LoadFromDB(uint32 guidlow, Map *map)
 
     if (!Create(guidlow, pos, cinfo, TEAM_NONE, data, eventData))
         return false;
-    movement->ApplyMoveMode(Movement::MoveModeLevitation,CanFly());
+    movement->ApplyMoveMode(Movement::MoveModeGravityDisabled,CanFly());
 
     m_respawnradius = data->spawndist;
 
