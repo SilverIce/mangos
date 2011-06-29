@@ -364,15 +364,6 @@ bool Unit::haveOffhandWeapon() const
         return false;
 }
 
-void Unit::SendHeartBeat(bool toSelf)
-{
-    m_movementInfo.UpdateTime(WorldTimer::getMSTime());
-    WorldPacket data(MSG_MOVE_HEARTBEAT, 64);
-    data << GetPackGUID();
-    data << m_movementInfo;
-    SendMessageToSet(&data, toSelf);
-}
-
 void Unit::resetAttackTimer(WeaponAttackType type)
 {
     m_attackTimer[type] = uint32(GetAttackTime(type) * m_modAttackSpeedPct[type]);
@@ -9989,8 +9980,6 @@ void Unit::SetFeignDeath(bool apply, ObjectGuid casterGuid, uint32 /*spellID*/)
 
         if (GetTypeId() != TYPEID_PLAYER)
             StopMoving();
-        else
-            ((Player*)this)->m_movementInfo.SetMovementFlags(MOVEFLAG_NONE);
 
                                                             // blizz like 2.0.x
         SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_UNK_29);

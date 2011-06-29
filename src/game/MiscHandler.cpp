@@ -271,7 +271,7 @@ void WorldSession::HandleLogoutRequestOpcode( WorldPacket & /*recv_data*/ )
     if( GetPlayer()->isInCombat() ||                        //...is in combat
         GetPlayer()->duel         ||                        //...is in Duel
                                                             //...is jumping ...is falling
-        GetPlayer()->m_movementInfo.HasMovementFlag(MovementFlags(MOVEFLAG_FALLING | MOVEFLAG_FALLINGFAR)))
+        GetPlayer()->movement->IsFalling())
     {
         WorldPacket data( SMSG_LOGOUT_RESPONSE, 5 );
         data << uint32(1);

@@ -1468,8 +1468,6 @@ class MANGOS_DLL_SPEC Unit : public WorldObject
         void SendThreatRemove(HostileReference* pHostileReference);
         void SendThreatUpdate();
 
-        void SendHeartBeat(bool toSelf);
-
         virtual void MoveOutOfRange(Player &) {  };
 
         bool isAlive() const { return (m_deathState == ALIVE); };

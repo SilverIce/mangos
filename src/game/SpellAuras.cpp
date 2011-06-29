@@ -4254,14 +4254,8 @@ void Aura::HandleAuraModStun(bool apply, bool Real)
         target->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_STUNNED);
         target->CastStop(target->GetObjectGuid() == GetCasterGuid() ? GetId() : 0);
 
-        // Creature specific
-        //if(target->GetTypeId() != TYPEID_PLAYER)
-        //    target->StopMoving();
-        //else
-        {
-            ((Player*)target)->m_movementInfo.SetMovementFlags(MOVEFLAG_NONE);
+        if (target->GetTypeId() == TYPEID_PLAYER)
             target->SetStandState(UNIT_STAND_STATE_STAND);// in 1.5 client
-        }
 
         target->StopMoving();
         target->movement->ApplyRootMode(true);

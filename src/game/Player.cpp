@@ -1379,14 +1379,6 @@ void Player::Update( uint32 update_diff, uint32 p_time )
             m_zoneUpdateTimer -= update_diff;
     }
 
-    if (m_timeSyncTimer > 0)
-    {
-        if(update_diff >= m_timeSyncTimer)
-            SendTimeSync();
-        else
-            m_timeSyncTimer -= update_diff;
-    }
-
     if (isAlive())
     {
         // if no longer casting, set regen power as soon as it is up.
@@ -1747,7 +1739,6 @@ bool Player::TeleportTo(uint32 mapid, float x, float y, float z, float orientati
     {
         m_transport->RemovePassenger(this);
         m_transport = NULL;
-        m_movementInfo.ClearTransportData();
     }
 
     // The player was ported to another map and looses the duel immediately.
@@ -1756,9 +1747,6 @@ bool Player::TeleportTo(uint32 mapid, float x, float y, float z, float orientati
     if (duel && GetMapId() != mapid)
         if (GameObject* obj = GetMap()->GetGameObject(GetGuidValue(PLAYER_DUEL_ARBITER)))
             DuelComplete(DUEL_FLED);
-
-    // reset movement flags at teleport, because player will continue move with these flags after teleport
-    m_movementInfo.SetMovementFlags(MOVEFLAG_NONE);
 
     if ((GetMapId() == mapid) && (!m_transport))
     {
@@ -1796,9 +1784,7 @@ bool Player::TeleportTo(uint32 mapid, float x, float y, float z, float orientati
         // near teleport, triggering send MSG_MOVE_TELEPORT_ACK from client at landing
         if(!GetSession()->PlayerLogout())
         {
-            WorldPacket data;
-            BuildTeleportAckMsg(data, x, y, z, orientation);
-            GetSession()->SendPacket(&data);
+            movement->Teleport(Location(x, y, z, orientation));
         }
     }
     else
@@ -15499,8 +15485,6 @@ bool Player::LoadFromDB(ObjectGuid guid, SqlQueryHolder *holder )
         RelocateToHomebind();
 
         transGUID = 0;
-
-        m_movementInfo.ClearTransportData();
     }
 
     _LoadBGData(holder->GetResult(PLAYER_LOGIN_QUERY_LOADBGDATA));
@@ -15561,7 +15545,7 @@ bool Player::LoadFromDB(ObjectGuid guid, SqlQueryHolder *holder )
 
     if (transGUID != 0)
     {
-        m_movementInfo.SetTransportData(ObjectGuid(HIGHGUID_MO_TRANSPORT,transGUID), fields[26].GetFloat(), fields[27].GetFloat(), fields[28].GetFloat(), fields[29].GetFloat(), 0, -1);
+        /*m_movementInfo.SetTransportData(ObjectGuid(HIGHGUID_MO_TRANSPORT,transGUID), fields[26].GetFloat(), fields[27].GetFloat(), fields[28].GetFloat(), fields[29].GetFloat(), 0, -1);
 
         if( !MaNGOS::IsValidMapCoord(
             GetPositionX() + m_movementInfo.GetTransportPos()->x, GetPositionY() + m_movementInfo.GetTransportPos()->y,
@@ -15578,7 +15562,7 @@ bool Player::LoadFromDB(ObjectGuid guid, SqlQueryHolder *holder )
             m_movementInfo.ClearTransportData();
 
             transGUID = 0;
-        }
+        }*/
     }
 
     if (transGUID != 0)
@@ -15608,8 +15592,6 @@ bool Player::LoadFromDB(ObjectGuid guid, SqlQueryHolder *holder )
                 guid.GetString().c_str(), transGUID);
 
             RelocateToHomebind();
-
-            m_movementInfo.ClearTransportData();
 
             transGUID = 0;
         }
@@ -20148,10 +20130,6 @@ void Player::SendInitialPacketsBeforeAddToMap()
     // SMSG_PET_GUIDS
     // SMSG_POWER_UPDATE
 
-    // set fly flag if in fly form or taxi flight to prevent visually drop at ground in showup moment
-    if (IsFreeFlying() || IsTaxiFlying())
-        m_movementInfo.AddMovementFlag(MOVEFLAG_FLYING);
-
     SetMover(this);
 }
 
@@ -20161,9 +20139,6 @@ void Player::SendInitialPacketsAfterAddToMap()
     uint32 newzone, newarea;
     GetZoneAndAreaId(newzone,newarea);
     UpdateZone(newzone,newarea);                            // also call SendInitWorldStates();
-
-    ResetTimeSync();
-    SendTimeSync();
 
     CastSpell(this, 836, true);                             // LOGINEFFECT
 
@@ -22816,41 +22791,16 @@ void Player::SendClearCooldown( uint32 spell_id, Unit* target )
     SendDirectMessage(&data);
 }
 
-void Player::BuildTeleportAckMsg(WorldPacket& data, float x, float y, float z, float ang) const
+/*bool Player::HasMovementFlag( MovementFlags f ) const
 {
-    MovementInfo mi = m_movementInfo;
-    mi.ChangePosition(x, y, z, ang);
+    MANGOS_ASSERT("Currently not spupported");
+    return false;
+}*/
 
-    data.Initialize(MSG_MOVE_TELEPORT_ACK, 64);
-    data << GetPackGUID();
-    data << uint32(0);                                      // this value increments every time
-    data << mi;
-}
-
-bool Player::HasMovementFlag( MovementFlags f ) const
-{
-    return m_movementInfo.HasMovementFlag(f);
-}
-
-void Player::ResetTimeSync()
-{
-    m_timeSyncCounter = 0;
-    m_timeSyncTimer = 0;
-    m_timeSyncClient = 0;
-    m_timeSyncServer = WorldTimer::getMSTime();
-}
-
-void Player::SendTimeSync()
-{
-    return;
-    WorldPacket data(SMSG_TIME_SYNC_REQ, 4);
-    data << uint32(m_timeSyncCounter++);
-    GetSession()->SendPacket(&data);
-
-    // Schedule next sync in 10 sec
-    m_timeSyncTimer = 10000;
-    m_timeSyncServer = WorldTimer::getMSTime();
-}
+bool Player::isMoving() const { return movement->IsMoving(); }
+bool Player::isMovingOrTurning() const { return movement->IsTurning(); }
+bool Player::CanFly() const { return movement->HasMode(Movement::MoveModeCanFly); }
+bool Player::IsFlying() const { return movement->HasMode(Movement::MoveModeFly); }
 
 void Player::SendDuelCountdown(uint32 counter)
 {

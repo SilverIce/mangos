@@ -1144,9 +1144,6 @@ class MANGOS_DLL_SPEC Player : public Unit
         uint32 GetTotalPlayedTime() { return m_Played_time[PLAYED_TIME_TOTAL]; }
         uint32 GetLevelPlayedTime() { return m_Played_time[PLAYED_TIME_LEVEL]; }
 
-        void ResetTimeSync();
-        void SendTimeSync();
-
         void SetDeathState(DeathState s);                   // overwrite Unit::SetDeathState
 
         float GetRestBonus() const { return m_rest_bonus; }
@@ -2179,13 +2176,11 @@ class MANGOS_DLL_SPEC Player : public Unit
         }
         void HandleFall(MovementInfo const& movementInfo);
 
-        void BuildTeleportAckMsg(WorldPacket& data, float x, float y, float z, float ang) const;
+        bool isMoving() const;
+        bool isMovingOrTurning() const;
 
-        bool isMoving() const { return m_movementInfo.HasMovementFlag(movementFlagsMask); }
-        bool isMovingOrTurning() const { return m_movementInfo.HasMovementFlag(movementOrTurningFlagsMask); }
-
-        bool CanFly() const { return m_movementInfo.HasMovementFlag(MOVEFLAG_CAN_FLY); }
-        bool IsFlying() const { return m_movementInfo.HasMovementFlag(MOVEFLAG_FLYING); }
+        bool CanFly() const;
+        bool IsFlying() const;
         bool IsFreeFlying() const { return HasAuraType(SPELL_AURA_MOD_FLIGHT_SPEED_MOUNTED) || HasAuraType(SPELL_AURA_FLY); }
         bool CanStartFlyInArea(uint32 mapid, uint32 zone, uint32 area) const;
 
@@ -2199,13 +2194,6 @@ class MANGOS_DLL_SPEC Player : public Unit
         // Transports
         Transport * GetTransport() const { return m_transport; }
         void SetTransport(Transport * t) { m_transport = t; }
-
-        float GetTransOffsetX() const { return m_movementInfo.GetTransportPos()->x; }
-        float GetTransOffsetY() const { return m_movementInfo.GetTransportPos()->y; }
-        float GetTransOffsetZ() const { return m_movementInfo.GetTransportPos()->z; }
-        float GetTransOffsetO() const { return m_movementInfo.GetTransportPos()->o; }
-        uint32 GetTransTime() const { return m_movementInfo.GetTransportTime(); }
-        int8 GetTransSeat() const { return m_movementInfo.GetTransportSeat(); }
 
         uint32 GetSaveTimer() const { return m_nextSave; }
         void   SetSaveTimer(uint32 timer) { m_nextSave = timer; }
@@ -2647,11 +2635,6 @@ class MANGOS_DLL_SPEC Player : public Unit
 
         AchievementMgr m_achievementMgr;
         ReputationMgr  m_reputationMgr;
-
-        uint32 m_timeSyncCounter;
-        uint32 m_timeSyncTimer;
-        uint32 m_timeSyncClient;
-        uint32 m_timeSyncServer;
 };
 
 void AddItemsSetItem(Player*player,Item *item);
