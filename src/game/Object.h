@@ -69,7 +69,7 @@ class Unit;
 class Map;
 class UpdateMask;
 class InstanceData;
-class TerrainInfo;
+class Terrain;
 
 typedef UNORDERED_MAP<Player*, UpdateData> UpdateDataMapType;
 
@@ -571,7 +571,7 @@ class MANGOS_DLL_SPEC WorldObject : public Object
         void ResetMap() { m_currMap = NULL; }
 
         //obtain terrain data for map where this object belong...
-        TerrainInfo const* GetTerrain() const;
+        Terrain const* GetTerrain() const;
 
         void AddToClientUpdateList();
         void RemoveFromClientUpdateList();

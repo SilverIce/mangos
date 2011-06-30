@@ -1215,17 +1215,10 @@ bool WorldObject::IsWithinLOSInMap(const WorldObject* obj) const
 
 bool WorldObject::IsWithinLOS(float ox, float oy, float oz) const
 {
-    float x,y,z;
-    GetPosition(x,y,z);
-    VMAP::IVMapManager *vMapManager = VMAP::VMapFactory::createOrGetVMapManager();
-    bool static_los = vMapManager->isInLineOfSight(GetMapId(), x, y, z+2.0f, ox, oy, oz+2.0f);
-    bool dyn_los = true;
-    if (IsInWorld() && static_los)
-    {
-        dyn_los = GetMap()->extraData->isInLineOfSight(x, y, z+2.0f, ox, oy, oz+2.0f, GetPhaseMask());
-    }
-
-    return static_los && dyn_los;
+    if (IsInWorld())
+        return GetMap()->GetTerrain()->isInLineOfSight(GetPositionX(),GetPositionY(),GetPositionZ()+2.f,ox,oy,oz+2.f,GetPhaseMask());
+    else
+        return true;
 }
 
 bool WorldObject::GetDistanceOrder(WorldObject const* obj1, WorldObject const* obj2, bool is3D /* = true */) const
@@ -1656,7 +1649,7 @@ void WorldObject::SetMap(Map * map)
     m_InstanceId = map->GetInstanceId();
 }
 
-TerrainInfo const* WorldObject::GetTerrain() const
+Terrain const* WorldObject::GetTerrain() const
 {
     MANGOS_ASSERT(m_currMap);
     return m_currMap->GetTerrain();

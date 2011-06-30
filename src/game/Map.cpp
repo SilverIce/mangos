@@ -55,10 +55,8 @@ Map::~Map()
     }
 
     //release reference count
-    if(m_TerrainData->Release())
-        sTerrainMgr.UnloadTerrain(m_TerrainData->GetMapId());
-
-    delete extraData;
+    if(m_TerrainData.Release())
+        sTerrainMgr.UnloadTerrain(m_TerrainData.GetMapId());
 }
 
 void Map::LoadMapAndVMap(int gx,int gy)
@@ -66,7 +64,7 @@ void Map::LoadMapAndVMap(int gx,int gy)
     if(m_bLoadedGrids[gx][gx])
         return;
 
-    GridMap * pInfo = m_TerrainData->Load(gx, gy);
+    GridMap * pInfo = m_TerrainData.Load(gx, gy);
     if(pInfo)
         m_bLoadedGrids[gx][gy] = true;
 }
@@ -96,12 +94,10 @@ Map::Map(uint32 id, time_t expiry, uint32 InstanceId, uint8 SpawnMode)
     Map::InitVisibilityDistance();
 
     //add reference for TerrainData object
-    m_TerrainData->AddRef();
+    m_TerrainData.AddRef();
 
     m_persistentState = sMapPersistentStateMgr.AddPersistentState(i_mapEntry, GetInstanceId(), GetDifficulty(), 0, IsDungeon());
     m_persistentState->SetUsedByMapState(this);
-
-    extraData = new DynamicMapTree();
 }
 
 void Map::InitVisibilityDistance()
@@ -272,7 +268,7 @@ bool Map::EnsureGridLoaded(const Cell &cell)
 
         // Add resurrectable corpses to world object list in grid
         sObjectAccessor.AddCorpsesToGrid(GridPair(cell.GridX(),cell.GridY()),(*grid)(cell.CellX(), cell.CellY()), this);
-        extraData->balance();
+        GetTerrain()->Balance();
         return true;
     }
 
@@ -440,7 +436,7 @@ bool Map::loaded(const GridPair &p) const
 
 void Map::Update(const uint32 &t_diff)
 {
-    extraData->update(t_diff);
+    GetTerrain()->Update(t_diff);
 
     /// update worldsessions for existing players
     for(m_mapRefIter = m_mapRefManager.begin(); m_mapRefIter != m_mapRefManager.end(); ++m_mapRefIter)
@@ -814,7 +810,7 @@ bool Map::UnloadGrid(const uint32 &x, const uint32 &y, bool pForce)
     if(m_bLoadedGrids[gx][gy])
     {
         m_bLoadedGrids[gx][gy] = false;
-        m_TerrainData->Unload(gx, gy);
+        m_TerrainData.Unload(gx, gy);
     }
 
     DEBUG_LOG("Unloading grid[%u,%u] for map %u finished", x,y, i_id);

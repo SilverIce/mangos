@@ -1515,7 +1515,7 @@ bool Creature::FallGround()
         return false;
 
     // use larger distance for vmap height search than in most other cases
-    float tz = GetTerrain()->GetHeight(GetPositionX(), GetPositionY(), GetPositionZ(), true, MAX_FALL_DISTANCE);
+    float tz = GetTerrain()->GetHeight(GetPositionX(), GetPositionY(), GetPositionZ(), GetPhaseMask(), true, MAX_FALL_DISTANCE);
 
     if (tz <= INVALID_HEIGHT)
     {

@@ -1723,6 +1723,10 @@
 			Name="dynamic"
 			>
 			<File
+				RelativePath="..\..\src\game\BIHWrap.h"
+				>
+			</File>
+			<File
 				RelativePath="..\..\src\game\DynamicTree.cpp"
 				>
 			</File>
@@ -1740,6 +1744,10 @@
 			</File>
 			<File
 				RelativePath="..\..\src\game\KDTree2.h"
+				>
+			</File>
+			<File
+				RelativePath="..\..\src\game\RegularGrid.h"
 				>
 			</File>
 		</Filter>

@@ -34,8 +34,8 @@ public:
     DynamicMapTree();
     ~DynamicMapTree();
 
-    bool isInLineOfSight(const Vector3& pos1, const Vector3& pos2, uint32 phasemask) const;
     bool isInLineOfSight(float x1, float y1, float z1, float x2, float y2, float z2, uint32 phasemask) const;
+    float getHeight(float x, float y, float z, float maxSearchDist, uint32 phasemask) const;
 
     void insert(const ModelInstance_Overriden&);
     void remove(const ModelInstance_Overriden&);

@@ -25,6 +25,7 @@
 #include "GridDefines.h"
 #include "Object.h"
 #include "SharedDefines.h"
+#include "DynamicTree.h"
 
 #include <bitset>
 #include <list>
@@ -242,7 +243,7 @@ public:
     void CleanUpGrids(const uint32 diff);
 
 protected:
-    friend class Map;
+    friend class Terrain;
     //load/unload terrain data
     GridMap * Load(const uint32 x, const uint32 y);
     void Unload(const uint32 x, const uint32 y);
@@ -270,6 +271,78 @@ private:
     LOCK_TYPE m_mutex;
     LOCK_TYPE m_refMutex;
 };
+
+// proxy class that unites dynamic and static geometry
+class Terrain
+{
+public:
+
+    explicit Terrain(TerrainInfo* terrain) : m_info(*terrain) {}
+
+    void AddRef() { m_info.AddRef();}
+    bool Release() { return m_info.Release();}
+
+    uint32 GetMapId() const { return m_info.GetMapId(); }
+
+    float GetWaterLevel(float x, float y, float z, float* pGround = NULL) const
+    {
+        return m_info.GetWaterLevel(x,y,z,pGround);
+    }
+
+    float GetWaterOrGroundLevel(float x, float y, float z, float* pGround = NULL, bool swim = false) const
+    {
+        return m_info.GetWaterOrGroundLevel(x,y,z,pGround,swim);
+    }
+
+    bool IsInWater(float x, float y, float z, GridMapLiquidData *data = 0) const { return m_info.IsInWater(x,y,z,data);}
+    bool IsUnderWater(float x, float y, float z) const { return m_info.IsUnderWater(x,y,z);}
+
+    GridMapLiquidStatus getLiquidStatus(float x, float y, float z, uint8 ReqLiquidType, GridMapLiquidData *data = 0) const
+    {
+        return m_info.getLiquidStatus(x, y, z,ReqLiquidType, data);
+    }
+
+    uint16 GetAreaFlag(float x, float y, float z, bool *isOutdoors=0) const { return m_info.GetAreaFlag(x,y,z,isOutdoors);}
+    uint8 GetTerrainType(float x, float y ) const { return m_info.GetTerrainType(x, y);}
+
+    uint32 GetAreaId(float x, float y, float z) const { return m_info.GetAreaId(x,y,z);}
+    uint32 GetZoneId(float x, float y, float z) const { return m_info.GetZoneId(x,y,z);}
+
+    void GetZoneAndAreaId(uint32& zoneid, uint32& areaid, float x, float y, float z) const
+    {
+        return m_info.GetZoneAndAreaId(zoneid, areaid, x, y, z);
+    }
+
+    bool GetAreaInfo(float x, float y, float z, uint32 &mogpflags, int32 &adtId, int32 &rootId, int32 &groupId) const
+    {
+        return m_info.GetAreaInfo(x, y, z,mogpflags, adtId, rootId, groupId);
+    }
+
+    bool IsOutdoors(float x, float y, float z) const
+    {
+        return m_info.IsOutdoors(x, y, z);
+    }
+
+    float GetHeight(float x, float y, float z, uint32 phasemask, bool pCheckVMap=true, float maxSearchDist=DEFAULT_HEIGHT_SEARCH) const;
+    bool isInLineOfSight(float x1, float y1, float z1, float x2, float y2, float z2, uint32 phasemask) const;
+
+    void Insert(const ModelInstance_Overriden& mdl) { m_dyn_tree.insert(mdl);}
+    void Remove(const ModelInstance_Overriden& mdl) { m_dyn_tree.remove(mdl);}
+    bool Contains(const ModelInstance_Overriden& mdl) const { m_dyn_tree.contains(mdl);}
+    void Balance() { m_dyn_tree.balance();}
+    void Update(uint32 diff) { m_dyn_tree.update(diff);}
+
+protected:
+    friend class Map;
+    //load/unload terrain data
+    GridMap * Load(const uint32 x, const uint32 y) { return m_info.Load(x,y);}
+    void Unload(const uint32 x, const uint32 y) { m_info.Unload(x,y);}
+
+private:
+    TerrainInfo& m_info;
+    DynamicMapTree m_dyn_tree;
+};
+
 
 //class for managing TerrainData object and all sort of geometry querying operations
 class MANGOS_DLL_DECL TerrainManager : public MaNGOS::Singleton<TerrainManager, MaNGOS::ClassLevelLockable<TerrainManager, ACE_Thread_Mutex> >

@@ -181,8 +181,10 @@ struct DynamicTreeIntersectionCallback_WithLogger
     bool didHit() const { return did_hit;}
 };
 
-bool DynamicMapTree::isInLineOfSight(const Vector3& v1, const Vector3& v2, uint32 phasemask) const
+bool DynamicMapTree::isInLineOfSight(float x1, float y1, float z1, float x2, float y2, float z2, uint32 phasemask) const
 {
+    Vector3 v1(x1,y1,z1), v2(x2,y2,z2);
+
     float maxDist = (v2 - v1).magnitude();
 
     if (!G3D::fuzzyGt(maxDist, 0) )
@@ -190,12 +192,20 @@ bool DynamicMapTree::isInLineOfSight(const Vector3& v1, const Vector3& v2, uint3
 
     Ray r(v1, (v2-v1) / maxDist);
     DynamicTreeIntersectionCallback callback(phasemask);
-    impl.intersectRay(r, callback, maxDist);
+    impl.intersectRay(r, callback, maxDist, v2);
 
     return !callback.did_hit;
 }
 
-bool DynamicMapTree::isInLineOfSight(float x1, float y1, float z1, float x2, float y2, float z2, uint32 phasemask) const
+float DynamicMapTree::getHeight(float x, float y, float z, float maxSearchDist, uint32 phasemask) const
 {
-    return isInLineOfSight(Vector3(x1,y1,z1), Vector3(x2,y2,z2), phasemask);
+    Vector3 v(x,y,z);
+    Ray r(v, Vector3(0,0,-1));
+    DynamicTreeIntersectionCallback callback(phasemask);
+    impl.intersectZAllignedRay(r, callback, maxSearchDist);
+
+    if (callback.didHit())
+        return v.z - maxSearchDist;
+    else
+        return -G3D::inf();
 }

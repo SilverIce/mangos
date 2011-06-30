@@ -198,6 +198,16 @@ public:
         if (Node * node = nodes[c.x][c.y])
             node->intersectPoint(p, intersectCallback);
     }
+
+    template<typename RayCallback>
+    void intersectZAllignedRay(const Ray& ray, RayCallback& intersectCallback, float& max_dist)
+    {
+        Cell cell = Cell::ComputeCell(ray.origin().x, ray.origin().y);
+        if (!cell.isValid())
+            return;
+        if (Node * node = nodes[cell.x][cell.y])
+            node->intersectRay(ray, intersectCallback, max_dist);
+    }
 };
 
 #undef CELL_SIZE

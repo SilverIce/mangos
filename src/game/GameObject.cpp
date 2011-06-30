@@ -78,7 +78,7 @@ void GameObject::AddToWorld()
         GetMap()->GetObjectsStore().insert<GameObject>(GetObjectGuid(), (GameObject*)this);
 
         if (m_model)
-            GetMap()->extraData->insert(*m_model);
+            GetMap()->GetTerrain()->Insert(*m_model);
     }
 
     Object::AddToWorld();
@@ -103,7 +103,7 @@ void GameObject::RemoveFromWorld()
 
         GetMap()->GetObjectsStore().erase<GameObject>(GetObjectGuid(), (GameObject*)NULL);
         if (m_model)
-            GetMap()->extraData->remove(*m_model);
+            GetMap()->GetTerrain()->Remove(*m_model);
     }
 
     Object::RemoveFromWorld();
@@ -1905,11 +1905,11 @@ void GameObject::UpdateModel()
         return;
 
     if (m_model)
-        GetMap()->extraData->remove(*m_model);
+        GetMap()->GetTerrain()->Remove(*m_model);
     delete m_model;
     m_model = ModelInstance_Overriden::construct(*this);
     if (m_model)
-        GetMap()->extraData->insert(*m_model);
+        GetMap()->GetTerrain()->Insert(*m_model);
 }
 
 void GameObject::SetObjectScale(float newScale)
