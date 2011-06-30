@@ -1,10 +1,10 @@
 #pragma once
 
-#include "G3D\Ray.h"
-#include "G3D\AABox.h"
-#include "G3D\Table.h"
-#include "G3D\BoundsTrait.h"
-#include "G3D\PositionTrait.h"
+#include <G3D/Ray.h>
+#include <G3D/AABox.h>
+#include <G3D/Table.h>
+#include <G3D/BoundsTrait.h>
+#include <G3D/PositionTrait.h>
 
 #include "Errors.h"
 
@@ -27,14 +27,13 @@ class PositionFunc = PositionTrait<T>
 class RegularGrid2D
 {
 public:
+
     enum{
         CELL_NUMBER = 64,
-        CELL_LAST = CELL_NUMBER - 1,
-        TREE_SIZE = CELL_NUMBER*CELL_NUMBER,
     };
-    #define CELL_SIZE       float(533.33333)
-    #define CELL_SIZE_INV   float(1/CELL_SIZE)
-    #define HGRID_MAP_SIZE  (CELL_SIZE * CELL_NUMBER)
+
+    #define HGRID_MAP_SIZE  (533.33333f * 64.f)     // shouldn't be changed
+    #define CELL_SIZE       float(HGRID_MAP_SIZE/(float)CELL_NUMBER)
 
     typedef G3D::Table<const T*, Node*> MemberTable;
 
@@ -85,7 +84,7 @@ public:
 
         static Cell ComputeCell(float fx, float fy)
         {
-            Cell c = {fx * CELL_SIZE_INV + (CELL_NUMBER/2), fy * CELL_SIZE_INV + (CELL_NUMBER/2)};
+            Cell c = {fx * (1.f/CELL_SIZE) + (CELL_NUMBER/2), fy * (1.f/CELL_SIZE) + (CELL_NUMBER/2)};
             return c;
         }
 
@@ -199,6 +198,7 @@ public:
             node->intersectPoint(p, intersectCallback);
     }
 
+    // Optimized verson of intersectRay function for rays with vertical directions
     template<typename RayCallback>
     void intersectZAllignedRay(const Ray& ray, RayCallback& intersectCallback, float& max_dist)
     {
@@ -212,4 +212,3 @@ public:
 
 #undef CELL_SIZE
 #undef HGRID_MAP_SIZE
-#undef CELL_SIZE
