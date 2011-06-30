@@ -1217,7 +1217,7 @@ bool Terrain::isInLineOfSight(float x1, float y1, float z1, float x2, float y2, 
         && m_dyn_tree.isInLineOfSight(x1, y1, z1, x2, y2, z2, phasemask);
 }
 
-float Terrain::GetHeight(float x, float y, float z, uint32 phasemask, bool pCheckVMap/*=true*/, float maxSearchDist/*=DEFAULT_HEIGHT_SEARCH*/) const
+float Terrain::GetHeight(uint32 phasemask, float x, float y, float z, bool pCheckVMap/*=true*/, float maxSearchDist/*=DEFAULT_HEIGHT_SEARCH*/) const
 {
     return std::max<float>(m_info.GetHeight(x,y,z,pCheckVMap,maxSearchDist), m_dyn_tree.getHeight(x, y,z,maxSearchDist, phasemask));
 }

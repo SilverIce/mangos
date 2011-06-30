@@ -185,7 +185,7 @@ DestinationHolder<TRAVELLER>::GetLocationNow(const Map * map, float &x, float &y
         else
         {
             //That part is good for mob Walking on the floor. But the floor is not always what we thought.
-            z = map->GetTerrain()->GetHeight(x,y,i_fromZ,false); // Disable cave check
+            z = map->GetTerrain()->GetHeight(PHASEMASK_NORMAL,x,y,i_fromZ,false); // Disable cave check
             const float groundDist = sqrt(distanceX*distanceX + distanceY*distanceY);
             const float zDist = fabs(i_fromZ - z) + 0.000001f;
             const float slope = groundDist / zDist;

@@ -323,7 +323,7 @@ public:
         return m_info.IsOutdoors(x, y, z);
     }
 
-    float GetHeight(float x, float y, float z, uint32 phasemask, bool pCheckVMap=true, float maxSearchDist=DEFAULT_HEIGHT_SEARCH) const;
+    float GetHeight(uint32 phasemask, float x, float y, float z, bool pCheckVMap=true, float maxSearchDist=DEFAULT_HEIGHT_SEARCH) const;
     bool isInLineOfSight(float x1, float y1, float z1, float x2, float y2, float z2, uint32 phasemask) const;
 
     void Insert(const ModelInstance_Overriden& mdl) { m_dyn_tree.insert(mdl);}
