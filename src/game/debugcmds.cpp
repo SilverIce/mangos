@@ -31,6 +31,7 @@
 #include "ObjectMgr.h"
 #include "ObjectGuid.h"
 #include "SpellMgr.h"
+#include "movement/MoveSpline.h"
 
 bool ChatHandler::HandleDebugSendSpellFailCommand(char* args)
 {
@@ -1141,5 +1142,15 @@ bool ChatHandler::HandleDebugSpellModsCommand(char* args)
     data << int32(value);
     chr->GetSession()->SendPacket(&data);
 
+    return true;
+}
+
+bool ChatHandler::HandleDebugPrintMovementStateCommand(char*)
+{
+    Unit * unit = getSelectedUnit();
+    if (!unit)
+        return false;
+    PSendSysMessage("%s\'s movement state", unit->GetName());
+    PSendSysMessage(unit->movespline->ToString().c_str());
     return true;
 }

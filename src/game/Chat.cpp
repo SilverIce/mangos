@@ -254,6 +254,7 @@ ChatCommand * ChatHandler::getCommandTable()
         { "spellcoefs",     SEC_ADMINISTRATOR,  true,  &ChatHandler::HandleDebugSpellCoefsCommand,          "", NULL },
         { "spellmods",      SEC_ADMINISTRATOR,  false, &ChatHandler::HandleDebugSpellModsCommand,           "", NULL },
         { "uws",            SEC_ADMINISTRATOR,  false, &ChatHandler::HandleDebugUpdateWorldStateCommand,    "", NULL },
+        { "movestate",      SEC_GAMEMASTER,     false, &ChatHandler::HandleDebugPrintMovementStateCommand,  "", NULL },
         { NULL,             0,                  false, NULL,                                                "", NULL }
     };
 
