@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="Windows-1252"?>
 <VisualStudioProject
 	ProjectType="Visual C++"
-	Version="9,00"
+	Version="9.00"
 	Name="g3dlite"
 	ProjectGUID="{8072769E-CF10-48BF-B9E1-12752A5DAC6E}"
 	RootNamespace="sockets"
@@ -570,66 +570,6 @@
 				>
 			</File>
 			<File
-				RelativePath="..\..\dep\src\g3dlite\Box.cpp"
-				>
-			</File>
-			<File
-				RelativePath="..\..\dep\src\g3dlite\Crypto.cpp"
-				>
-			</File>
-			<File
-				RelativePath="..\..\dep\src\g3dlite\format.cpp"
-				>
-			</File>
-			<File
-				RelativePath="..\..\dep\src\g3dlite\Matrix3.cpp"
-				>
-			</File>
-			<File
-				RelativePath="..\..\dep\src\g3dlite\Plane.cpp"
-				>
-			</File>
-			<File
-				RelativePath="..\..\dep\src\g3dlite\System.cpp"
-				>
-			</File>
-			<File
-				RelativePath="..\..\dep\src\g3dlite\Triangle.cpp"
-				>
-			</File>
-			<File
-				RelativePath="..\..\dep\src\g3dlite\Vector3.cpp"
-				>
-			</File>
-			<File
-				RelativePath="..\..\dep\src\g3dlite\Vector4.cpp"
-				>
-			</File>
-			<File
-				RelativePath="..\..\dep\src\g3dlite\debugAssert.cpp"
-				>
-			</File>
-			<File
-				RelativePath="..\..\dep\src\g3dlite\fileutils.cpp"
-				>
-			</File>
-			<File
-				RelativePath="..\..\dep\src\g3dlite\g3dmath.cpp"
-				>
-			</File>
-			<File
-				RelativePath="..\..\dep\src\g3dlite\g3dfnmatch.cpp"
-				>
-			</File>
-			<File
-				RelativePath="..\..\dep\src\g3dlite\prompt.cpp"
-				>
-			</File>
-			<File
-				RelativePath="..\..\dep\src\g3dlite\stringutils.cpp"
-				>
-			</File>
-			<File
 				RelativePath="..\..\dep\src\g3dlite\Any.cpp"
 				>
 			</File>
@@ -646,6 +586,10 @@
 				>
 			</File>
 			<File
+				RelativePath="..\..\dep\src\g3dlite\Box.cpp"
+				>
+			</File>
+			<File
 				RelativePath="..\..\dep\src\g3dlite\Capsule.cpp"
 				>
 			</File>
@@ -658,7 +602,35 @@
 				>
 			</File>
 			<File
+				RelativePath="..\..\dep\src\g3dlite\Crypto.cpp"
+				>
+			</File>
+			<File
 				RelativePath="..\..\dep\src\g3dlite\Cylinder.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\dep\src\g3dlite\debugAssert.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\dep\src\g3dlite\fileutils.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\dep\src\g3dlite\format.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\dep\src\g3dlite\g3dfnmatch.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\dep\src\g3dlite\g3dmath.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\dep\src\g3dlite\GThread.cpp"
 				>
 			</File>
 			<File
@@ -674,11 +646,31 @@
 				>
 			</File>
 			<File
+				RelativePath="..\..\dep\src\g3dlite\Matrix3.cpp"
+				>
+			</File>
+			<File
 				RelativePath="..\..\dep\src\g3dlite\Matrix4.cpp"
 				>
 			</File>
 			<File
 				RelativePath="..\..\dep\src\g3dlite\MemoryManager.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\dep\src\g3dlite\NetAddress.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\dep\src\g3dlite\NetworkDevice.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\dep\src\g3dlite\Plane.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\dep\src\g3dlite\prompt.cpp"
 				>
 			</File>
 			<File
@@ -706,6 +698,14 @@
 				>
 			</File>
 			<File
+				RelativePath="..\..\dep\src\g3dlite\stringutils.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\dep\src\g3dlite\System.cpp"
+				>
+			</File>
+			<File
 				RelativePath="..\..\dep\src\g3dlite\TextInput.cpp"
 				>
 			</File>
@@ -714,11 +714,23 @@
 				>
 			</File>
 			<File
+				RelativePath="..\..\dep\src\g3dlite\Triangle.cpp"
+				>
+			</File>
+			<File
 				RelativePath="..\..\dep\src\g3dlite\UprightFrame.cpp"
 				>
 			</File>
 			<File
 				RelativePath="..\..\dep\src\g3dlite\Vector2.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\dep\src\g3dlite\Vector3.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\dep\src\g3dlite\Vector4.cpp"
 				>
 			</File>
 		</Filter>

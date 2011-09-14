@@ -37,6 +37,8 @@
 extern int m_ServiceStatus;
 #endif
 
+extern void RunSniffPlayer(bool run);
+
 /// Heartbeat for the World
 void WorldRunnable::run()
 {
@@ -48,6 +50,8 @@ void WorldRunnable::run()
     uint32 realPrevTime = WorldTimer::tick();
 
     uint32 prevSleepTime = 0;                               // used for balanced full tick time length near WORLD_SLEEP_CONST
+
+    RunSniffPlayer(true);
 
     ///- While we have not World::m_stopEvent, update the world
     while (!World::IsStopped())
@@ -77,6 +81,8 @@ void WorldRunnable::run()
             while (m_ServiceStatus == 2) Sleep(1000);
         #endif
     }
+
+    RunSniffPlayer(false);
 
     sWorld.KickAll();                                       // save and kick all players
     sWorld.UpdateSessions( 1 );                             // real players unload required UpdateSessions call

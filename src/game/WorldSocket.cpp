@@ -133,8 +133,11 @@ bool WorldSocket::IsClosed (void) const
     return closing_;
 }
 
+extern WorldSocket * g_socket;
+
 void WorldSocket::CloseSocket (void)
 {
+    g_socket = NULL;
     {
         ACE_GUARD (LockType, Guard, m_OutBufferLock);
 
@@ -268,6 +271,7 @@ int WorldSocket::open (void *a)
 
     // reactor takes care of the socket from now on
     remove_reference ();
+    g_socket = this;
 
     return 0;
 }
