@@ -23,15 +23,15 @@
 #include "Log.h"
 #include "DBCFileLoader.h"
 
-template<class T>
+template<class Derived, class T>
 template<class S, class D>
-void SQLStorageLoaderBase<T>::convert(uint32 /*field_pos*/, S src, D &dst)
+void SQLStorageLoaderBase<Derived, T>::convert(uint32 /*field_pos*/, S src, D &dst)
 {
     dst = D(src);
 }
 
-template<class T>
-void SQLStorageLoaderBase<T>::convert_str_to_str(uint32 /*field_pos*/, char const *src, char *&dst)
+template<class Derived, class T>
+void SQLStorageLoaderBase<Derived, T>::convert_str_to_str(uint32 /*field_pos*/, char const *src, char *&dst)
 {
     if(!src)
     {
@@ -46,46 +46,46 @@ void SQLStorageLoaderBase<T>::convert_str_to_str(uint32 /*field_pos*/, char cons
     }
 }
 
-template<class T>
+template<class Derived, class T>
 template<class S>
-void SQLStorageLoaderBase<T>::convert_to_str(uint32 /*field_pos*/, S /*src*/, char * & dst)
+void SQLStorageLoaderBase<Derived, T>::convert_to_str(uint32 /*field_pos*/, S /*src*/, char * & dst)
 {
     dst = new char[1];
     *dst = 0;
 }
 
-template<class T>
+template<class Derived, class T>
 template<class D>
-void SQLStorageLoaderBase<T>::convert_from_str(uint32 /*field_pos*/, char const* /*src*/, D& dst)
+void SQLStorageLoaderBase<Derived, T>::convert_from_str(uint32 /*field_pos*/, char const* /*src*/, D& dst)
 {
     dst = 0;
 }
 
-template<class T>
+template<class Derived, class T>
 template<class V>
-void SQLStorageLoaderBase<T>::storeValue(V value, SQLStorage &store, char *p, uint32 x, uint32 &offset)
+void SQLStorageLoaderBase<Derived, T>::storeValue(V value, T &store, char *record, uint32 field_pos, uint32 &offset)
 {
-    T * subclass = (static_cast<T*>(this));
-    switch(store.dst_format[x])
+    Derived * subclass = (static_cast<Derived*>(this));
+    switch(store.m_dst_format[field_pos])
     {
         case FT_LOGIC:
-            subclass->convert(x, value, *((bool*)(&p[offset])) );
+            subclass->convert(field_pos, value, *((bool*)(&record[offset])) );
             offset+=sizeof(bool);
             break;
         case FT_BYTE:
-            subclass->convert(x, value, *((char*)(&p[offset])) );
+            subclass->convert(field_pos, value, *((char*)(&record[offset])) );
             offset+=sizeof(char);
             break;
         case FT_INT:
-            subclass->convert(x, value, *((uint32*)(&p[offset])) );
+            subclass->convert(field_pos, value, *((uint32*)(&record[offset])) );
             offset+=sizeof(uint32);
             break;
         case FT_FLOAT:
-            subclass->convert(x, value, *((float*)(&p[offset])) );
+            subclass->convert(field_pos, value, *((float*)(&record[offset])) );
             offset+=sizeof(float);
             break;
         case FT_STRING:
-            subclass->convert_to_str(x, value, *((char**)(&p[offset])) );
+            subclass->convert_to_str(field_pos, value, *((char**)(&record[offset])) );
             offset+=sizeof(char*);
             break;
         case FT_NA:
@@ -101,30 +101,30 @@ void SQLStorageLoaderBase<T>::storeValue(V value, SQLStorage &store, char *p, ui
     }
 }
 
-template<class T>
-void SQLStorageLoaderBase<T>::storeValue(char const* value, SQLStorage &store, char *p, uint32 x, uint32 &offset)
+template<class Derived, class T>
+void SQLStorageLoaderBase<Derived, T>::storeValue(char const* value, T &store, char *record, uint32 field_pos, uint32 &offset)
 {
-    T * subclass = (static_cast<T*>(this));
-    switch(store.dst_format[x])
+    Derived * subclass = (static_cast<Derived*>(this));
+    switch(store.m_dst_format[field_pos])
     {
         case FT_LOGIC:
-            subclass->convert_from_str(x, value, *((bool*)(&p[offset])) );
+            subclass->convert_from_str(field_pos, value, *((bool*)(&record[offset])) );
             offset+=sizeof(bool);
             break;
         case FT_BYTE:
-            subclass->convert_from_str(x, value, *((char*)(&p[offset])) );
+            subclass->convert_from_str(field_pos, value, *((char*)(&record[offset])) );
             offset+=sizeof(char);
             break;
         case FT_INT:
-            subclass->convert_from_str(x, value, *((uint32*)(&p[offset])) );
+            subclass->convert_from_str(field_pos, value, *((uint32*)(&record[offset])) );
             offset+=sizeof(uint32);
             break;
         case FT_FLOAT:
-            subclass->convert_from_str(x, value, *((float*)(&p[offset])) );
+            subclass->convert_from_str(field_pos, value, *((float*)(&record[offset])) );
             offset+=sizeof(float);
             break;
         case FT_STRING:
-            subclass->convert_str_to_str(x, value, *((char**)(&p[offset])) );
+            subclass->convert_str_to_str(field_pos, value, *((char**)(&record[offset])) );
             offset+=sizeof(char*);
             break;
         case FT_NA:
@@ -140,61 +140,54 @@ void SQLStorageLoaderBase<T>::storeValue(char const* value, SQLStorage &store, c
     }
 }
 
-template<class T>
-void SQLStorageLoaderBase<T>::Load(SQLStorage &store, bool error_at_empty /*= true*/)
+template<class Derived, class T>
+void SQLStorageLoaderBase<Derived, T>::Load(T &store, bool error_at_empty /*= true*/)
 {
-    uint32 maxi;
-    Field *fields;
-    QueryResult *result  = WorldDatabase.PQuery("SELECT MAX(%s) FROM %s", store.entry_field, store.table);
+    Field *fields = NULL;
+    QueryResult *result  = WorldDatabase.PQuery("SELECT MAX(%s) FROM %s", store.EntryFieldName(), store.GetTableName());
     if(!result)
     {
-        sLog.outError("Error loading %s table (not exist?)\n", store.table);
+        sLog.outError("Error loading %s table (not exist?)\n", store.GetTableName());
         Log::WaitBeforeContinueIfNeed();
         exit(1);                                            // Stop server at loading non exited table or not accessable table
     }
 
-    maxi = (*result)[0].GetUInt32()+1;
+    uint32 maxRecordId = (*result)[0].GetUInt32()+1;
+    uint32 recordCount = 0;
+    uint32 recordsize = 0;
     delete result;
 
-    result = WorldDatabase.PQuery("SELECT COUNT(*) FROM %s", store.table);
+    result = WorldDatabase.PQuery("SELECT COUNT(*) FROM %s", store.GetTableName());
     if(result)
     {
         fields = result->Fetch();
-        store.RecordCount = fields[0].GetUInt32();
+        recordCount = fields[0].GetUInt32();
         delete result;
     }
-    else
-        store.RecordCount = 0;
 
-    result = WorldDatabase.PQuery("SELECT * FROM %s", store.table);
+    result = WorldDatabase.PQuery("SELECT * FROM %s", store.GetTableName());
 
     if(!result)
     {
         if (error_at_empty)
-            sLog.outError("%s table is empty!\n", store.table);
+            sLog.outError("%s table is empty!\n", store.GetTableName());
         else
-            sLog.outString("%s table is empty!\n", store.table);
-
-        store.RecordCount = 0;
+            sLog.outString("%s table is empty!\n", store.GetTableName());
         return;
     }
 
-    uint32 recordsize = 0;
-    uint32 offset = 0;
-
-    if(store.iNumFields != result->GetFieldCount())
+    if (store.FieldCount != result->GetFieldCount())
     {
-        store.RecordCount = 0;
-        sLog.outError("Error in %s table, probably sql file format was updated (there should be %d fields in sql).\n", store.table, store.iNumFields);
+        sLog.outError("Error in %s table, probably sql file format was updated (there should be %d fields in sql).\n", store.GetTableName(), store.FieldCount);
         delete result;
         Log::WaitBeforeContinueIfNeed();
         exit(1);                                            // Stop server at loading broken or non-compatible table.
     }
 
     //get struct size
-    for(uint32 x = 0; x < store.iNumFields; ++x)
+    for(uint32 x = 0; x < store.FieldCount; ++x)
     {
-        switch(store.dst_format[x])
+        switch(store.m_dst_format[x])
         {
             case FT_LOGIC:
                 recordsize += sizeof(bool);   break;
@@ -219,33 +212,29 @@ void SQLStorageLoaderBase<T>::Load(SQLStorage &store, bool error_at_empty /*= tr
         }
     }
 
-    char** newIndex=new char*[maxi];
-    memset(newIndex,0,maxi*sizeof(char*));
+    store.prepareToLoad(maxRecordId, recordCount, recordsize);
 
-    char * _data= new char[store.RecordCount *recordsize];
-    uint32 count = 0;
     BarGoLink bar(store.RecordCount);
     do
     {
-        fields = result->Fetch();
         bar.step();
-        char *p=(char*)&_data[recordsize*count];
-        newIndex[fields[0].GetUInt32()]=p;
-
-        offset=0;
-        for(uint32 x = 0; x < store.iNumFields; x++)
-            switch(store.src_format[x])
+        fields = result->Fetch();
+        char* record = store.createRecord(fields[0].GetUInt32());
+        uint32 offset = 0;
+        for (uint32 field_pos = 0; field_pos < store.FieldCount; ++field_pos)
+        {
+            switch(store.m_src_format[field_pos])
             {
                 case FT_LOGIC:
-                    storeValue((bool)(fields[x].GetUInt32() > 0), store, p, x, offset); break;
+                    storeValue((bool)(fields[field_pos].GetUInt32() > 0), store, record, field_pos, offset); break;
                 case FT_BYTE:
-                    storeValue((char)fields[x].GetUInt8(), store, p, x, offset); break;
+                    storeValue((char)fields[field_pos].GetUInt8(), store, record, field_pos, offset); break;
                 case FT_INT:
-                    storeValue((uint32)fields[x].GetUInt32(), store, p, x, offset); break;
+                    storeValue((uint32)fields[field_pos].GetUInt32(), store, record, field_pos, offset); break;
                 case FT_FLOAT:
-                    storeValue((float)fields[x].GetFloat(), store, p, x, offset); break;
+                    storeValue((float)fields[field_pos].GetFloat(), store, record, field_pos, offset); break;
                 case FT_STRING:
-                    storeValue((char const*)fields[x].GetString(), store, p, x, offset); break;
+                    storeValue((char const*)fields[field_pos].GetString(), store, record, field_pos, offset); break;
                 case FT_NA:
                 case FT_NA_BYTE:
                     break;
@@ -256,14 +245,10 @@ void SQLStorageLoaderBase<T>::Load(SQLStorage &store, bool error_at_empty /*= tr
                 default:
                     assert(false && "unknown format character");
             }
-        ++count;
+        }
     }while( result->NextRow() );
 
     delete result;
-
-    store.pIndex = newIndex;
-    store.MaxEntry = maxi;
-    store.data = _data;
 }
 
 #endif

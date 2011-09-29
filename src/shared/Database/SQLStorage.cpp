@@ -19,88 +19,98 @@
 #include "SQLStorage.h"
 #include "SQLStorageImpl.h"
 
-void SQLStorage::EraseEntry(uint32 id)
+void deallocateRecords(char *& records, const char * format, uint32 iNumFields, uint32 recordCount, uint32 recordSize)
 {
+    if (!records)
+        return;
+
     uint32 offset = 0;
     for(uint32 x = 0; x < iNumFields; ++x)
     {
-        switch(dst_format[x])
+        switch(format[x])
         {
-            case FT_LOGIC:
-                offset += sizeof(bool);   break;
-            case FT_BYTE:
-                offset += sizeof(char);   break;
-            case FT_INT:
-                offset += sizeof(uint32); break;
-            case FT_FLOAT:
-                offset += sizeof(float);  break;
-            case FT_STRING:
+        case FT_LOGIC:
+            offset += sizeof(bool);   break;
+        case FT_BYTE:
+            offset += sizeof(char);   break;
+        case FT_INT:
+            offset += sizeof(uint32); break;
+        case FT_FLOAT:
+            offset += sizeof(float);  break;
+        case FT_STRING:
             {
-                if(pIndex[id])
-                    delete [] *(char**)((char*)(pIndex[id])+offset);
+                for (uint32 recordItr = 0; recordItr < recordCount; ++recordItr)
+                    delete [] (records + recordItr*recordSize + offset);
 
                 offset += sizeof(char*);
                 break;
             }
-            case FT_NA:
-            case FT_NA_BYTE:
-                break;
-            case FT_IND:
-            case FT_SORT:
-                assert(false && "SQL storage not have sort field types");
-                break;
-            default:
-                assert(false && "unknown format character");
-                break;
+        case FT_NA:
+        case FT_NA_BYTE:
+            break;
+        case FT_IND:
+        case FT_SORT:
+            assert(false && "SQL storage not have sort field types");
+            break;
+        default:
+            assert(false && "unknown format character");
+            break;
         }
     }
+    delete [] records;
+    records = NULL;
+}
 
-    pIndex[id] = NULL;
+void SQLStorage::EraseEntry(uint32 id)
+{
+    m_Index[id] = NULL;
 }
 
 void SQLStorage::Free ()
 {
-    uint32 offset = 0;
-    for(uint32 x = 0; x < iNumFields; ++x)
-    {
-        switch(dst_format[x])
-        {
-            case FT_LOGIC:
-                offset += sizeof(bool);   break;
-            case FT_BYTE:
-                offset += sizeof(char);   break;
-            case FT_INT:
-                offset += sizeof(uint32); break;
-            case FT_FLOAT:
-                offset += sizeof(float);  break;
-            case FT_STRING:
-            {
-                for(uint32 y = 0; y < MaxEntry; ++y)
-                    if(pIndex[y])
-                        delete [] *(char**)((char*)(pIndex[y])+offset);
-
-                offset += sizeof(char*);
-                break;
-            }
-            case FT_NA:
-            case FT_NA_BYTE:
-                break;
-            case FT_IND:
-            case FT_SORT:
-                assert(false && "SQL storage not have sort field types");
-                break;
-            default:
-                assert(false && "unknown format character");
-                break;
-        }
-    }
-
-    delete [] pIndex;
-    delete [] data;
+    deallocateRecords(m_data,m_dst_format,FieldCount,RecordCount,m_recordSize);
+    delete [] m_Index;
+    m_Index = NULL;
 }
 
 void SQLStorage::Load()
 {
+    Free();
     SQLStorageLoader loader;
     loader.Load(*this);
 }
+
+void SQLStorage::prepareToLoad(uint32 maxEntry, uint32 recordCount, uint32 recordSize)
+{
+    MaxEntry = maxEntry;
+    delete[] m_Index;
+    m_Index = new char*[maxEntry];
+    memset(m_Index, 0, maxEntry * sizeof(char*));
+
+    delete[] m_data;
+    m_data = new char[recordCount*recordSize];
+    memset(m_data, 0, recordCount*recordSize);
+    m_recordSize = recordSize;
+    RecordCount = 0;
+}
+
+char* SQLStorage::createRecord(uint32 recordId)
+{
+    m_Index[recordId] = &m_data[RecordCount * m_recordSize];
+    ++RecordCount;
+    return m_Index[recordId];
+}
+
+void SQLStorage::init(const char * _entry_field, const char * sqlname)
+{
+    m_entry_field = _entry_field;
+    m_tableName = sqlname;
+    m_data = NULL;
+    m_Index = NULL;
+    FieldCount = strlen(m_src_format);
+
+    MaxEntry = 0;
+    RecordCount = 0;
+    m_recordSize = 0;
+}
+

@@ -444,7 +444,7 @@ void ObjectMgr::LoadPointOfInterestLocales()
     sLog.outString( ">> Loaded %lu points_of_interest locale strings", (unsigned long)mPointOfInterestLocaleMap.size() );
 }
 
-struct SQLCreatureLoader : public SQLStorageLoaderBase<SQLCreatureLoader>
+struct SQLCreatureLoader : public SQLStorageLoaderBase<SQLCreatureLoader,SQLStorage>
 {
     template<class D>
     void convert_from_str(uint32 /*field_pos*/, char const *src, D &dst)
@@ -1760,7 +1760,7 @@ void ObjectMgr::LoadItemLocales()
     sLog.outString( ">> Loaded %lu Item locale strings", (unsigned long)mItemLocaleMap.size() );
 }
 
-struct SQLItemLoader : public SQLStorageLoaderBase<SQLItemLoader>
+struct SQLItemLoader : public SQLStorageLoaderBase<SQLItemLoader,SQLStorage>
 {
     template<class D>
     void convert_from_str(uint32 /*field_pos*/, char const *src, D &dst)
@@ -4446,8 +4446,6 @@ void ObjectMgr::LoadQuestLocales()
 
 void ObjectMgr::LoadPageTexts()
 {
-    sPageTextStore.Free();                                  // for reload case
-
     sPageTextStore.Load();
     sLog.outString( ">> Loaded %u page texts", sPageTextStore.RecordCount );
     sLog.outString();
@@ -4619,7 +4617,7 @@ void ObjectMgr::LoadInstanceEncounters()
     sLog.outString( ">> Loaded %lu Instance Encounters", (unsigned long)m_DungeonEncounters.size() );
 }
 
-struct SQLInstanceLoader : public SQLStorageLoaderBase<SQLInstanceLoader>
+struct SQLInstanceLoader : public SQLStorageLoaderBase<SQLInstanceLoader,SQLStorage>
 {
     template<class D>
     void convert_from_str(uint32 /*field_pos*/, char const *src, D &dst)
@@ -4680,7 +4678,7 @@ void ObjectMgr::LoadInstanceTemplate()
     sLog.outString();
 }
 
-struct SQLWorldLoader : public SQLStorageLoaderBase<SQLWorldLoader>
+struct SQLWorldLoader : public SQLStorageLoaderBase<SQLWorldLoader,SQLStorage>
 {
     template<class D>
     void convert_from_str(uint32 /*field_pos*/, char const *src, D &dst)
@@ -5813,7 +5811,7 @@ void ObjectMgr::LoadGameObjectLocales()
     sLog.outString( ">> Loaded %lu gameobject locale strings", (unsigned long)mGameObjectLocaleMap.size() );
 }
 
-struct SQLGameObjectLoader : public SQLStorageLoaderBase<SQLGameObjectLoader>
+struct SQLGameObjectLoader : public SQLStorageLoaderBase<SQLGameObjectLoader,SQLStorage>
 {
     template<class D>
     void convert_from_str(uint32 /*field_pos*/, char const *src, D &dst)
