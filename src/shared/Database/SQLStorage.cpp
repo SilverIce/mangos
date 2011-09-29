@@ -114,3 +114,55 @@ void SQLStorage::init(const char * _entry_field, const char * sqlname)
     m_recordSize = 0;
 }
 
+//////////////////////////////////////////////////////////////////////////
+
+void SQLHashStorage::Load()
+{
+    Free();
+    SQLHashStorageLoader loader;
+    loader.Load(*this);
+}
+
+void SQLHashStorage::Free()
+{
+    m_records.clear();
+    deallocateRecords(m_data,m_dst_format,FieldCount,RecordCount,m_recordSize);
+}
+
+void SQLHashStorage::prepareToLoad(uint32 maxRecordId, uint32 recordCount, uint32 recordSize)
+{
+    MaxEntry = maxRecordId;
+    delete[] m_data;
+    m_data = new char[recordCount*recordSize];
+    memset(m_data, 0, recordCount*recordSize);
+    m_recordSize = recordSize;
+    RecordCount = 0;
+}
+
+char* SQLHashStorage::createRecord(uint32 recordId)
+{
+    char * record = &m_data[RecordCount * m_recordSize];
+    ++RecordCount;
+    m_records.insert(RecordMap::value_type(recordId,record));
+    return record;
+}
+
+void SQLHashStorage::init(const char * _entry_field, const char * sqlname)
+{
+    m_entry_field = _entry_field;
+    m_tableName = sqlname;
+    m_data = NULL;
+    FieldCount = strlen(m_src_format);
+
+    MaxEntry = 0;
+    RecordCount = 0;
+    m_recordSize = 0;
+}
+
+void SQLHashStorage::EraseEntry(uint32 id)
+{
+    // do not erase from m_records
+    RecordMap::iterator it = m_records.find(id);
+    if (it != m_records.end())
+        it->second = NULL;
+}

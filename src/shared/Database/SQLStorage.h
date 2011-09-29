@@ -88,14 +88,68 @@ class SQLStorage : public SQLStorageBase
         const char *m_src_format;
         const char *m_dst_format;
         uint32 m_recordSize;
+        uint32 m_recordItr;
 };
 
-template <class DerivedLoader, class T>
-class SQLStorageLoaderBase
+class SQLHashStorage : public SQLStorageBase
+{
+    friend class SQLStorageLoader<SQLHashStorage>;
+    public:
+
+        SQLHashStorage(const char* fmt, const char * _entry_field, const char * sqlname)
+        {
+            m_src_format = fmt;
+            m_dst_format = fmt;
+            init(_entry_field, sqlname);
+        }
+
+        SQLHashStorage(const char* src_fmt, const char* dst_fmt, const char * _entry_field, const char * sqlname)
+        {
+            m_src_format = src_fmt;
+            m_dst_format = dst_fmt;
+            init(_entry_field, sqlname);
+        }
+
+        ~SQLHashStorage()
+        {
+            Free();
+        }
+
+        template<class T>
+            T const* LookupEntry(uint32 id) const
+        {
+            if( id == 0 )
+                return NULL;
+            RecordMap::const_iterator it = m_records.find(id);
+            if (it != m_records.end())
+                return reinterpret_cast<T const*>(it->second);
+            return NULL;
+        }
+
+        void Load();
+        void Free();
+
+        void EraseEntry(uint32 id);
+    private:
+        void init(const char * _entry_field, const char * sqlname);
+        void prepareToLoad(uint32 maxRecordId, uint32 recordCount, uint32 recordSize);
+        char* createRecord(uint32 recordId);
+    private:
+        typedef UNORDERED_MAP<uint32/*recordId*/, char* /*record*/> RecordMap;
+        RecordMap m_records;
+        char * m_data;
+        const char *m_src_format;
+        const char *m_dst_format;
+        uint32 m_recordSize;
+};
+
+template <class T>
+class SQLStorageLoader
 {
     public:
         void Load(T &storage, bool error_at_empty = true);
 
+    private:
         template<class S, class D>
             void convert(uint32 field_pos, S src, D &dst);
         template<class S>
@@ -118,6 +172,10 @@ class SQLStorageLoaderBase
 };
 
 class SQLStorageLoader : public SQLStorageLoaderBase<SQLStorageLoader,SQLStorage>
+{
+};
+
+class SQLHashStorageLoader : public SQLStorageLoaderBase<SQLHashStorageLoader,SQLHashStorage>
 {
 };
 
