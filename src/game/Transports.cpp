@@ -29,139 +29,47 @@
 #include "ProgressBar.h"
 #include "ScriptMgr.h"
 
-void MapManager::LoadTransports()
-{
-    QueryResult *result = WorldDatabase.Query("SELECT entry, name, period FROM transports");
-
-    uint32 count = 0;
-
-    if( !result )
-    {
-        BarGoLink bar(1);
-        bar.step();
-
-        sLog.outString();
-        sLog.outString( ">> Loaded %u transports", count );
-        return;
-    }
-
-    BarGoLink bar(result->GetRowCount());
-
-    do
-    {
-        bar.step();
-
-        Transport *t = new Transport;
-
-        Field *fields = result->Fetch();
-
-        uint32 entry = fields[0].GetUInt32();
-        std::string name = fields[1].GetCppString();
-        t->m_period = fields[2].GetUInt32();
-
-        const GameObjectInfo *goinfo = ObjectMgr::GetGameObjectInfo(entry);
-
-        if(!goinfo)
-        {
-            sLog.outErrorDb("Transport ID:%u, Name: %s, will not be loaded, gameobject_template missing", entry, name.c_str());
-            delete t;
-            continue;
-        }
-
-        if(goinfo->type != GAMEOBJECT_TYPE_MO_TRANSPORT)
-        {
-            sLog.outErrorDb("Transport ID:%u, Name: %s, will not be loaded, gameobject_template type wrong", entry, name.c_str());
-            delete t;
-            continue;
-        }
-
-        // sLog.outString("Loading transport %d between %s, %s", entry, name.c_str(), goinfo->name);
-
-        std::set<uint32> mapsUsed;
-
-        if(!t->GenerateWaypoints(goinfo->moTransport.taxiPathId, mapsUsed))
-            // skip transports with empty waypoints list
-        {
-            sLog.outErrorDb("Transport (path id %u) path size = 0. Transport ignored, check DBC files or transport GO data0 field.",goinfo->moTransport.taxiPathId);
-            delete t;
-            continue;
-        }
-
-        float x, y, z, o;
-        uint32 mapid;
-        x = t->m_WayPoints[0].x; y = t->m_WayPoints[0].y; z = t->m_WayPoints[0].z; mapid = t->m_WayPoints[0].mapid; o = 1;
-
-        //current code does not support transports in dungeon!
-        const MapEntry* pMapInfo = sMapStore.LookupEntry(mapid);
-        if(!pMapInfo || pMapInfo->Instanceable())
-        {
-            delete t;
-            continue;
-        }
-
-        // creates the Gameobject
-        if (!t->Create(entry, mapid, x, y, z, o, GO_ANIMPROGRESS_DEFAULT, 0))
-        {
-            delete t;
-            continue;
-        }
-
-        m_Transports.insert(t);
-
-        //If we someday decide to use the grid to track transports, here:
-        t->SetMap(sMapMgr.CreateMap(mapid, t));
-
-        //t->GetMap()->Add<GameObject>((GameObject *)t);
-        ++count;
-    } while(result->NextRow());
-    delete result;
-
-    sLog.outString();
-    sLog.outString( ">> Loaded %u transports", count );
-
-    // check transport data DB integrity
-    result = WorldDatabase.Query("SELECT gameobject.guid,gameobject.id,transports.name FROM gameobject,transports WHERE gameobject.id = transports.entry");
-    if(result)                                              // wrong data found
-    {
-        do
-        {
-            Field *fields = result->Fetch();
-
-            uint32 guid  = fields[0].GetUInt32();
-            uint32 entry = fields[1].GetUInt32();
-            std::string name = fields[2].GetCppString();
-            sLog.outErrorDb("Transport %u '%s' have record (GUID: %u) in `gameobject`. Transports DON'T must have any records in `gameobject` or its behavior will be unpredictable/bugged.",entry,name.c_str(),guid);
-        }
-        while(result->NextRow());
-
-        delete result;
-    }
-}
-
 Transport::Transport() : GameObject()
 {
     m_updateFlag = (UPDATEFLAG_TRANSPORT | UPDATEFLAG_HIGHGUID | UPDATEFLAG_HAS_POSITION | UPDATEFLAG_ROTATION);
 }
 
-bool Transport::Create(uint32 guidlow, uint32 mapid, float x, float y, float z, float ang, uint8 animprogress, uint16 dynamicHighValue)
+bool Transport::Create(uint32 entry)
 {
-    Relocate(x,y,z,ang);
-    // instance id and phaseMask isn't set to values different from std.
-
-    if(!IsPositionValid())
+    GameObjectInfo const* goinfo = ObjectMgr::GetGameObjectInfo(entry);
+    if (!goinfo)
     {
-        sLog.outError("Transport (GUID: %u) not created. Suggested coordinates isn't valid (X: %f Y: %f)",
-            guidlow,x,y);
+        sLog.outErrorDb("Transport not created: entry in `gameobject_template` not found, entry: %u map: %u  (X: %f Y: %f Z: %f) ang: %f", entry, mapid, x, y, z, ang);
         return false;
     }
 
-    Object::_Create(guidlow, 0, HIGHGUID_MO_TRANSPORT);
-
-    GameObjectInfo const* goinfo = ObjectMgr::GetGameObjectInfo(guidlow);
-
-    if (!goinfo)
+    if (goinfo->type != GAMEOBJECT_TYPE_MO_TRANSPORT)
     {
-        sLog.outErrorDb("Transport not created: entry in `gameobject_template` not found, guidlow: %u map: %u  (X: %f Y: %f Z: %f) ang: %f",guidlow, mapid, x, y, z, ang);
+        sLog.outErrorDb("Transport ID:%u, Name: %s, will not be loaded, gameobject_template type wrong", entry, name.c_str());
+        return false;
+    }
+
+    Object::_Create(entry, 0, HIGHGUID_MO_TRANSPORT);
+
+    std::set<uint32> mapsUsed;
+    if(!t->GenerateWaypoints(goinfo->moTransport.taxiPathId, mapsUsed))// skip transports with empty waypoints list
+    {
+        sLog.outErrorDb("Transport (path id %u) path size = 0. Transport ignored, check DBC files or transport GO data0 field.",goinfo->moTransport.taxiPathId);
+        return false;
+    }
+
+    float x, y, z, o;
+    uint32 mapid;
+    mapid = m_WayPoints[0].mapid;
+    x = m_WayPoints[0].x;
+    y = m_WayPoints[0].y;
+    z = m_WayPoints[0].z;
+
+    Relocate(x,y,z);
+
+    if (!IsPositionValid())
+    {
+        sLog.outError("Transport (GUID: %u) not created. Suggested coordinates isn't valid (X: %f Y: %f)", guidlow,x,y);
         return false;
     }
 
@@ -172,22 +80,16 @@ bool Transport::Create(uint32 guidlow, uint32 mapid, float x, float y, float z, 
     SetUInt32Value(GAMEOBJECT_FACTION, goinfo->faction);
     //SetUInt32Value(GAMEOBJECT_FLAGS, goinfo->flags);
     SetUInt32Value(GAMEOBJECT_FLAGS, (GO_FLAG_TRANSPORT | GO_FLAG_NODESPAWN));
-    SetUInt32Value(GAMEOBJECT_LEVEL, m_period);
     SetEntry(goinfo->id);
-
     SetDisplayId(goinfo->displayId);
-
     SetGoState(GO_STATE_READY);
     SetGoType(GameobjectTypes(goinfo->type));
     SetGoArtKit(0);
-    SetGoAnimProgress(animprogress);
+    SetGoAnimProgress(GO_ANIMPROGRESS_DEFAULT);
 
     // low part always 0, dynamicHighValue is some kind of progression (not implemented)
     SetUInt16Value(GAMEOBJECT_DYNAMIC, 0, 0);
-    SetUInt16Value(GAMEOBJECT_DYNAMIC, 1, dynamicHighValue);
-
-    SetName(goinfo->name);
-
+    SetUInt16Value(GAMEOBJECT_DYNAMIC, 1, 0);
     return true;
 }
 
@@ -498,7 +400,7 @@ void Transport::Update( uint32 update_diff, uint32 /*p_time*/)
     if (m_WayPoints.size() <= 1)
         return;
 
-    m_timer = WorldTimer::getMSTime() % m_period;
+    m_timer = WorldTimer::getMSTime() % GetPeriod();
     while (((m_timer - m_curr->first) % m_pathTime) > ((m_next->first - m_curr->first) % m_pathTime))
     {
 
@@ -578,4 +480,21 @@ void Transport::DoEventIfAny(WayPointMap::value_type const& node, bool departure
         if (!sScriptMgr.OnProcessEvent(eventid, this, this, departure))
             GetMap()->ScriptsStart(sEventScripts, eventid, this, this);
     }
+}
+
+Transport* Transport::Load(Map * map, uint32 entry, const std::string& name, uint32 period)
+{
+    MANGOS_ASSERT(map);
+    Transport* transport = new Transport();
+    if (!transport->Create(entry))
+    {
+        delete transport;
+        return NULL;
+    }
+
+    transport->SetPhaseMask(PHASEMASK_ANYWHERE,false);
+    transport->SetMap(this);
+    transport->SetPeriod(period);
+    transport->SetName(name);
+    return transport;
 }

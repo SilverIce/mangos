@@ -3246,5 +3246,42 @@ void Map::PlayDirectSoundToMap(uint32 soundId, uint32 zoneId /*=0*/)
 
 void Map::LoadTransports()
 {
-    throw std::exception("The method or operation is not implemented.");
+    QueryResult *result = WorldDatabase.PQuery("SELECT entry, name, mapId period FROM transports WHERE mapId = %u", GetId());
+    uint32 count = 0;
+
+    do
+    {
+        Field *fields = result->Fetch();
+        uint32 entry        = fields[0].GetUInt32();
+        std::string name    = fields[1].GetCppString();
+        uint32 period       = fields[2].GetUInt32();
+        uint32 mapId        = fields[3].GetUInt32();
+
+        if (mapId != GetId())
+            continue;
+
+        if (Transport *tansport = Transport::Load(this, entry, name, period))
+        {
+            Add<GameObject>((GameObject *)tansport);
+            ++count;
+        }
+    } while(result->NextRow());
+    delete result;
+
+    // check transport data DB integrity
+    result = WorldDatabase.Query("SELECT gameobject.guid,gameobject.id,transports.name FROM gameobject,transports WHERE gameobject.id = transports.entry");
+    if(result)                                              // wrong data found
+    {
+        do
+        {
+            Field *fields = result->Fetch();
+
+            uint32 guid  = fields[0].GetUInt32();
+            uint32 entry = fields[1].GetUInt32();
+            std::string name = fields[2].GetCppString();
+            sLog.outErrorDb("Transport %u '%s' have record (GUID: %u) in `gameobject`. Transports DON'T must have any records in `gameobject` or its behavior will be unpredictable/bugged.",entry,name.c_str(),guid);
+        }
+        while(result->NextRow());
+        delete result;
+    }
 }
