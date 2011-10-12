@@ -261,6 +261,7 @@ class MANGOS_DLL_SPEC Map : public GridRefManager<NGridType>
 
     private:
         void LoadMapAndVMap(int gx, int gy);
+        void LoadTransports();
 
         void SetTimer(uint32 t) { i_gridExpiry = t < MIN_GRID_DELAY ? MIN_GRID_DELAY : t; }
 

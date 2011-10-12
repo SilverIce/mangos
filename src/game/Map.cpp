@@ -97,6 +97,7 @@ Map::Map(uint32 id, time_t expiry, uint32 InstanceId, uint8 SpawnMode)
 
     m_persistentState = sMapPersistentStateMgr.AddPersistentState(i_mapEntry, GetInstanceId(), GetDifficulty(), 0, IsDungeon());
     m_persistentState->SetUsedByMapState(this);
+    LoadTransports();
 }
 
 void Map::InitVisibilityDistance()
@@ -3241,4 +3242,9 @@ void Map::PlayDirectSoundToMap(uint32 soundId, uint32 zoneId /*=0*/)
     for (PlayerList::const_iterator itr = pList.begin(); itr != pList.end(); ++itr)
         if (!zoneId || itr->getSource()->GetZoneId() == zoneId)
             itr->getSource()->SendDirectMessage(&data);
+}
+
+void Map::LoadTransports()
+{
+    throw std::exception("The method or operation is not implemented.");
 }
