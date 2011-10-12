@@ -44,7 +44,7 @@ MapManager::~MapManager()
         delete iter->second;
 
     for(TransportSet::iterator i = m_Transports.begin(); i != m_Transports.end(); ++i)
-        delete *i;
+        delete i->second;
 
     DeleteStateMachine();
 }
@@ -235,7 +235,7 @@ MapManager::Update(uint32 diff)
 
     for (TransportSet::iterator iter = m_Transports.begin(); iter != m_Transports.end(); ++iter)
     {
-        WorldObject::UpdateHelper helper((*iter));
+        WorldObject::UpdateHelper helper(iter->second);
         helper.Update((uint32)i_timer.GetCurrent());
     }
 
@@ -417,3 +417,19 @@ BattleGroundMap* MapManager::CreateBattleGroundMap(uint32 id, uint32 InstanceId,
     return map;
 }
 
+void MapManager::AddTransport(Transport* transport)
+{
+    Guard _guard(*this);
+    TransportSet::iterator itr = m_Transports.find(guid);
+    MANGOS_ASSERT(itr == m_Transports.end());
+    m_Transports.insert(TransportSet::value_type(transport->GetObjectGuid(),transport));
+}
+
+Transport* MapManager::GetTransport(ObjectGuid guid) const
+{
+    Guard _guard(*this);
+    TransportSet::iterator itr = m_Transports.find(guid);
+    if (itr != m_Transports.end())
+        return *itr;
+    return NULL;
+}

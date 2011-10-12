@@ -294,7 +294,6 @@ bool Map::Add(Player *player)
     player->AddToWorld();
 
     SendInitSelf(player);
-    SendInitTransports(player);
 
     NGridType* grid = getNGrid(cell.GridX(), cell.GridY());
     player->GetViewPoint().Event_AddedToWorld(&(*grid)(cell.CellX(), cell.CellY()));
@@ -608,7 +607,6 @@ void Map::Remove(Player *player, bool remove)
 
     RemoveFromGrid(player,grid,cell);
 
-    SendRemoveTransports(player);
     UpdateObjectVisibility(player,cell,p);
 
     player->ResetMap();
@@ -911,56 +909,6 @@ void Map::SendInitSelf( Player * player )
 
     WorldPacket packet;
     data.BuildPacket(&packet);
-    player->GetSession()->SendPacket(&packet);
-}
-
-void Map::SendInitTransports( Player * player )
-{
-    // Hack to send out transports
-    MapManager::TransportMap& tmap = sMapMgr.m_TransportsByMap;
-
-    // no transports at map
-    if (tmap.find(player->GetMapId()) == tmap.end())
-        return;
-
-    UpdateData transData;
-
-    MapManager::TransportSet& tset = tmap[player->GetMapId()];
-
-    for (MapManager::TransportSet::const_iterator i = tset.begin(); i != tset.end(); ++i)
-    {
-        // send data for current transport in other place
-        if((*i) != player->GetTransport() && (*i)->GetMapId()==i_id)
-        {
-            (*i)->BuildCreateUpdateBlockForPlayer(&transData, player);
-        }
-    }
-
-    WorldPacket packet;
-    transData.BuildPacket(&packet);
-    player->GetSession()->SendPacket(&packet);
-}
-
-void Map::SendRemoveTransports( Player * player )
-{
-    // Hack to send out transports
-    MapManager::TransportMap& tmap = sMapMgr.m_TransportsByMap;
-
-    // no transports at map
-    if (tmap.find(player->GetMapId()) == tmap.end())
-        return;
-
-    UpdateData transData;
-
-    MapManager::TransportSet& tset = tmap[player->GetMapId()];
-
-    // except used transport
-    for (MapManager::TransportSet::const_iterator i = tset.begin(); i != tset.end(); ++i)
-        if((*i) != player->GetTransport() && (*i)->GetMapId()!=i_id)
-            (*i)->BuildOutOfRangeUpdateBlock(&transData);
-
-    WorldPacket packet;
-    transData.BuildPacket(&packet);
     player->GetSession()->SendPacket(&packet);
 }
 
@@ -3262,7 +3210,8 @@ void Map::LoadTransports()
 
         if (Transport *tansport = Transport::Load(this, entry, name, period))
         {
-            Add<GameObject>((GameObject *)tansport);
+            sMapMgr.AddTransport(transport);
+            //Add<GameObject>((GameObject *)tansport);
             ++count;
         }
     } while(result->NextRow());

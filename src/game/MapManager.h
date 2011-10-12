@@ -131,8 +131,8 @@ class MANGOS_DLL_DECL MapManager : public MaNGOS::Singleton<MapManager, MaNGOS::
 
         void RemoveAllObjectsInRemoveList();
 
-        typedef std::set<Transport *> TransportSet;
-        TransportSet m_Transports;
+        void AddTransport(Transport* transport);
+        Transport* GetTransport(ObjectGuid guid) const;
 
         bool CanPlayerEnter(uint32 mapid, Player* player);
         void InitializeVisibilityDistanceInfo();
@@ -171,6 +171,9 @@ class MANGOS_DLL_DECL MapManager : public MaNGOS::Singleton<MapManager, MaNGOS::
         uint32 i_gridCleanUpDelay;
         MapMapType i_maps;
         IntervalTimer i_timer;
+
+        typedef UNORDERED_MAP<ObjectGuid, Transport*> TransportSet;
+        TransportSet m_Transports;
 };
 
 template<typename Do>
