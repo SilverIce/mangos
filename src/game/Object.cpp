@@ -1882,11 +1882,10 @@ bool WorldObject::PrintCoordinatesError(float x, float y, float z, char const* d
 
 void WorldObject::SetActiveObjectState(bool active)
 {
-    MANGOS_ASSERT(!isType(TYPEMASK_PLAYER) || active);  // player shouldn't became inactive, never
-    if (m_isActiveObject == active)
+    if (m_isActiveObject == active || (isType(TYPEMASK_PLAYER) && !active))
         return;
 
-    if (IsInWorld())
+    if (IsInWorld() && !isType(TYPEMASK_PLAYER))
     {
         if (isActiveObject() && !active)
             GetMap()->RemoveFromActive(this);
