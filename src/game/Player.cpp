@@ -19966,8 +19966,6 @@ void Player::UpdateVisibilityOf(WorldObject const* viewPoint, WorldObject* targe
         if(target->isVisibleForInState(this, viewPoint, false))
         {
             target->SendCreateUpdateToPlayer(this);
-            if(target->GetTypeId()!=TYPEID_GAMEOBJECT||!((GameObject*)target)->IsTransport())
-                m_clientGUIDs.insert(target->GetObjectGuid());
 
             DEBUG_FILTER_LOG(LOG_FILTER_VISIBILITY_CHANGES, "Object %u (Type: %u) is visible now for player %u. Distance = %f",target->GetGUIDLow(),target->GetTypeId(),GetGUIDLow(),GetDistance(target));
 
@@ -19983,13 +19981,6 @@ template<class T>
 inline void UpdateVisibilityOf_helper(ObjectGuidSet& s64, T* target)
 {
     s64.insert(target->GetObjectGuid());
-}
-
-template<>
-inline void UpdateVisibilityOf_helper(ObjectGuidSet& s64, GameObject* target)
-{
-    if(!target->IsTransport())
-        s64.insert(target->GetObjectGuid());
 }
 
 template<class T>

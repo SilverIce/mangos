@@ -3230,7 +3230,11 @@ void Map::PlayDirectSoundToMap(uint32 soundId, uint32 zoneId /*=0*/)
 
 void Map::LoadTransports()
 {
-    QueryResult *result = WorldDatabase.PQuery("SELECT entry, name, mapId period FROM transports WHERE mapId = %u", GetId());
+    QueryResult *result = WorldDatabase.PQuery("SELECT entry, name, period, mapId FROM transports WHERE mapId = %u", GetId());
+
+    if (!result)
+        return;
+    
     uint32 count = 0;
 
     do

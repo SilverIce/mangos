@@ -371,6 +371,8 @@ void Transport::TeleportTransport(uint32 newMapid, float x, float y, float z)
     //player far teleport would try to create same instance, but we need it NOW for transport...
     //correct me if I'm wrong O.o
     Map * newMap = sMapMgr.CreateMap(newMapid, this);
+    /** Assertion will fail in case it will try to create instance map */
+    MANGOS_ASSERT(newMap);
     GetMap()->Remove<GameObject>(this, false);
     newMap->Add<GameObject>(this);
 }
