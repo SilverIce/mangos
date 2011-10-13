@@ -722,7 +722,7 @@ void Map::CreatureRelocation(Creature *creature, float x, float y, float z, floa
 
 void Map::TransportRelocation(Transport *transport, float x, float y, float z, float orientation)
 {
-    MANGOS_ASSERT(player);
+    MANGOS_ASSERT(transport);
 
     CellPair old_val = MaNGOS::ComputeCellPair(transport->GetPositionX(), transport->GetPositionY());
     CellPair new_val = MaNGOS::ComputeCellPair(x, y);

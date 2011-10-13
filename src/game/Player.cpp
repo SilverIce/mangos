@@ -15639,7 +15639,7 @@ bool Player::LoadFromDB(ObjectGuid guid, SqlQueryHolder *holder )
             // client without expansion support
             if(GetSession()->Expansion() < transMapEntry->Expansion())
             {
-                DEBUG_LOG("Player %s using client without required expansion tried login at transport at non accessible map %u", GetName(), (*iter)->GetMapId());
+                DEBUG_LOG("Player %s using client without required expansion tried login at transport at non accessible map %u", GetName(), transport->GetMapId());
             }
             else
             {

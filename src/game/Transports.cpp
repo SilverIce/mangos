@@ -39,26 +39,27 @@ bool Transport::Create(uint32 entry)
     GameObjectInfo const* goinfo = ObjectMgr::GetGameObjectInfo(entry);
     if (!goinfo)
     {
-        sLog.outErrorDb("Transport not created: entry in `gameobject_template` not found, entry: %u map: %u  (X: %f Y: %f Z: %f) ang: %f", entry, mapid, x, y, z, ang);
+        sLog.outErrorDb("Transport not created: entry in `gameobject_template` not found, entry: %u", entry);
         return false;
     }
 
     if (goinfo->type != GAMEOBJECT_TYPE_MO_TRANSPORT)
     {
-        sLog.outErrorDb("Transport ID:%u, Name: %s, will not be loaded, gameobject_template type wrong", entry, name.c_str());
+        sLog.outErrorDb("Transport ID:%u, will not be loaded, gameobject_template type wrong", entry);
         return false;
     }
 
+    // in MO_TRANSPORT case entry is always equal to low guid
     Object::_Create(entry, 0, HIGHGUID_MO_TRANSPORT);
 
     std::set<uint32> mapsUsed;
-    if(!t->GenerateWaypoints(goinfo->moTransport.taxiPathId, mapsUsed))// skip transports with empty waypoints list
+    if(!GenerateWaypoints(goinfo->moTransport.taxiPathId, mapsUsed))// skip transports with empty waypoints list
     {
         sLog.outErrorDb("Transport (path id %u) path size = 0. Transport ignored, check DBC files or transport GO data0 field.",goinfo->moTransport.taxiPathId);
         return false;
     }
 
-    float x, y, z, o;
+    float x, y, z;
     uint32 mapid;
     mapid = m_WayPoints[0].mapid;
     x = m_WayPoints[0].x;
@@ -69,7 +70,7 @@ bool Transport::Create(uint32 entry)
 
     if (!IsPositionValid())
     {
-        sLog.outError("Transport (GUID: %u) not created. Suggested coordinates isn't valid (X: %f Y: %f)", guidlow,x,y);
+        sLog.outError("Transport (GUID: %u) not created. Suggested coordinates isn't valid (X: %f Y: %f)", entry,x,y);
         return false;
     }
 
@@ -365,11 +366,12 @@ void Transport::TeleportTransport(uint32 newMapid, float x, float y, float z)
         //plr->GetSession()->SendPacket(&data);
     }
 
+
     //we need to create and save new Map object with 'newMapid' because if not done -> lead to invalid Map object reference...
     //player far teleport would try to create same instance, but we need it NOW for transport...
     //correct me if I'm wrong O.o
     Map * newMap = sMapMgr.CreateMap(newMapid, this);
-    GetMap()->Remove<GameObject>(this);
+    GetMap()->Remove<GameObject>(this, false);
     newMap->Add<GameObject>(this);
 }
 
@@ -455,7 +457,7 @@ Transport* Transport::Load(Map * map, uint32 entry, const std::string& name, uin
     }
 
     transport->SetPhaseMask(PHASEMASK_ANYWHERE,false);
-    transport->SetMap(this);
+    transport->SetMap(map);
     transport->SetPeriod(period);
     transport->SetName(name);
     return transport;

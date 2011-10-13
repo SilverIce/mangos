@@ -420,7 +420,7 @@ BattleGroundMap* MapManager::CreateBattleGroundMap(uint32 id, uint32 InstanceId,
 void MapManager::AddTransport(Transport* transport)
 {
     Guard _guard(*this);
-    TransportSet::iterator itr = m_Transports.find(guid);
+    TransportSet::iterator itr = m_Transports.find(transport->GetObjectGuid());
     MANGOS_ASSERT(itr == m_Transports.end());
     m_Transports.insert(TransportSet::value_type(transport->GetObjectGuid(),transport));
 }
@@ -428,8 +428,8 @@ void MapManager::AddTransport(Transport* transport)
 Transport* MapManager::GetTransport(ObjectGuid guid) const
 {
     Guard _guard(*this);
-    TransportSet::iterator itr = m_Transports.find(guid);
+    TransportSet::const_iterator itr = m_Transports.find(guid);
     if (itr != m_Transports.end())
-        return *itr;
+        return itr->second;
     return NULL;
 }
