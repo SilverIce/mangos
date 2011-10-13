@@ -115,17 +115,6 @@ namespace MaNGOS
         template<class SKIP> void Visit(GridRefManager<SKIP> &) {}
     };
 
-    struct MANGOS_DLL_DECL ObjectUpdater
-    {
-        uint32 i_timeDiff;
-        explicit ObjectUpdater(const uint32 &diff) : i_timeDiff(diff) {}
-        template<class T> void Visit(GridRefManager<T> &m);
-        void Visit(PlayerMapType &) {}
-        void Visit(CorpseMapType &) {}
-        void Visit(CameraMapType &) {}
-        void Visit(CreatureMapType &);
-    };
-
     struct MANGOS_DLL_DECL PlayerRelocationNotifier
     {
         Player &i_player;

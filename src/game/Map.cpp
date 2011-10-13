@@ -432,6 +432,27 @@ bool Map::loaded(const GridPair &p) const
     return ( getNGrid(p.x_coord, p.y_coord) && isGridObjectDataLoaded(p.x_coord, p.y_coord) );
 }
 
+struct ObjectUpdater
+{
+    uint32 i_timeDiff;
+    std::vector<WorldObject*> m_objects;
+    explicit ObjectUpdater(const uint32 &diff) : i_timeDiff(diff) {}
+    template<class T> void Visit(GridRefManager<T> &m)
+    {
+        m_objects.assign(m.begin(),m.end());
+        std::for_each(m_objects.begin(),m_objects.end(), *this);
+    }
+    void operator() (WorldObject* obj)
+    {
+        WorldObject::UpdateHelper helper(obj);
+        helper.Update(i_timeDiff);
+    }
+    // other objects updated in different way or has no update methodat at all(Cameras):
+    void Visit(PlayerMapType &) {}
+    void Visit(CorpseMapType &) {}
+    void Visit(CameraMapType &) {}
+};
+
 void Map::Update(const uint32 &t_diff)
 {
     /// update worldsessions for existing players
