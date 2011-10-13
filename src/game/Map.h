@@ -43,6 +43,7 @@
 struct CreatureInfo;
 class Creature;
 class Unit;
+class Transport;
 class WorldPacket;
 class InstanceData;
 class Group;
@@ -131,6 +132,7 @@ class MANGOS_DLL_SPEC Map : public GridRefManager<NGridType>
 
         void PlayerRelocation(Player *, float x, float y, float z, float angl);
         void CreatureRelocation(Creature *creature, float x, float y, float z, float orientation);
+        void TransportRelocation(Transport *, float x, float y, float z, float orientation);
 
         template<class T, class CONTAINER> void Visit(const Cell& cell, TypeContainerVisitor<T, CONTAINER> &visitor);
 

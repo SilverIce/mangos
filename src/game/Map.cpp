@@ -720,6 +720,42 @@ void Map::CreatureRelocation(Creature *creature, float x, float y, float z, floa
     MANGOS_ASSERT(CheckGridIntegrity(creature,true));
 }
 
+void Map::TransportRelocation(Transport *transport, float x, float y, float z, float orientation)
+{
+    MANGOS_ASSERT(player);
+
+    CellPair old_val = MaNGOS::ComputeCellPair(transport->GetPositionX(), transport->GetPositionY());
+    CellPair new_val = MaNGOS::ComputeCellPair(x, y);
+
+    Cell old_cell(old_val);
+    Cell new_cell(new_val);
+    bool same_cell = (new_cell == old_cell);
+
+    transport->Relocate(x, y, z, orientation);
+
+    if (old_cell != new_cell)
+    {
+        NGridType* oldGrid = getNGrid(old_cell.GridX(), old_cell.GridY());
+        RemoveFromGrid<GameObject>(transport, oldGrid,old_cell);
+        if( !old_cell.DiffGrid(new_cell) )
+            AddToGrid<GameObject>(transport, oldGrid,new_cell);
+        else
+            EnsureGridLoadedAtEnter(new_cell);
+
+        NGridType* newGrid = getNGrid(new_cell.GridX(), new_cell.GridY());
+        transport->GetViewPoint().Event_GridChanged(&(*newGrid)(new_cell.CellX(),new_cell.CellY()));
+
+        if (newGrid->GetGridState() != GRID_STATE_ACTIVE)
+        {
+            ResetGridExpiry(*newGrid, 0.1f);
+            newGrid->SetGridState(GRID_STATE_ACTIVE);
+        }
+    }
+
+    transport->UpdateObjectVisibility();
+    //transport->OnRelocated();
+}
+
 bool Map::CreatureCellRelocation(Creature *c, Cell new_cell)
 {
     Cell const& old_cell = c->GetCurrentCell();
@@ -3208,10 +3244,11 @@ void Map::LoadTransports()
         if (mapId != GetId())
             continue;
 
-        if (Transport *tansport = Transport::Load(this, entry, name, period))
+        if (Transport *transport = Transport::Load(this, entry, name, period))
         {
             sMapMgr.AddTransport(transport);
-            //Add<GameObject>((GameObject *)tansport);
+            transport->SetActiveObjectState(true);
+            Add<GameObject>(transport);
             ++count;
         }
     } while(result->NextRow());
