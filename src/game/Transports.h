@@ -62,7 +62,6 @@ class Transport : public GameObject
         bool Create(uint32 entry);
         bool GenerateWaypoints(uint32 pathid, std::set<uint32> &mapids);
         void TeleportTransport(uint32 newMapid, float x, float y, float z);
-        void UpdateForMap(Map const* map);
         void DoEventIfAny(WayPointMap::value_type const& node, bool departure);
         void MoveToNextWayPoint();                          // move m_next/m_cur to next points
         void SetPeriod(uint32 time) { SetUInt32Value(GAMEOBJECT_LEVEL, time);}

@@ -369,13 +369,8 @@ void Transport::TeleportTransport(uint32 newMapid, float x, float y, float z)
     //player far teleport would try to create same instance, but we need it NOW for transport...
     //correct me if I'm wrong O.o
     Map * newMap = sMapMgr.CreateMap(newMapid, this);
-    SetMap(newMap);
-
-    if(oldMap != newMap)
-    {
-        UpdateForMap(oldMap);
-        UpdateForMap(newMap);
-    }
+    GetMap()->Remove<GameObject>(this);
+    newMap->Add<GameObject>(this);
 }
 
 bool Transport::AddPassenger(Player* passenger)
@@ -417,7 +412,7 @@ void Transport::Update( uint32 update_diff, uint32 /*p_time*/)
         }
         else
         {
-            Relocate(m_curr->second.x, m_curr->second.y, m_curr->second.z);
+            GetMap()->TransportRelocation(this, m_curr->second.x, m_curr->second.y, m_curr->second.z, GetOrientation());
         }
 
         /*
@@ -435,39 +430,6 @@ void Transport::Update( uint32 update_diff, uint32 /*p_time*/)
             DETAIL_FILTER_LOG(LOG_FILTER_TRANSPORT_MOVES, " ************ BEGIN ************** %s", GetName());
 
         DETAIL_FILTER_LOG(LOG_FILTER_TRANSPORT_MOVES, "%s moved to %f %f %f %d", GetName(), m_curr->second.x, m_curr->second.y, m_curr->second.z, m_curr->second.mapid);
-    }
-}
-
-void Transport::UpdateForMap(Map const* targetMap)
-{
-    Map::PlayerList const& pl = targetMap->GetPlayers();
-    if(pl.isEmpty())
-        return;
-
-    if(GetMapId()==targetMap->GetId())
-    {
-        for(Map::PlayerList::const_iterator itr = pl.begin(); itr != pl.end(); ++itr)
-        {
-            if(this != itr->getSource()->GetTransport())
-            {
-                UpdateData transData;
-                BuildCreateUpdateBlockForPlayer(&transData, itr->getSource());
-                WorldPacket packet;
-                transData.BuildPacket(&packet);
-                itr->getSource()->SendDirectMessage(&packet);
-            }
-        }
-    }
-    else
-    {
-        UpdateData transData;
-        BuildOutOfRangeUpdateBlock(&transData);
-        WorldPacket out_packet;
-        transData.BuildPacket(&out_packet);
-
-        for(Map::PlayerList::const_iterator itr = pl.begin(); itr != pl.end(); ++itr)
-            if(this != itr->getSource()->GetTransport())
-                itr->getSource()->SendDirectMessage(&out_packet);
     }
 }
 
