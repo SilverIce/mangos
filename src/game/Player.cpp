@@ -15633,7 +15633,7 @@ bool Player::LoadFromDB(ObjectGuid guid, SqlQueryHolder *holder )
 
     if (transGUID != 0)
     {
-        if (Transport* transport = sMapMgr.GetTransport(ObjectGuid(HIGHGUID_MO_TRANSPORT,0,transGUID)))
+        if (Transport* transport = GetMap()->GetTransport(ObjectGuid(HIGHGUID_MO_TRANSPORT,0,transGUID)))
         {
             MapEntry const* transMapEntry = sMapStore.LookupEntry(transport->GetMapId());
             // client without expansion support

@@ -544,7 +544,7 @@ void WorldSession::HandleMoverRelocation(MovementInfo& movementInfo)
         {
             if (!plMover->m_transport)
             {
-                if (Transport* transport = sMapMgr.GetTransport(movementInfo.GetTransportGuid()))
+                if (Transport* transport = plMover->GetMap()->GetTransport(movementInfo.GetTransportGuid()))
                 {
                     /** It's considered that player and transport running in same thread context,
                         so it's safe to modify transport(add passenger) */
