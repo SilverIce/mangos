@@ -28,7 +28,6 @@
 class Transport : public GameObject
 {
     public:
-        explicit Transport();
 
         static Transport* Load(Map * map, uint32 entry, const std::string& name, uint32 period);
         void Update(uint32 update_diff, uint32 p_time) override;
@@ -59,6 +58,7 @@ class Transport : public GameObject
 
         typedef std::map<uint32, WayPoint> WayPointMap;
 
+        explicit Transport();
         bool Create(uint32 entry);
         bool GenerateWaypoints(uint32 pathid, std::set<uint32> &mapids);
         void TeleportTransport(uint32 newMapid, float x, float y, float z);

@@ -223,7 +223,3 @@ void MaNGOS::RespawnDo::operator()( GameObject* u ) const
 
     u->Respawn();
 }
-
-
-template void ObjectUpdater::Visit<GameObject>(GameObjectMapType &);
-template void ObjectUpdater::Visit<DynamicObject>(DynamicObjectMapType &);

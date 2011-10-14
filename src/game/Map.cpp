@@ -434,12 +434,33 @@ bool Map::loaded(const GridPair &p) const
 
 struct ObjectUpdater
 {
+    template<class T>
+    struct Wrapper
+    {
+        typedef typename std::forward_iterator_tag iterator_category;
+        typedef T* value_type;
+        typedef size_t difference_type;
+        typedef T** pointer;
+        typedef T& reference;
+
+        typedef typename GridRefManager<T>::iterator base;
+
+        typename base m_itr;
+        explicit Wrapper(base itr) : m_itr(itr) {}
+
+        void operator ++ () { ++m_itr;}
+        value_type operator *() { return m_itr->getSource();}
+        bool operator != (const Wrapper& other) const {
+            return m_itr != other.m_itr;
+        }
+    };
+
     uint32 i_timeDiff;
     std::vector<WorldObject*> m_objects;
     explicit ObjectUpdater(const uint32 &diff) : i_timeDiff(diff) {}
     template<class T> void Visit(GridRefManager<T> &m)
     {
-        m_objects.assign(m.begin(),m.end());
+        m_objects.assign(Wrapper<T>(m.begin()), Wrapper<T>(m.end()));
         std::for_each(m_objects.begin(),m_objects.end(), *this);
     }
     void operator() (WorldObject* obj)
@@ -482,11 +503,11 @@ void Map::Update(const uint32 &t_diff)
     /// update active cells around players and active objects
     resetMarkedCells();
 
-    MaNGOS::ObjectUpdater updater(t_diff);
+    ObjectUpdater updater(t_diff);
     // for creature
-    TypeContainerVisitor<MaNGOS::ObjectUpdater, GridTypeMapContainer  > grid_object_update(updater);
+    TypeContainerVisitor<ObjectUpdater, GridTypeMapContainer  > grid_object_update(updater);
     // for pets
-    TypeContainerVisitor<MaNGOS::ObjectUpdater, WorldTypeMapContainer > world_object_update(updater);
+    TypeContainerVisitor<ObjectUpdater, WorldTypeMapContainer > world_object_update(updater);
 
     // the player iterator is stored in the map object
     // to make sure calls to Map::Remove don't invalidate it
@@ -3054,7 +3075,7 @@ GameObject* Map::GetGameObject(ObjectGuid guid)
     return m_objectsStore.find<GameObject>(guid, (GameObject*)NULL);
 }
 
-Transport* Map::GetTransport(ObjectGuid guid) const
+Transport* Map::GetTransport(ObjectGuid guid)
 {
     GameObject* object = GetGameObject(guid);
     if (object && object->IsTransport())
@@ -3280,7 +3301,6 @@ void Map::LoadTransports()
 
         if (Transport *transport = Transport::Load(this, entry, name, period))
         {
-            sMapMgr.AddTransport(transport);
             transport->SetActiveObjectState(true);
             Add<GameObject>(transport);
             ++count;
