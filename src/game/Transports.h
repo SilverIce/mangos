@@ -36,6 +36,7 @@ class Transport : public GameObject
 
         typedef std::set<Player*> PlayerSet;
         PlayerSet const& GetPassengers() const { return m_passengers; }
+        uint32 MovementProgress() const { return m_timer;}
 
     private:
         struct WayPoint
