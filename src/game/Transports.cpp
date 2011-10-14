@@ -341,7 +341,6 @@ void Transport::MoveToNextWayPoint()
 void Transport::TeleportTransport(uint32 newMapid, float x, float y, float z)
 {
     Map const* oldMap = GetMap();
-    Relocate(x, y, z);
 
     for(PlayerSet::iterator itr = m_passengers.begin(); itr != m_passengers.end();)
     {
@@ -374,6 +373,7 @@ void Transport::TeleportTransport(uint32 newMapid, float x, float y, float z)
     /** Assertion will fail in case it will try to create instance map */
     MANGOS_ASSERT(newMap);
     GetMap()->Remove<GameObject>(this, false);
+    Relocate(x, y, z);
     newMap->Add<GameObject>(this);
 }
 
@@ -417,16 +417,14 @@ void Transport::Update( uint32 update_diff, uint32 /*p_time*/)
         else
         {
             GetMap()->TransportRelocation(this, m_curr->second.x, m_curr->second.y, m_curr->second.z, GetOrientation());
+           
+            for(PlayerSet::const_iterator itr = m_passengers.begin(); itr != m_passengers.end();)
+            {
+                Player* player = *itr;
+                ++itr;
+                player->SetPosition( GetPositionX(),GetPositionY(),GetPositionZ(),GetOrientation());
+            }
         }
-
-        /*
-        for(PlayerSet::const_iterator itr = m_passengers.begin(); itr != m_passengers.end();)
-        {
-            PlayerSet::const_iterator it2 = itr;
-            ++itr;
-            //(*it2)->SetPosition( m_curr->second.x + (*it2)->GetTransOffsetX(), m_curr->second.y + (*it2)->GetTransOffsetY(), m_curr->second.z + (*it2)->GetTransOffsetZ(), (*it2)->GetTransOffsetO() );
-        }
-        */
 
         m_nextNodeTime = m_curr->first;
 
