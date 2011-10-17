@@ -102,7 +102,7 @@ void LootStore::LoadLootTable()
 
     if (result)
     {
-        barGoLink bar((int)result->GetRowCount());
+        BarGoLink bar(result->GetRowCount());
 
         do
         {
@@ -119,7 +119,7 @@ void LootStore::LoadLootTable()
             uint32 cond_value1         = fields[7].GetUInt32();
             uint32 cond_value2         = fields[8].GetUInt32();
 
-            if(maxcount > std::numeric_limits<uint8>::max())
+            if (maxcount > std::numeric_limits<uint8>::max())
             {
                 sLog.outErrorDb("Table '%s' entry %d item %d: maxcount value (%u) to large. must be less %u - skipped", GetName(), entry, item, maxcount,std::numeric_limits<uint8>::max());
                 continue;                                   // error already printed to log/console.
@@ -127,12 +127,11 @@ void LootStore::LoadLootTable()
 
             if (mincountOrRef < 0 && condition != CONDITION_NONE)
             {
-                sLog.outErrorDb("Table '%s' entry %u mincountOrRef %i < 0 and not allowed has condition, skipped",
-                    GetName(), entry, mincountOrRef);
+                sLog.outErrorDb("Table '%s' entry %u mincountOrRef %i < 0 and not allowed has condition, skipped", GetName(), entry, mincountOrRef);
                 continue;
             }
 
-            if(!PlayerCondition::IsValid(condition,cond_value1, cond_value2))
+            if (!PlayerCondition::IsValid(condition,cond_value1, cond_value2))
             {
                 sLog.outErrorDb("... in table '%s' entry %u item %u", GetName(), entry, item);
                 continue;                                   // error already printed to log/console.
@@ -261,7 +260,7 @@ bool LootStoreItem::Roll(bool rate) const
 // Checks correctness of values
 bool LootStoreItem::IsValid(LootStore const& store, uint32 entry) const
 {
-    if(group >= 1 << 7)                                     // it stored in 7 bit field
+    if (group >= 1 << 7)                                    // it stored in 7 bit field
     {
         sLog.outErrorDb("Table '%s' entry %d item %d: group (%u) must be less %u - skipped", store.GetName(), entry, itemid, group, 1 << 7);
         return false;
@@ -273,7 +272,7 @@ bool LootStoreItem::IsValid(LootStore const& store, uint32 entry) const
         return false;
     }
 
-    if( mincountOrRef > 0 )                                 // item (quest or non-quest) entry, maybe grouped
+    if (mincountOrRef > 0)                                  // item (quest or non-quest) entry, maybe grouped
     {
         ItemPrototype const *proto = ObjectMgr::GetItemPrototype(itemid);
         if(!proto)
@@ -282,20 +281,19 @@ bool LootStoreItem::IsValid(LootStore const& store, uint32 entry) const
             return false;
         }
 
-        if( chance == 0 && group == 0)                      // Zero chance is allowed for grouped entries only
+        if (chance == 0 && group == 0)                      // Zero chance is allowed for grouped entries only
         {
             sLog.outErrorDb("Table '%s' entry %d item %d: equal-chanced grouped entry, but group not defined - skipped", store.GetName(), entry, itemid);
             return false;
         }
 
-        if( chance != 0 && chance < 0.000001f )             // loot with low chance
+        if (chance != 0 && chance < 0.000001f)              // loot with low chance
         {
-            sLog.outErrorDb("Table '%s' entry %d item %d: low chance (%f) - skipped",
-                store.GetName(), entry, itemid, chance);
+            sLog.outErrorDb("Table '%s' entry %d item %d: low chance (%f) - skipped", store.GetName(), entry, itemid, chance);
             return false;
         }
 
-        if( maxcount < mincountOrRef)                       // wrong max count
+        if (maxcount < mincountOrRef)                       // wrong max count
         {
             sLog.outErrorDb("Table '%s' entry %d item %d: max count (%u) less that min count (%i) - skipped", store.GetName(), entry, itemid, uint32(maxcount), mincountOrRef);
             return false;
@@ -305,8 +303,11 @@ bool LootStoreItem::IsValid(LootStore const& store, uint32 entry) const
     else                                                    // mincountOrRef < 0
     {
         if (needs_quest)
-            sLog.outErrorDb("Table '%s' entry %d item %d: quest chance will be treated as non-quest chance", store.GetName(), entry, itemid);
-        else if( chance == 0 )                              // no chance for the reference
+        {
+            sLog.outErrorDb("Table '%s' entry %d item %d: negative chance is specified for a reference, skipped", store.GetName(), entry, itemid);
+            return false;
+        }
+        else if (chance == 0)                               // no chance for the reference
         {
             sLog.outErrorDb("Table '%s' entry %d item %d: zero chance is specified for a reference, skipped", store.GetName(), entry, itemid);
             return false;
@@ -392,6 +393,27 @@ bool LootItem::AllowedForPlayer(Player const * player) const
     return true;
 }
 
+LootSlotType LootItem::GetSlotTypeForSharedLoot(PermissionTypes permission, Player* viewer, bool condition_ok /*= false*/) const
+{
+    // ignore looted, FFA (each player get own copy) and not allowed items
+    if (is_looted || freeforall || conditionId && !condition_ok || !AllowedForPlayer(viewer))
+        return MAX_LOOT_SLOT_TYPE;
+
+    switch (permission)
+    {
+        case GROUP_PERMISSION:
+            return (is_blocked || is_underthreshold) ? LOOT_SLOT_NORMAL : LOOT_SLOT_VIEW;
+        case ALL_PERMISSION:
+            return LOOT_SLOT_NORMAL;
+        case OWNER_PERMISSION:
+            return LOOT_SLOT_OWNER;
+        case MASTER_PERMISSION:
+            return !is_underthreshold ? LOOT_SLOT_MASTER : LOOT_SLOT_NORMAL;
+    }
+
+    return MAX_LOOT_SLOT_TYPE;
+}
+
 //
 // --------- Loot ---------
 //
@@ -401,8 +423,8 @@ void Loot::AddItem(LootStoreItem const & item)
 {
     if (item.needs_quest)                                   // Quest drop
     {
-        if (quest_items.size() < MAX_NR_QUEST_ITEMS)
-            quest_items.push_back(LootItem(item));
+        if (m_questItems.size() < MAX_NR_QUEST_ITEMS)
+            m_questItems.push_back(LootItem(item));
     }
     else if (items.size() < MAX_NR_LOOT_ITEMS)              // Non-quest drop
     {
@@ -437,7 +459,7 @@ bool Loot::FillLoot(uint32 loot_id, LootStore const& store, Player* loot_owner, 
     }
 
     items.reserve(MAX_NR_LOOT_ITEMS);
-    quest_items.reserve(MAX_NR_QUEST_ITEMS);
+    m_questItems.reserve(MAX_NR_QUEST_ITEMS);
 
     tab->Process(*this, store,store.IsRatesAllowed ());     // Processing is done there, callback via Loot::AddItem()
 
@@ -460,16 +482,16 @@ void Loot::FillNotNormalLootFor(Player* pl)
 {
     uint32 plguid = pl->GetGUIDLow();
 
-    QuestItemMap::const_iterator qmapitr = PlayerQuestItems.find(plguid);
-    if (qmapitr == PlayerQuestItems.end())
+    QuestItemMap::const_iterator qmapitr = m_playerQuestItems.find(plguid);
+    if (qmapitr == m_playerQuestItems.end())
         FillQuestLoot(pl);
 
-    qmapitr = PlayerFFAItems.find(plguid);
-    if (qmapitr == PlayerFFAItems.end())
+    qmapitr = m_playerFFAItems.find(plguid);
+    if (qmapitr == m_playerFFAItems.end())
         FillFFALoot(pl);
 
-    qmapitr = PlayerNonQuestNonFFAConditionalItems.find(plguid);
-    if (qmapitr == PlayerNonQuestNonFFAConditionalItems.end())
+    qmapitr = m_playerNonQuestNonFFAConditionalItems.find(plguid);
+    if (qmapitr == m_playerNonQuestNonFFAConditionalItems.end())
         FillNonQuestNonFFAConditionalLoot(pl);
 }
 
@@ -492,7 +514,7 @@ QuestItemList* Loot::FillFFALoot(Player* player)
         return NULL;
     }
 
-    PlayerFFAItems[player->GetGUIDLow()] = ql;
+    m_playerFFAItems[player->GetGUIDLow()] = ql;
     return ql;
 }
 
@@ -501,9 +523,9 @@ QuestItemList* Loot::FillQuestLoot(Player* player)
     if (items.size() == MAX_NR_LOOT_ITEMS) return NULL;
     QuestItemList *ql = new QuestItemList();
 
-    for(uint8 i = 0; i < quest_items.size(); ++i)
+    for(uint8 i = 0; i < m_questItems.size(); ++i)
     {
-        LootItem &item = quest_items[i];
+        LootItem &item = m_questItems[i];
         if(!item.is_looted && item.AllowedForPlayer(player) )
         {
             ql->push_back(QuestItem(i));
@@ -527,7 +549,7 @@ QuestItemList* Loot::FillQuestLoot(Player* player)
         return NULL;
     }
 
-    PlayerQuestItems[player->GetGUIDLow()] = ql;
+    m_playerQuestItems[player->GetGUIDLow()] = ql;
     return ql;
 }
 
@@ -554,7 +576,7 @@ QuestItemList* Loot::FillNonQuestNonFFAConditionalLoot(Player* player)
         return NULL;
     }
 
-    PlayerNonQuestNonFFAConditionalItems[player->GetGUIDLow()] = ql;
+    m_playerNonQuestNonFFAConditionalItems[player->GetGUIDLow()] = ql;
     return ql;
 }
 
@@ -564,30 +586,30 @@ void Loot::NotifyItemRemoved(uint8 lootIndex)
 {
     // notify all players that are looting this that the item was removed
     // convert the index to the slot the player sees
-    std::set<uint64>::iterator i_next;
-    for(std::set<uint64>::iterator i = PlayersLooting.begin(); i != PlayersLooting.end(); i = i_next)
+    PlayersLooting::iterator i_next;
+    for (PlayersLooting::iterator i = m_playersLooting.begin(); i != m_playersLooting.end(); i = i_next)
     {
         i_next = i;
         ++i_next;
-        if(Player* pl = ObjectAccessor::FindPlayer(*i))
+        if (Player* pl = ObjectAccessor::FindPlayer(*i))
             pl->SendNotifyLootItemRemoved(lootIndex);
         else
-            PlayersLooting.erase(i);
+            m_playersLooting.erase(i);
     }
 }
 
 void Loot::NotifyMoneyRemoved()
 {
     // notify all players that are looting this that the money was removed
-    std::set<uint64>::iterator i_next;
-    for(std::set<uint64>::iterator i = PlayersLooting.begin(); i != PlayersLooting.end(); i = i_next)
+    PlayersLooting::iterator i_next;
+    for (PlayersLooting::iterator i = m_playersLooting.begin(); i != m_playersLooting.end(); i = i_next)
     {
         i_next = i;
         ++i_next;
-        if(Player* pl = ObjectAccessor::FindPlayer(*i))
+        if (Player* pl = ObjectAccessor::FindPlayer(*i))
             pl->SendNotifyLootMoneyRemoved();
         else
-            PlayersLooting.erase(i);
+            m_playersLooting.erase(i);
     }
 }
 
@@ -598,15 +620,15 @@ void Loot::NotifyQuestItemRemoved(uint8 questIndex)
     // (other questitems can be looted by each group member)
     // bit inefficient but isnt called often
 
-    std::set<uint64>::iterator i_next;
-    for(std::set<uint64>::iterator i = PlayersLooting.begin(); i != PlayersLooting.end(); i = i_next)
+    PlayersLooting::iterator i_next;
+    for (PlayersLooting::iterator i = m_playersLooting.begin(); i != m_playersLooting.end(); i = i_next)
     {
         i_next = i;
         ++i_next;
-        if(Player* pl = ObjectAccessor::FindPlayer(*i))
+        if (Player* pl = ObjectAccessor::FindPlayer(*i))
         {
-            QuestItemMap::const_iterator pq = PlayerQuestItems.find(pl->GetGUIDLow());
-            if (pq != PlayerQuestItems.end() && pq->second)
+            QuestItemMap::const_iterator pq = m_playerQuestItems.find(pl->GetGUIDLow());
+            if (pq != m_playerQuestItems.end() && pq->second)
             {
                 // find where/if the player has the given item in it's vector
                 QuestItemList& pql = *pq->second;
@@ -621,7 +643,7 @@ void Loot::NotifyQuestItemRemoved(uint8 questIndex)
             }
         }
         else
-            PlayersLooting.erase(i);
+            m_playersLooting.erase(i);
     }
 }
 
@@ -645,13 +667,13 @@ LootItem* Loot::LootItemInSlot(uint32 lootSlot, Player* player, QuestItem **qite
     if (lootSlot >= items.size())
     {
         uint32 questSlot = lootSlot - items.size();
-        QuestItemMap::const_iterator itr = PlayerQuestItems.find(player->GetGUIDLow());
-        if (itr != PlayerQuestItems.end() && questSlot < itr->second->size())
+        QuestItemMap::const_iterator itr = m_playerQuestItems.find(player->GetGUIDLow());
+        if (itr != m_playerQuestItems.end() && questSlot < itr->second->size())
         {
             QuestItem *qitem2 = &itr->second->at(questSlot);
             if(qitem)
                 *qitem = qitem2;
-            item = &quest_items[qitem2->index];
+            item = &m_questItems[qitem2->index];
             is_looted = qitem2->is_looted;
         }
     }
@@ -661,8 +683,8 @@ LootItem* Loot::LootItemInSlot(uint32 lootSlot, Player* player, QuestItem **qite
         is_looted = item->is_looted;
         if(item->freeforall)
         {
-            QuestItemMap::const_iterator itr = PlayerFFAItems.find(player->GetGUIDLow());
-            if (itr != PlayerFFAItems.end())
+            QuestItemMap::const_iterator itr = m_playerFFAItems.find(player->GetGUIDLow());
+            if (itr != m_playerFFAItems.end())
             {
                 for(QuestItemList::const_iterator iter=itr->second->begin(); iter!= itr->second->end(); ++iter)
                     if(iter->index==lootSlot)
@@ -677,8 +699,8 @@ LootItem* Loot::LootItemInSlot(uint32 lootSlot, Player* player, QuestItem **qite
         }
         else if(item->conditionId)
         {
-            QuestItemMap::const_iterator itr = PlayerNonQuestNonFFAConditionalItems.find(player->GetGUIDLow());
-            if (itr != PlayerNonQuestNonFFAConditionalItems.end())
+            QuestItemMap::const_iterator itr = m_playerNonQuestNonFFAConditionalItems.find(player->GetGUIDLow());
+            if (itr != m_playerNonQuestNonFFAConditionalItems.end())
             {
                 for(QuestItemList::const_iterator iter=itr->second->begin(); iter!= itr->second->end(); ++iter)
                 {
@@ -703,8 +725,8 @@ LootItem* Loot::LootItemInSlot(uint32 lootSlot, Player* player, QuestItem **qite
 
 uint32 Loot::GetMaxSlotInLootFor(Player* player) const
 {
-    QuestItemMap::const_iterator itr = PlayerQuestItems.find(player->GetGUIDLow());
-    return items.size() + (itr != PlayerQuestItems.end() ?  itr->second->size() : 0);
+    QuestItemMap::const_iterator itr = m_playerQuestItems.find(player->GetGUIDLow());
+    return items.size() + (itr != m_playerQuestItems.end() ?  itr->second->size() : 0);
 }
 
 ByteBuffer& operator<<(ByteBuffer& b, LootItem const& li)
@@ -737,55 +759,38 @@ ByteBuffer& operator<<(ByteBuffer& b, LootView const& lv)
     size_t count_pos = b.wpos();                            // pos of item count byte
     b << uint8(0);                                          // item count placeholder
 
-    switch (lv.permission)
+    if (lv.permission == NONE_PERMISSION)
+        return b;                                           // nothing output more
+
+
+    for (uint8 i = 0; i < l.items.size(); ++i)
     {
-        case GROUP_PERMISSION:
+        LootSlotType slot_type = l.items[i].GetSlotTypeForSharedLoot(lv.permission, lv.viewer);
+        if (slot_type >= MAX_LOOT_SLOT_TYPE)
+            continue;
+
+        b << uint8(i) << l.items[i];
+        b << uint8(slot_type);                              // 0 - get 1 - look only 2 - master selection
+        ++itemsShown;
+    }
+
+    QuestItemMap const& lootPlayerNonQuestNonFFAConditionalItems = l.GetPlayerNonQuestNonFFAConditionalItems();
+    QuestItemMap::const_iterator nn_itr = lootPlayerNonQuestNonFFAConditionalItems.find(lv.viewer->GetGUIDLow());
+    if (nn_itr != lootPlayerNonQuestNonFFAConditionalItems.end())
+    {
+        QuestItemList *conditional_list =  nn_itr->second;
+        for (QuestItemList::const_iterator ci = conditional_list->begin() ; ci != conditional_list->end(); ++ci)
         {
-            // You are not the items proprietary, so you can only see
-            // blocked rolled items and quest items, and !ffa items
-            for (uint8 i = 0; i < l.items.size(); ++i)
-            {
-                if (!l.items[i].is_looted && !l.items[i].freeforall && !l.items[i].conditionId && l.items[i].AllowedForPlayer(lv.viewer))
-                {
-                    LootSlotType slot_type = (l.items[i].is_blocked || l.items[i].is_underthreshold)
-                        ? LOOT_SLOT_NORMAL : LOOT_SLOT_VIEW;
+            LootItem &item = l.items[ci->index];
 
-                    b << uint8(i) << l.items[i];            //send the index and the item if it's not looted, and blocked or under threshold, free for all items will be sent later, only one-player loots here
-                    b << uint8(slot_type);                  // 0 - get 1 - look only
-                    ++itemsShown;
-                }
-            }
-            break;
+            LootSlotType slot_type = item.GetSlotTypeForSharedLoot(lv.permission, lv.viewer, !ci->is_looted);
+            if (slot_type >= MAX_LOOT_SLOT_TYPE)
+                continue;
+
+            b << uint8(ci->index) << item;
+            b << uint8(slot_type);                          // allow loot
+            ++itemsShown;
         }
-        case ALL_PERMISSION:
-        case OWNER_PERMISSION:
-        case MASTER_PERMISSION:
-        {
-            for (uint8 i = 0; i < l.items.size(); ++i)
-            {
-                if (!l.items[i].is_looted && !l.items[i].freeforall && !l.items[i].conditionId && l.items[i].AllowedForPlayer(lv.viewer))
-                {
-                    LootSlotType slot_type = LOOT_SLOT_NORMAL;
-
-                    switch(lv.permission)
-                    {
-                        case MASTER_PERMISSION:
-                            if (!l.items[i].is_underthreshold)
-                                slot_type = LOOT_SLOT_MASTER;
-                            break;
-                        case OWNER_PERMISSION:
-                            slot_type = LOOT_SLOT_OWNER;
-                    }
-
-                    b << uint8(i) << l.items[i];            //only send one-player loot items now, free for all will be sent later
-                    b << uint8(slot_type);                  // 0 - get 2 - master selection
-                    ++itemsShown;
-                }
-            }
-            break;
-        }
-        default:
-            return b;                                       // nothing output more
     }
 
     // in next cases used same slot type for all items
@@ -798,7 +803,7 @@ ByteBuffer& operator<<(ByteBuffer& b, LootView const& lv)
         QuestItemList *q_list = q_itr->second;
         for (QuestItemList::const_iterator qi = q_list->begin() ; qi != q_list->end(); ++qi)
         {
-            LootItem &item = l.quest_items[qi->index];
+            LootItem &item = l.m_questItems[qi->index];
             if (!qi->is_looted && !item.is_looted)
             {
                 b << uint8(l.items.size() + (qi - q_list->begin()));
@@ -820,23 +825,6 @@ ByteBuffer& operator<<(ByteBuffer& b, LootView const& lv)
             if (!fi->is_looted && !item.is_looted)
             {
                 b << uint8(fi->index) << item;
-                b << uint8(slot_type);                      // allow loot
-                ++itemsShown;
-            }
-        }
-    }
-
-    QuestItemMap const& lootPlayerNonQuestNonFFAConditionalItems = l.GetPlayerNonQuestNonFFAConditionalItems();
-    QuestItemMap::const_iterator nn_itr = lootPlayerNonQuestNonFFAConditionalItems.find(lv.viewer->GetGUIDLow());
-    if (nn_itr != lootPlayerNonQuestNonFFAConditionalItems.end())
-    {
-        QuestItemList *conditional_list =  nn_itr->second;
-        for (QuestItemList::const_iterator ci = conditional_list->begin() ; ci != conditional_list->end(); ++ci)
-        {
-            LootItem &item = l.items[ci->index];
-            if (!ci->is_looted && !item.is_looted)
-            {
-                b << uint8(ci->index) << item;
                 b << uint8(slot_type);                      // allow loot
                 ++itemsShown;
             }

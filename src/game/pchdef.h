@@ -10,6 +10,7 @@
 #include "Log.h"
 #include "MapManager.h"
 #include "ObjectGuid.h"
+#include "GuildMgr.h"
 #include "ScriptMgr.h"
 #include "SpellMgr.h"
 #include "UpdateMask.h"

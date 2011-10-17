@@ -552,20 +552,55 @@ void Player::UpdateAllCritPercentages()
     UpdateCritPercentage(RANGED_ATTACK);
 }
 
+const float Player::m_diminishing_k[MAX_CLASSES] =
+{
+    0.9560f,  // Warrior
+    0.9560f,  // Paladin
+    0.9880f,  // Hunter
+    0.9880f,  // Rogue
+    0.9830f,  // Priest
+    0.9560f,  // DK
+    0.9880f,  // Shaman
+    0.9830f,  // Mage
+    0.9830f,  // Warlock
+    0.0f,     // ??
+    0.9720f   // Druid
+};
+
 void Player::UpdateParryPercentage()
 {
+    const float parry_cap[MAX_CLASSES] =
+    {
+         47.003525f,  // Warrior
+         47.003525f,  // Paladin
+        145.560408f,  // Hunter
+        145.560408f,  // Rogue
+          0.0f,       // Priest
+         47.003525f,  // DK
+        145.560408f,  // Shaman
+          0.0f,       // Mage
+          0.0f,       // Warlock
+          0.0f,       // ??
+          0.0f        // Druid
+    };
+
     // No parry
     float value = 0.0f;
-    if (CanParry())
+    uint32 pclass = getClass()-1;
+    if (CanParry() && parry_cap[pclass] > 0.0f)
     {
         // Base parry
-        value  = 5.0f;
-        // Modify value from defense skill
-        value += (int32(GetDefenseSkillValue()) - int32(GetMaxSkillValueForLevel())) * 0.04f;
-        // Parry from SPELL_AURA_MOD_PARRY_PERCENT aura
-        value += GetTotalAuraModifier(SPELL_AURA_MOD_PARRY_PERCENT);
+        float nondiminishing  = 5.0f;
         // Parry from rating
-        value += GetRatingBonusValue(CR_PARRY);
+        float diminishing = GetRatingBonusValue(CR_PARRY);
+        // Modify value from defense skill (only bonus from defense rating diminishes)
+        nondiminishing += (GetSkillValue(SKILL_DEFENSE) - GetMaxSkillValueForLevel()) * 0.04f;
+        diminishing += (int32(GetRatingBonusValue(CR_DEFENSE_SKILL))) * 0.04f;
+        // Parry from SPELL_AURA_MOD_PARRY_PERCENT aura
+        nondiminishing += GetTotalAuraModifier(SPELL_AURA_MOD_PARRY_PERCENT);
+        // apply diminishing formula to diminishing parry chance
+        value = nondiminishing + diminishing * parry_cap[pclass] /
+                                 (diminishing + parry_cap[pclass] * m_diminishing_k[pclass]);
         value = value < 0.0f ? 0.0f : value;
     }
     SetStatFloatValue(PLAYER_PARRY_PERCENTAGE, value);
@@ -573,14 +608,35 @@ void Player::UpdateParryPercentage()
 
 void Player::UpdateDodgePercentage()
 {
+    const float dodge_cap[MAX_CLASSES] =
+    {
+         88.129021f,  // Warrior
+         88.129021f,  // Paladin
+        145.560408f,  // Hunter
+        145.560408f,  // Rogue
+        150.375940f,  // Priest
+         88.129021f,  // DK
+        145.560408f,  // Shaman
+        150.375940f,  // Mage
+        150.375940f,  // Warlock
+          0.0f,       // ??
+        116.890707f   // Druid
+    };
+
+    float diminishing = 0.0f, nondiminishing = 0.0f;
     // Dodge from agility
-    float value = GetDodgeFromAgility();
-    // Modify value from defense skill
-    value += (int32(GetDefenseSkillValue()) - int32(GetMaxSkillValueForLevel())) * 0.04f;
+    GetDodgeFromAgility(diminishing, nondiminishing);
+    // Modify value from defense skill (only bonus from defense rating diminishes)
+    nondiminishing += (GetSkillValue(SKILL_DEFENSE) - GetMaxSkillValueForLevel()) * 0.04f;
+    diminishing += (int32(GetRatingBonusValue(CR_DEFENSE_SKILL))) * 0.04f;
     // Dodge from SPELL_AURA_MOD_DODGE_PERCENT aura
-    value += GetTotalAuraModifier(SPELL_AURA_MOD_DODGE_PERCENT);
+    nondiminishing += GetTotalAuraModifier(SPELL_AURA_MOD_DODGE_PERCENT);
     // Dodge from rating
-    value += GetRatingBonusValue(CR_DODGE);
+    diminishing += GetRatingBonusValue(CR_DODGE);
+    // apply diminishing formula to diminishing dodge chance
+    uint32 pclass = getClass()-1;
+    float value = nondiminishing + (diminishing * dodge_cap[pclass] /
+                                    (diminishing + dodge_cap[pclass] * m_diminishing_k[pclass]));
     value = value < 0.0f ? 0.0f : value;
     SetStatFloatValue(PLAYER_DODGE_PERCENTAGE, value);
 }
@@ -814,7 +870,7 @@ void Creature::UpdateAttackPowerAndDamage(bool ranged)
     uint16 index_mod = UNIT_FIELD_ATTACK_POWER_MODS;
     uint16 index_mult = UNIT_FIELD_ATTACK_POWER_MULTIPLIER;
 
-    if(ranged)
+    if (ranged)
     {
         index = UNIT_FIELD_RANGED_ATTACK_POWER;
         index_mod = UNIT_FIELD_RANGED_ATTACK_POWER_MODS;
@@ -829,18 +885,20 @@ void Creature::UpdateAttackPowerAndDamage(bool ranged)
     SetInt32Value(index_mod, (uint32)attPowerMod);          //UNIT_FIELD_(RANGED)_ATTACK_POWER_MODS field
     SetFloatValue(index_mult, attPowerMultiplier);          //UNIT_FIELD_(RANGED)_ATTACK_POWER_MULTIPLIER field
 
-    if(ranged)
+    if (ranged)
         return;
+
     //automatically update weapon damage after attack power modification
     UpdateDamagePhysical(BASE_ATTACK);
+    UpdateDamagePhysical(OFF_ATTACK);
 }
 
 void Creature::UpdateDamagePhysical(WeaponAttackType attType)
 {
-    if(attType > BASE_ATTACK)
+    if (attType > OFF_ATTACK)
         return;
 
-    UnitMods unitMod = UNIT_MOD_DAMAGE_MAINHAND;
+    UnitMods unitMod = (attType == BASE_ATTACK ? UNIT_MOD_DAMAGE_MAINHAND : UNIT_MOD_DAMAGE_OFFHAND);
 
     /* difference in AP between current attack power and base value from DB */
     float att_pwr_change = GetTotalAttackPowerValue(attType) - GetCreatureInfo()->attackpower;
@@ -850,14 +908,14 @@ void Creature::UpdateDamagePhysical(WeaponAttackType attType)
     float total_pct   = GetModifierValue(unitMod, TOTAL_PCT);
     float dmg_multiplier = GetCreatureInfo()->dmg_multiplier;
 
-    float weapon_mindamage = GetWeaponDamageRange(BASE_ATTACK, MINDAMAGE);
-    float weapon_maxdamage = GetWeaponDamageRange(BASE_ATTACK, MAXDAMAGE);
+    float weapon_mindamage = GetWeaponDamageRange(attType, MINDAMAGE);
+    float weapon_maxdamage = GetWeaponDamageRange(attType, MAXDAMAGE);
 
     float mindamage = ((base_value + weapon_mindamage) * dmg_multiplier * base_pct + total_value) * total_pct;
     float maxdamage = ((base_value + weapon_maxdamage) * dmg_multiplier * base_pct + total_value) * total_pct;
 
-    SetStatFloatValue(UNIT_FIELD_MINDAMAGE, mindamage);
-    SetStatFloatValue(UNIT_FIELD_MAXDAMAGE, maxdamage);
+    SetStatFloatValue(attType == BASE_ATTACK ? UNIT_FIELD_MINDAMAGE : UNIT_FIELD_MINOFFHANDDAMAGE, mindamage);
+    SetStatFloatValue(attType == BASE_ATTACK ? UNIT_FIELD_MAXDAMAGE : UNIT_FIELD_MAXOFFHANDDAMAGE, maxdamage);
 }
 
 /*#######################################

@@ -24,11 +24,49 @@
 #include "ObjectMgr.h"
 #include "SpellMgr.h"
 #include "CreatureAI.h"
+#include "InstanceData.h"
 
 Totem::Totem() : Creature(CREATURE_SUBTYPE_TOTEM)
 {
     m_duration = 0;
     m_type = TOTEM_PASSIVE;
+}
+
+bool Totem::Create(uint32 guidlow, CreatureCreatePos& cPos, CreatureInfo const* cinfo, Unit* owner)
+{
+    SetMap(cPos.GetMap());
+    SetPhaseMask(cPos.GetPhaseMask(), false);
+
+    Team team = owner->GetTypeId() == TYPEID_PLAYER ? ((Player*)owner)->GetTeam() : TEAM_NONE;
+
+    if (!CreateFromProto(guidlow, cinfo, team))
+        return false;
+
+    // special model selection case for totems
+    if (owner->GetTypeId() == TYPEID_PLAYER)
+    {
+        if (uint32 modelid_race = sObjectMgr.GetModelForRace(GetNativeDisplayId(), owner->getRaceMask()))
+            SetDisplayId(modelid_race);
+    }
+
+    cPos.SelectFinalPoint(this);
+
+    // totem must be at same Z in case swimming caster and etc.
+    if (fabs(cPos.m_pos.z - owner->GetPositionZ() ) > 5.0f)
+        cPos.m_pos.z = owner->GetPositionZ();
+
+    if (!cPos.Relocate(this))
+        return false;
+
+    //Notify the map's instance data.
+    //Only works if you create the object in it, not if it is moves to that map.
+    //Normally non-players do not teleport to other maps.
+    if (InstanceData* iData = GetMap()->GetInstanceData())
+        iData->OnCreatureCreate(this);
+
+    LoadCreatureAddon();
+
+    return true;
 }
 
 void Totem::Update(uint32 update_diff, uint32 time )
@@ -123,10 +161,10 @@ void Totem::SetOwner(Unit* owner)
 
 Unit *Totem::GetOwner()
 {
-    ObjectGuid ownerGuid = GetOwnerGuid();
-    if (ownerGuid.IsEmpty())
-        return NULL;
-    return ObjectAccessor::GetUnit(*this, ownerGuid);
+    if (ObjectGuid ownerGuid = GetOwnerGuid())
+        return ObjectAccessor::GetUnit(*this, ownerGuid);
+
+    return NULL;
 }
 
 void Totem::SetTypeBySummonSpell(SpellEntry const * spellProto)
@@ -145,24 +183,33 @@ void Totem::SetTypeBySummonSpell(SpellEntry const * spellProto)
 
 bool Totem::IsImmuneToSpellEffect(SpellEntry const* spellInfo, SpellEffectIndex index) const
 {
-    // TODO: possibly all negative auras immune?
     switch(spellInfo->Effect[index])
     {
         case SPELL_EFFECT_ATTACK_ME:
+        // immune to any type of regeneration effects hp/mana etc.
+        case SPELL_EFFECT_HEAL:
+        case SPELL_EFFECT_HEAL_MAX_HEALTH:
+        case SPELL_EFFECT_HEAL_MECHANICAL:
+        case SPELL_EFFECT_HEAL_PCT:
+        case SPELL_EFFECT_ENERGIZE:
+        case SPELL_EFFECT_ENERGIZE_PCT:
             return true;
         default:
             break;
     }
-    switch(spellInfo->EffectApplyAuraName[index])
+    
+    if (!IsPositiveSpell(spellInfo))
     {
-        case SPELL_AURA_PERIODIC_DAMAGE:
-        case SPELL_AURA_PERIODIC_LEECH:
-        case SPELL_AURA_MOD_FEAR:
-        case SPELL_AURA_TRANSFORM:
-        case SPELL_AURA_MOD_TAUNT:
+        // immune to all negative auras
+        if (IsAuraApplyEffect(spellInfo, index))
             return true;
-        default:
-            break;
     }
+    else
+    {
+        // immune to any type of regeneration auras hp/mana etc.
+        if (IsPeriodicRegenerateEffect(spellInfo, index))
+            return true;
+    }
+
     return Creature::IsImmuneToSpellEffect(spellInfo, index);
 }

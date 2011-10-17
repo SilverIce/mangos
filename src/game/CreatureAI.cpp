@@ -73,7 +73,7 @@ CanCastResult CreatureAI::CanCastSpell(Unit* pTarget, const SpellEntry *pSpell, 
         return CAST_FAIL_OTHER;
 }
 
-CanCastResult CreatureAI::DoCastSpellIfCan(Unit* pTarget, uint32 uiSpell, uint32 uiCastFlags, uint64 uiOriginalCasterGUID)
+CanCastResult CreatureAI::DoCastSpellIfCan(Unit* pTarget, uint32 uiSpell, uint32 uiCastFlags, ObjectGuid uiOriginalCasterGUID)
 {
     Unit* pCaster = m_creature;
 
@@ -120,20 +120,5 @@ CanCastResult CreatureAI::DoCastSpellIfCan(Unit* pTarget, uint32 uiSpell, uint32
 
 bool CreatureAI::DoMeleeAttackIfReady()
 {
-    // Check target
-    if (!m_creature->getVictim())
-        return false;
-
-    // Make sure our attack is ready before checking distance
-    if (!m_creature->isAttackReady())
-        return false;
-
-    // If we are within range melee the target
-    if (!m_creature->CanReachWithMeleeAttack(m_creature->getVictim()))
-        return false;
-
-    m_creature->AttackerStateUpdate(m_creature->getVictim());
-    m_creature->resetAttackTimer();
-
-    return true;
+    return m_creature->UpdateMeleeAttackingState();
 }

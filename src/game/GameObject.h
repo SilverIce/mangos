@@ -549,6 +549,16 @@ enum GOState
 
 #define MAX_GO_STATE              3
 
+struct QuaternionData
+{
+    float x, y, z, w;
+
+    QuaternionData() : x(0.f), y(0.f), z(0.f), w(0.f) {}
+    QuaternionData(float X, float Y, float Z, float W) : x(X), y(Y), z(Z), w(W) {}
+
+    bool isUnit() const { return fabs(x*x + y*y + z*z + w*w - 1.f) < 1e-5;}
+};
+
 // from `gameobject`
 struct GameObjectData
 {
@@ -559,14 +569,18 @@ struct GameObjectData
     float posY;
     float posZ;
     float orientation;
-    float rotation0;
-    float rotation1;
-    float rotation2;
-    float rotation3;
+    QuaternionData rotation;
     int32  spawntimesecs;
     uint32 animprogress;
     GOState go_state;
     uint8 spawnMask;
+};
+
+// from `gameobject_addon`
+struct GameObjectDataAddon
+{
+    uint32 guid;
+    QuaternionData path_rotation;
 };
 
 // For containers:  [GO_NOT_READY]->GO_READY (close)->GO_ACTIVATED (open) ->GO_JUST_DEACTIVATED->GO_READY        -> ...
@@ -582,6 +596,7 @@ enum LootState
 };
 
 class Unit;
+struct GameObjectDisplayInfoEntry;
 
 // 5 sec for bobber catch
 #define FISHING_BOBBER_READY_TIME 5
@@ -597,15 +612,20 @@ class MANGOS_DLL_SPEC GameObject : public WorldObject
         void AddToWorld();
         void RemoveFromWorld();
 
-        bool Create(uint32 guidlow, uint32 name_id, Map *map, uint32 phaseMask, float x, float y, float z, float ang, float rotation0, float rotation1, float rotation2, float rotation3, uint8 animprogress, GOState go_state);
-        void Update(uint32 update_diff, uint32 p_time);
+        bool Create(uint32 guidlow, uint32 name_id, Map *map, uint32 phaseMask, float x, float y, float z, float ang,
+            QuaternionData rotation = QuaternionData(), uint8 animprogress = GO_ANIMPROGRESS_DEFAULT, GOState go_state = GO_STATE_READY);
+        void Update(uint32 update_diff, uint32 p_time) override;
         GameObjectInfo const* GetGOInfo() const;
 
         bool IsTransport() const;
 
         bool HasStaticDBSpawnData() const;                  // listed in `gameobject` table and have fixed in DB guid
 
-        void UpdateRotationFields(float rotation2 = 0.0f, float rotation3 = 0.0f);
+        // z_rot, y_rot, x_rot - rotation angles around z, y and x axes
+        void SetWorldRotationAngles(float z_rot, float y_rot, float x_rot);
+        void SetWorldRotation(float qx, float qy, float qz, float qw);   
+        void SetTransportPathRotation(QuaternionData rotation);      // transforms(rotates) transport's path
+        int64 GetPackedWorldRotation() const { return m_packedRotation; }
 
         // overwrite WorldObject function for proper name localization
         const char* GetNameForLocaleIdx(int32 locale_idx) const;
@@ -670,6 +690,8 @@ class MANGOS_DLL_SPEC GameObject : public WorldObject
         void SetGoArtKit(uint8 artkit) { SetByteValue(GAMEOBJECT_BYTES_1, 2, artkit); }
         uint8 GetGoAnimProgress() const { return GetByteValue(GAMEOBJECT_BYTES_1, 3); }
         void SetGoAnimProgress(uint8 animprogress) { SetByteValue(GAMEOBJECT_BYTES_1, 3, animprogress); }
+        uint32 GetDisplayId() const { return GetUInt32Value(GAMEOBJECT_DISPLAYID); }
+        void SetDisplayId(uint32 modelId);
 
         float GetObjectBoundingRadius() const;              // overwrite WorldObject version
 
@@ -718,7 +740,6 @@ class MANGOS_DLL_SPEC GameObject : public WorldObject
 
         GridReference<GameObject> &GetGridRef() { return m_gridRef; }
 
-        uint64 GetRotation() const { return m_rotation; }
     protected:
         uint32      m_spellId;
         time_t      m_respawnTime;                          // (secs) time of next respawn (or despawn if GO have owner()),
@@ -739,7 +760,9 @@ class MANGOS_DLL_SPEC GameObject : public WorldObject
         GuidsSet m_UniqueUsers;                             // all players who use item, some items activated after specific amount unique uses
 
         GameObjectInfo const* m_goInfo;
-        uint64 m_rotation;
+        GameObjectDisplayInfoEntry const* m_displayInfo;
+        int64 m_packedRotation;
+        QuaternionData m_worldRotation;
     private:
         void SwitchDoorOrButton(bool activate, bool alternative = false);
 
