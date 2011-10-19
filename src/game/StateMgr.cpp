@@ -1,54 +1,22 @@
-#include "MotionMaster2.h"
+
 #include "ConfusedMovementGenerator.h"
 #include "TargetedMovementGenerator.h"
 #include "Timer.h"
+#include "StateMgr_Impl.h"
+#include "StateMgr.h"
+
+#include "Player.h"
+#include "Creature.h"
 
 
-class DefaultStatePriorities
+std::string ActionPriorityQueue::ToString()
 {
-    int AIStatePriorities[AIActionType_Count];
-
-public:
-    DefaultStatePriorities()
-    {
-        AIStatePriorities[Idle] = 0;
-        AIStatePriorities[OutOfCombat] = 10;
-        AIStatePriorities[Combat] = 30;
-        AIStatePriorities[Effect] = 40;
-        AIStatePriorities[Feared] = 50;
-        AIStatePriorities[Confused] = 60;
-        AIStatePriorities[Root] = 70;
-        AIStatePriorities[Stun] = 80;
-    }
-
-    int operator[](int i) const { return AIStatePriorities[i];}
-
-} g_DefaultStatePriorities;
-
-MotionMasterImpl::MotionMasterImpl(Unit& Owner) :
-    owner(Owner), m_locked(false), m_slot(Idle)
-{
-    InitDefaults();
-}
-
-std::string MotionMasterImpl::ToString()
-{
-    const char * AIStateType_Name[AIActionType_Count] =
-    {
-        "Idle",
-        "OutOfCombat",
-        "Combat",
-        "Effect",
-        "Feared",
-        "Confused",
-        "Root",
-        "Stun",
-    };
 
     std::stringstream str;
-    if (get_CurrentState())
-        str << "current slot " << AIStateType_Name[get_CurrentSlotType()] << ": " << get_CurrentState().TypeName() << std::endl;
-    for (AIStateType slot = Idle; slot < AIActionType_Count; ++((int&)slot))
+    str << "";
+   /* if (get_CurrentState())
+        str << "current slot " << AIStateType_Name[get_CurrentSlot()] << ": " << get_CurrentState().TypeName() << std::endl;
+    for (UnitStateId slot = Idle; slot < UnitState_End; ++((int&)slot))
     {
         str << "slot " << AIStateType_Name[slot] << ": ";
         if (get_AIState(slot))
@@ -56,29 +24,13 @@ std::string MotionMasterImpl::ToString()
         else
             str << "empty";
         str << std::endl;
-    }
+    }*/
 
     return str.str();
 }
 
-class IdleState_ : public MovementGenerator
-{
-public:
-
-    void Interrupt(Unit &) {}
-    void Reset(Unit &) {}
-    void Initialize(Unit &) {}
-    void Finalize(Unit &) {}
-    bool Update(Unit &, const uint32&) { return true; }
-
-    virtual MovementGeneratorType GetMovementGeneratorType() const
-    {
-        return IDLE_MOTION_TYPE;
-    }
-};
-
 // derived from IdleState_ to not write new GetMovementGeneratorType, Update
-class StunnedState : public IdleState_
+class StunnedState : public NullUnitState
 {
 public:
 
@@ -122,7 +74,7 @@ public:
 
 };
 
-class RootState : public IdleState_
+class RootState : public NullUnitState
 {
 public:
 
@@ -135,7 +87,7 @@ public:
         target->SetTargetGuid(ObjectGuid());
 
         //Save last orientation
-        if( target->getVictim() )
+        if(target->getVictim())
             target->SetOrientation(target->GetAngle(target->getVictim()));
 
         if(target->GetTypeId() == TYPEID_PLAYER)
@@ -171,38 +123,116 @@ bool isPlayer(Unit& owner)
     return owner.isType(TYPEMASK_PLAYER);
 }
 
-AIState * MotionMasterImpl::InitStandartState(AIStateType slot, Unit& owner)
+UnitAction * constructFuckingMMgen(Unit& owner)
 {
-    AIState * state = NULL;
-    switch(slot)
+    if (Unit * victim = owner.getVictim())
     {
-    case Confused:
+        if (isPlayer(owner))
+            return new ChaseMovementGenerator<Player>((Unit&)*victim);
+        else
+            return new ChaseMovementGenerator<Creature>((Unit&)*victim);
+    }
+    return NULL;
+}
+
+UnitAction * ActionPriorityQueue::CreateStandartState(int stateId, Unit& owner)
+{
+    UnitAction * state = NULL;
+    switch(stateId)
+    {
+    case UnitAction_Confused:
         if (isPlayer(owner))
             state = new ConfusedMovementGenerator<Player>();
         else
             state = new ConfusedMovementGenerator<Creature>();
         break;
-    case Stun:
+    case UnitAction_Stun:
         state = new StunnedState();
-    case Root:
+        break;
+    case UnitAction_Root:
         state = new RootState();
-    case Combat:
+        break;
+    case UnitAction_Chase:
+        /*if (Unit * victim = owner.getVictim())
         {
-            //if (Unit * victim = owner.getVictim())
-               // state = isPlayer(owner) ? new ChaseMovementGenerator<Player>(*victim) : new ChaseMovementGenerator<Creature>(*victim);
-            break;
-        }
+            if (isPlayer(owner))
+                state = new ChaseMovementGenerator<Player>((Unit&)*victim);
+            else
+                state = new ChaseMovementGenerator<Creature>((Unit&)*victim);
+        }*/
+        break;
     default:
         break;
     }
 
     if (!state)
-        state = new IdleState_();
+        state = new NullUnitState();
 
     return state;
 }
 
-void MotionMasterImpl::reset_Priority(AIStateType slot)
+ActionPriorityQueue::ActionWrap ActionPriorityQueue::NullState;
+
+UnitStateMgr::UnitStateMgr(Unit* owner) : m(*new ActionPriorityQueue(*owner))
 {
-    m_priorities[slot] = g_DefaultStatePriorities[slot];
+}
+
+UnitStateMgr::~UnitStateMgr()
+{
+    delete &m;
+}
+
+void UnitStateMgr::InitDefaults()
+{
+    m.InitDefaults();
+}
+
+void UnitStateMgr::Update(uint32 diff)
+{
+    m.Update(diff);
+}
+
+void UnitStateMgr::DropAction(int slot)
+{
+    m.DropState(slot);
+}
+
+void UnitStateMgr::PushAction(UnitActionId slot)
+{
+    m.AIStatePut(slot);
+}
+
+void UnitStateMgr::PushAction(UnitActionId slot, int priority)
+{
+    m.AIStatePut(slot, priority);
+}
+
+void UnitStateMgr::PushAction(int actionId, UnitAction* state, int priority)
+{
+    m.AIStatePut(actionId, state, priority);
+}
+
+void UnitStateMgr::PushAction(int actionId, UnitAction* state)
+{
+    m.AIStatePut(actionId, state, staticActionInfo[actionId].priority); 
+}
+
+std::string UnitStateMgr::ToString()
+{
+    return m.ToString();
+}
+
+UnitAction* UnitStateMgr::CurrentAction()
+{
+    return m.get_CurrentState();
+}
+
+void UnitStateMgr::DropAllStates()
+{
+    m.InitDefaults();
+}
+
+void UnitStateMgr::EnterAction(UnitActionId stateId)
+{
+    m.EnterState(stateId);
 }

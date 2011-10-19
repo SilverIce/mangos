@@ -114,7 +114,7 @@ namespace Movement
         STR(Walk               ),// 0x00000100,               // Walking
         STR(Ontransport        ),// 0x00000200,
         STR(Levitation         ),// 0x00000400,
-        STR(Root               ),// 0x00000800,
+        STR(UnitAction_Root               ),// 0x00000800,
         STR(Falling            ),// 0x00001000,
         STR(Fallingfar         ),// 0x00002000,
         STR(Pendingstop        ),// 0x00004000,

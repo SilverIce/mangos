@@ -67,7 +67,7 @@ class MANGOS_DLL_SPEC ChaseMovementGenerator : public TargetedMovementGeneratorM
 {
     public:
         ChaseMovementGenerator(Unit &target)
-            : TargetedMovementGeneratorMedium<T, ChaseMovementGenerator<T> >(target) {}
+            : TargetedMovementGeneratorMedium<T, ChaseMovementGenerator<T> >(target, 0.f, 0.f) {}
         ChaseMovementGenerator(Unit &target, float offset, float angle)
             : TargetedMovementGeneratorMedium<T, ChaseMovementGenerator<T> >(target, offset, angle) {}
         ~ChaseMovementGenerator() {}

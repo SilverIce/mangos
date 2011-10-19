@@ -6107,8 +6107,6 @@ bool ChatHandler::HandlePDumpWriteCommand(char *args)
     return true;
 }
 
-#include "MotionMaster2.h"
-
 bool ChatHandler::HandleMovegensCommand(char* /*args*/)
 {
     Unit* unit = getSelectedUnit();
@@ -6119,12 +6117,7 @@ bool ChatHandler::HandleMovegensCommand(char* /*args*/)
         return false;
     }
 
-    PSendSysMessage(LANG_MOVEGENS_LIST,(unit->GetTypeId()==TYPEID_PLAYER ? "Player" : "Creature" ),unit->GetGUIDLow());
-
-    PSendSysMessage(unit->GetMotionMaster()->impl->ToString().c_str());
-    float x,y,z;
-    mm->GetDestination(x,y,z);
-            case EFFECT_MOTION_TYPE: SendSysMessage(LANG_MOVEGENS_EFFECT);  break;
+    PSendSysMessage(unit->stateMgr().ToString().c_str());
     return true;
 }
 

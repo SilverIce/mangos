@@ -70,8 +70,6 @@ class MANGOS_DLL_SPEC MotionMaster : private std::stack<MovementGenerator *>
 
         void Initialize();
 
-        MovementGenerator* operator->(void) { return top(); }
-
         using Impl::empty;
 
         typedef Impl::container_type::const_iterator const_iterator;
@@ -111,7 +109,7 @@ class MANGOS_DLL_SPEC MotionMaster : private std::stack<MovementGenerator *>
         // will only work in MMgens where we have a target (TARGETED_MOTION_TYPE)
         void UpdateFinalDistanceToTarget(float fDistance);
 
-        class MotionMasterImpl * impl;
+        class UnitStateMgr * impl;
         MovementGenerator * top();
         bool GetDestination(float &x, float &y, float &z);
     private:

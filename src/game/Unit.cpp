@@ -47,7 +47,6 @@
 #include "CellImpl.h"
 #include "VMapFactory.h"
 #include "MovementGenerator.h"
-#include "MotionMaster2.h"
 #include "movement/MoveSplineInit.h"
 #include "movement/MoveSpline.h"
 #include "CreatureLinkingMgr.h"
@@ -187,6 +186,7 @@ Unit::Unit() :
     i_motionMaster(this), m_ThreatManager(this), m_HostileRefManager(this),
     m_charmInfo(NULL),
     m_vehicleInfo(NULL),
+    m_stateMgr(this),
     movespline(new Movement::MoveSpline())
 {
     m_objectType |= TYPEMASK_UNIT;
@@ -9408,7 +9408,7 @@ void Unit::CleanupsBeforeDelete()
         else
             getHostileRefManager().deleteReferences();
         RemoveAllAuras(AURA_REMOVE_BY_DELETE);
-        getStateMaster().InitDefaults();
+        stateMgr().InitDefaults();
     }
     WorldObject::CleanupsBeforeDelete();
 }
@@ -9973,7 +9973,7 @@ void Unit::SetFeared(bool apply, ObjectGuid casterGuid, uint32 spellID, uint32 t
     else
     {
         RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_FLEEING);
-        getStateMaster().AIStateDrop(Feared);
+        stateMgr().DropAction(UnitAction_Feared);
     }
 
     if (GetTypeId() == TYPEID_PLAYER)
@@ -9993,7 +9993,7 @@ void Unit::SetConfused(bool apply, ObjectGuid casterGuid, uint32 spellID)
     else
     {
         RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_CONFUSED);
-        getStateMaster().AIStateDrop(Confused);
+        stateMgr().DropAction(UnitAction_Confused);
     }
 
     if(GetTypeId() == TYPEID_PLAYER)
@@ -10011,7 +10011,7 @@ void Unit::SetFeignDeath(bool apply, ObjectGuid casterGuid, uint32 /*spellID*/)
         SendMessageToSet(&data,true);
         */
 
-        getStateMaster().EnterState(Idle);
+        stateMgr().PushAction(UnitAction_Idle, 100);
 
         if (GetTypeId() != TYPEID_PLAYER)
             StopMoving();
@@ -10052,7 +10052,7 @@ void Unit::SetFeignDeath(bool apply, ObjectGuid casterGuid, uint32 /*spellID*/)
 
         clearUnitState(UNIT_STAT_DIED);
 
-        getStateMaster().AIStateDrop(Idle);
+        stateMgr().DropAction(UnitAction_Idle);
     }
 }
 
@@ -10457,20 +10457,8 @@ void Unit::NearTeleportTo( float x, float y, float z, float orientation, bool ca
     else
     {
         Creature* c = (Creature*)this;
-        // Creature relocation acts like instant movement generator, so current generator expects interrupt/reset calls to react properly
-        if (!c->GetMotionMaster()->empty())
-            if (MovementGenerator *movgen = c->GetMotionMaster()->top())
-                movgen->Interrupt(*c);
-
         GetMap()->CreatureRelocation((Creature*)this, x, y, z, orientation);
-
         SendHeartBeat();
-
-        // finished relocation, movegen can different from top before creature relocation,
-        // but apply Reset expected to be safe in any case
-        if (!c->GetMotionMaster()->empty())
-            if (MovementGenerator *movgen = c->GetMotionMaster()->top())
-                movgen->Reset(*c);
     }
 }
 

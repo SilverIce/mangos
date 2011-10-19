@@ -431,7 +431,7 @@ void WorldSession::HandleBattleFieldPortOpcode( WorldPacket &recv_data )
             // stop taxi flight at port
             if (_player->IsTaxiFlying())
             {
-                _player->GetMotionMaster()->MovementExpired();
+                _player->GetMotionMaster()->Clear(true,true);
                 _player->m_taxi.ClearTaxiDestinations();
             }
 

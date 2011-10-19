@@ -20681,7 +20681,7 @@ void Player::SummonIfPossible(bool agree)
     // stop taxi flight at summon
     if(IsTaxiFlying())
     {
-        GetMotionMaster()->MovementExpired();
+        GetMotionMaster()->MoveIdle();
         m_taxi.ClearTaxiDestinations();
     }
 
@@ -22937,4 +22937,17 @@ void Player::SetRestType( RestType n_r_type, uint32 areaTriggerId /*= 0*/)
         if(sWorld.IsFFAPvPRealm())
             SetFFAPvP(false);
     }
+}
+
+void Player::InterruptTaxiFlying()
+{
+    // stop flight if need
+    if (IsTaxiFlying())
+    {
+        stateMgr().InitDefaults();
+        m_taxi.ClearTaxiDestinations();
+    }
+    // save only in non-flight case
+    else
+        SaveRecallPosition();
 }

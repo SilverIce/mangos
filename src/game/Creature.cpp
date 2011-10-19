@@ -50,7 +50,6 @@
 
 // apply implementation of the singletons
 #include "Policies/SingletonImp.h"
-#include "MotionMaster2.h"
 
 
 ObjectGuid CreatureData::GetObjectGuid(uint32 lowguid) const
@@ -497,7 +496,7 @@ void Creature::Update(uint32 update_diff, uint32 diff)
                 {
                     SetDeathState(JUST_DIED);
                     SetHealth(0);
-                    getStateMaster().InitDefaults();
+                    stateMgr().InitDefaults();
                     clearUnitState(UNIT_STAT_ALL_STATE);
                     LoadCreatureAddon(true);
                 }

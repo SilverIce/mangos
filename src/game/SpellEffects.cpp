@@ -2100,9 +2100,6 @@ void Spell::EffectDummy(SpellEffectIndex eff_idx)
 
                     if (pTargetDummy)
                     {
-                        if (unitTarget->hasUnitState(UNIT_STAT_FOLLOW | UNIT_STAT_FOLLOW_MOVE))
-                            unitTarget->GetMotionMaster()->MovementExpired();
-
                         unitTarget->MonsterMoveWithSpeed(pTargetDummy->GetPositionX(), pTargetDummy->GetPositionY(), pTargetDummy->GetPositionZ(), 24.f);
 
                         // Add state to temporarily prevent follow
@@ -6619,9 +6616,6 @@ void Spell::EffectScriptEffect(SpellEffectIndex eff_idx)
                             // can only affect "own" summoned
                             if (pSummon->GetSummonerGuid() == m_caster->GetObjectGuid())
                             {
-                                if (pTarget->hasUnitState(UNIT_STAT_ROAMING | UNIT_STAT_ROAMING_MOVE))
-                                    pTarget->GetMotionMaster()->MovementExpired();
-
                                 // trigger cast of quest complete script (see code for this spell below)
                                 pTarget->CastSpell(pTarget, 44462, true);
 

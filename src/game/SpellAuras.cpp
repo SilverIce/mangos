@@ -45,7 +45,6 @@
 #include "GridNotifiersImpl.h"
 #include "Vehicle.h"
 #include "CellImpl.h"
-#include "MotionMaster2.h"
 
 #define NULL_AURA_SLOT 0xFF
 
@@ -2637,7 +2636,7 @@ void Aura::HandleAuraDummy(bool apply, bool Real)
             }
             case 68839:                                     // Corrupt Soul
             {
-                // Knockdown Stun
+                // Knockdown UnitState_Root
                 target->CastSpell(target, 68848, true, NULL, this);
                 // Draw Corrupted Soul
                 target->CastSpell(target, 68846, true, NULL, this);
@@ -4294,7 +4293,7 @@ void Aura::HandleAuraModStun(bool apply, bool Real)
             target->ModifyAuraState(AURA_STATE_FROZEN, apply);
 
         target->CastStop(target->GetObjectGuid() == GetCasterGuid() ? GetId() : 0);
-        target->getStateMaster().AIStatePut(Stun);
+        target->stateMgr().PushAction(UnitAction_Root);
 
         // Summon the Naj'entus Spine GameObject on target if spell is Impaling Spine
         if(GetId() == 39837)
@@ -4341,7 +4340,7 @@ void Aura::HandleAuraModStun(bool apply, bool Real)
         if(target->HasAuraType(SPELL_AURA_MOD_STUN))
             return;
 
-        target->getStateMaster().AIStateDrop(Stun);
+        target->stateMgr().DropAction(UnitAction_Root);
 
         // Wyvern Sting
         if (GetSpellProto()->SpellFamilyName == SPELLFAMILY_HUNTER && GetSpellProto()->SpellFamilyFlags & UI64LIT(0x0000100000000000))
@@ -4559,7 +4558,7 @@ void Aura::HandleAuraModRoot(bool apply, bool Real)
         if (GetSpellSchoolMask(GetSpellProto()) & SPELL_SCHOOL_MASK_FROST)
             target->ModifyAuraState(AURA_STATE_FROZEN, apply);
 
-        target->getStateMaster().AIStatePut(Root);
+        target->stateMgr().PushAction(UnitAction_Root);
     }
     else
     {
@@ -4590,7 +4589,7 @@ void Aura::HandleAuraModRoot(bool apply, bool Real)
         if(target->HasAuraType(SPELL_AURA_MOD_ROOT))
             return;
 
-        target->getStateMaster().AIStateDrop(Root);
+        target->stateMgr().DropAction(UnitAction_Root);
     }
 }
 
